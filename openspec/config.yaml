@@ -1,0 +1,54 @@
+schema: spec-driven
+
+context: |
+  # Mono-repo structure
+  Repository: voice-note (mono-repo)
+  Modules: voice-note-client (Flutter), voice-note-server (Spring Boot), api-contracts (OpenAPI)
+
+  # Client — voice-note-client/
+  Tech stack: Flutter 3.x, Dart 3.x, Riverpod (flutter_riverpod + riverpod_annotation), drift (SQLite ORM), go_router
+  Architecture: Feature-First + 三层架构 (Data → Domain → Presentation)
+  Directory: voice-note-client/lib/{core,features/<name>/{data,domain,presentation},app.dart}
+  State: Riverpod providers — keepAlive for services/repos, autoDispose for computed/UI state
+  Storage: drift with typed DSL, migration support, reactive queries (.watch())
+  ID: UUID v4 (uuid package)
+  Platform: iOS + Android, local-first, offline-capable
+  Coding conventions: See .cursor/skills/flutter-development/SKILL.md
+  Dart style: Effective Dart — UpperCamelCase types, lowerCamelCase members, snake_case files
+  const constructors mandatory where possible; explicit return types; final locals
+
+  # Server — voice-note-server/
+  Tech stack: Kotlin 1.9.x, Spring Boot 3.5.x, Gradle KTS, Java 17+
+  Architecture: Layered (Controller → Service → Provider), config-driven LLM routing
+  Directory: voice-note-server/src/main/kotlin/com/suikouji/server/{api,asr,llm,ratelimit,config}
+  Key responsibilities (Phase 2): ASR Token Broker, LLM proxy & routing, rate limiting
+  Coding conventions: See .cursor/skills/kotlin/language/SKILL.md and .cursor/skills/spring-boot/architecture/SKILL.md
+  Kotlin style: lowerCamelCase functions/properties, UpperCamelCase classes, data classes for DTOs
+  Config: application.yml + environment variables for secrets
+
+  # API Contracts — api-contracts/
+  Format: OpenAPI 3.0 YAML
+  Purpose: Single source of truth for client-server API contract
+
+  # Cross-cutting
+  Testing: 70% unit / 20% integration / 10% E2E, AAA pattern
+  Language policy: Specs and proposals in Simplified Chinese; code comments in English
+
+rules:
+  proposal:
+    - Keep proposals under 500 words
+    - Focus on user value and business impact, not implementation details
+  specs:
+    - Describe system behavior, not UI
+    - Use SHALL / MUST for mandatory behavior
+    - One capability per spec file
+  design:
+    - Reference Flutter/Dart conventions from .cursor/skills/flutter-development/SKILL.md
+    - Reference Kotlin/Spring Boot conventions from .cursor/skills/spring-boot/ and .cursor/skills/kotlin/
+    - Justify architecture decisions with alternatives considered
+    - Include directory structure for new features following Feature-First pattern (client) or layered pattern (server)
+  tasks:
+    - Break tasks into chunks of max 2 hours
+    - Each task MUST specify target file path(s) under voice-note-client/ or voice-note-server/
+    - Include corresponding test task for each implementation task
+    - Follow dependency order — data layer → domain layer → presentation layer (client); provider → service → controller (server)

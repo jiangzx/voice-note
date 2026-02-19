@@ -1,0 +1,29 @@
+# Production profile — activated via SPRING_PROFILES_ACTIVE=prod
+# Overrides application.yml for security and performance in production.
+
+api-auth:
+  enabled: true
+  key: ${API_AUTH_KEY}  # Required in production
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://api.suikouji.com}
+
+dashscope:
+  asr:
+    token-ttl-seconds: 120  # Shorter token lifetime for security
+
+rate-limit:
+  asr:
+    tokens-per-minute: 60
+    burst-capacity: 60
+  llm:
+    tokens-per-minute: 120
+    burst-capacity: 120
+  trusted-proxies: ${RATE_LIMIT_TRUSTED_PROXIES:127.0.0.1}
+
+management:
+  endpoint:
+    health:
+      show-details: never  # Hide internals from public
+
+# All logging levels managed by logback-spring.xml

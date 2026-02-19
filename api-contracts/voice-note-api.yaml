@@ -1,0 +1,347 @@
+openapi: 3.0.3
+info:
+  title: Voice Note API
+  description: 随口记 (SuiKouJi) AI Gateway API — ASR Token Broker & LLM Router
+  version: 0.1.0
+  contact:
+    name: SuiKouJi Team
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://api.suikouji.com
+    description: Production
+
+paths:
+  /api/v1/asr/token:
+    post:
+      tags: [ASR]
+      summary: Generate temporary ASR token
+      description: |
+        Returns a short-lived DashScope token for the client to directly
+        connect to the ASR WebSocket endpoint. Avoids proxying audio
+        through the server.
+      operationId: generateAsrToken
+      responses:
+        "200":
+          description: Temporary token generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsrTokenResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          $ref: "#/components/responses/UpstreamError"
+
+  /api/v1/llm/parse-transaction:
+    post:
+      tags: [LLM]
+      summary: Parse natural language into structured transactions (batch)
+      description: |
+        Accepts user's speech-to-text output and uses LLM to extract one or
+        more structured transactions. A single-item input returns an array
+        with one element. Falls back to a stronger model if primary fails.
+      operationId: parseTransaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionParseRequest"
+      responses:
+        "200":
+          description: Transactions parsed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionBatchParseResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "422":
+          description: LLM could not parse the input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/v1/llm/correct-transaction:
+    post:
+      tags: [LLM]
+      summary: Correct pending transactions via LLM dialogue
+      description: |
+        Sends the current batch of pending transactions along with the user's
+        correction text to the LLM. Returns structured corrections (field-level
+        deltas), a secondary intent classification, and a confidence score.
+        Supports single and batch transactions (single = batch of size 1).
+      operationId: correctTransaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionCorrectionRequest"
+      responses:
+        "200":
+          description: Correction processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionCorrectionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "422":
+          description: LLM could not process the correction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /actuator/health:
+    get:
+      tags: [System]
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Service is healthy
+
+components:
+  schemas:
+    AsrTokenResponse:
+      type: object
+      required: [token, expiresAt, model, wsUrl]
+      properties:
+        token:
+          type: string
+          description: Temporary DashScope API key
+          example: "st-xxxxxxxxxxxx"
+        expiresAt:
+          type: integer
+          format: int64
+          description: Unix timestamp (seconds) when token expires
+          example: 1740000000
+        model:
+          type: string
+          description: ASR model identifier
+          example: "qwen3-asr-flash-realtime"
+        wsUrl:
+          type: string
+          description: WebSocket URL for direct ASR connection
+          example: "wss://dashscope.aliyuncs.com/api-ws/v1/realtime"
+
+    TransactionParseRequest:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+          description: User's natural language input (from ASR or keyboard)
+          example: "今天午饭花了35"
+        context:
+          $ref: "#/components/schemas/ParseContext"
+
+    ParseContext:
+      type: object
+      description: Optional context to improve parsing accuracy
+      properties:
+        recentCategories:
+          type: array
+          items:
+            type: string
+          example: ["餐饮", "交通"]
+        customCategories:
+          type: array
+          items:
+            type: string
+          example: ["学习资料"]
+        accounts:
+          type: array
+          items:
+            type: string
+          example: ["钱包", "微信"]
+
+    TransactionBatchParseResponse:
+      type: object
+      required: [transactions, model]
+      properties:
+        transactions:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/TransactionParseResponse"
+        model:
+          type: string
+          description: Which LLM model was used
+          example: "qwen-turbo"
+
+    TransactionParseResponse:
+      type: object
+      required: [confidence]
+      properties:
+        amount:
+          type: number
+          format: double
+          nullable: true
+          example: 35.0
+        currency:
+          type: string
+          default: "CNY"
+          example: "CNY"
+        date:
+          type: string
+          nullable: true
+          description: ISO 8601 date
+          example: "2026-02-17"
+        category:
+          type: string
+          nullable: true
+          example: "餐饮"
+        description:
+          type: string
+          nullable: true
+          example: "午饭"
+        type:
+          type: string
+          nullable: true
+          enum: [EXPENSE, INCOME, TRANSFER]
+          example: "EXPENSE"
+        account:
+          type: string
+          nullable: true
+          example: null
+        confidence:
+          type: number
+          format: double
+          description: "0.0-1.0 confidence score"
+          example: 0.95
+
+    TransactionCorrectionRequest:
+      type: object
+      required: [currentBatch, correctionText]
+      properties:
+        currentBatch:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/BatchItem"
+        correctionText:
+          type: string
+          maxLength: 2000
+          description: User's correction or follow-up text
+          example: "第一笔改成50"
+        context:
+          $ref: "#/components/schemas/ParseContext"
+
+    BatchItem:
+      type: object
+      required: [index]
+      properties:
+        index:
+          type: integer
+          description: 0-based position in the batch
+          example: 0
+        amount:
+          type: number
+          format: double
+          nullable: true
+          example: 60.0
+        category:
+          type: string
+          nullable: true
+          maxLength: 100
+          example: "餐饮"
+        type:
+          type: string
+          nullable: true
+          maxLength: 20
+          enum: [EXPENSE, INCOME, TRANSFER]
+          example: "EXPENSE"
+        description:
+          type: string
+          nullable: true
+          maxLength: 500
+          example: "吃饭"
+        date:
+          type: string
+          nullable: true
+          maxLength: 30
+          description: ISO 8601 date
+          example: "2026-02-19"
+
+    TransactionCorrectionResponse:
+      type: object
+      required: [corrections, intent, confidence, model]
+      properties:
+        corrections:
+          type: array
+          items:
+            $ref: "#/components/schemas/CorrectionItem"
+        intent:
+          type: string
+          enum: [correction, confirm, cancel, unclear, append]
+          description: Secondary intent classification from LLM
+          example: "correction"
+        confidence:
+          type: number
+          format: double
+          description: "0.0-1.0 confidence score. Below 0.7 treated as unclear."
+          example: 0.92
+        model:
+          type: string
+          description: Which LLM model was used
+          example: "qwen-turbo"
+
+    CorrectionItem:
+      type: object
+      required: [index, updatedFields]
+      properties:
+        index:
+          type: integer
+          description: "0-based batch index to update. -1 for append intent."
+          example: 0
+        updatedFields:
+          type: object
+          additionalProperties: true
+          description: Field-level deltas to apply
+          example:
+            amount: 50.0
+
+    ErrorResponse:
+      type: object
+      required: [error, message, timestamp]
+      properties:
+        error:
+          type: string
+          example: "llm_parse_failed"
+        message:
+          type: string
+          example: "Both primary and fallback models failed to parse"
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UpstreamError:
+      description: Upstream DashScope service error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

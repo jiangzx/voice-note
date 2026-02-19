@@ -1,0 +1,18 @@
+dashscope:
+  api-key: test-integration-key
+  asr:
+    token-ttl-seconds: 120
+    model: qwen3-asr-flash-realtime
+    ws-endpoint: /api-ws/v1/realtime
+
+rate-limit:
+  asr:
+    tokens-per-minute: 1000
+    burst-capacity: 1000
+  llm:
+    tokens-per-minute: 1000
+    burst-capacity: 1000
+
+logging:
+  level:
+    com.suikouji: WARN

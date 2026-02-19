@@ -1,0 +1,9 @@
+logging:
+  level:
+    com.suikouji: TRACE
+    org.springframework.web.reactive.function.client: DEBUG
+
+management:
+  endpoint:
+    health:
+      show-details: always

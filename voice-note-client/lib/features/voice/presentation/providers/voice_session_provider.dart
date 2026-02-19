@@ -1,0 +1,542 @@
+import 'dart:async';
+import 'dart:developer' as dev;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../../../core/audio/audio_session_providers.dart';
+import '../../../../core/di/network_providers.dart';
+import '../../../../core/tts/tts_providers.dart';
+import '../../../../core/tts/tts_templates.dart';
+import '../../../budget/domain/budget_service.dart';
+import '../../../budget/presentation/providers/budget_providers.dart';
+import '../../../transaction/domain/entities/transaction_entity.dart';
+import '../../../transaction/presentation/providers/transaction_query_providers.dart';
+import '../../domain/draft_batch.dart';
+import '../../domain/parse_result.dart';
+import '../../domain/voice_orchestrator.dart';
+import '../../domain/voice_state.dart';
+import '../helpers/transaction_save_helper.dart';
+import '../widgets/chat_bubble.dart';
+import '../widgets/mode_switcher.dart';
+import 'quick_suggestions_provider.dart';
+import 'voice_providers.dart';
+import 'voice_settings_provider.dart';
+
+/// Immutable state of an active voice recording session.
+class VoiceSessionState {
+  final VoiceState voiceState;
+  final String interimText;
+  final ParseResult? parseResult;
+  final DraftBatch? draftBatch;
+  final List<ChatMessage> messages;
+  final String? errorMessage;
+  final bool isOffline;
+
+  /// True while NLP is parsing text (between submit and result).
+  final bool isProcessing;
+
+  const VoiceSessionState({
+    this.voiceState = VoiceState.idle,
+    this.interimText = '',
+    this.parseResult,
+    this.draftBatch,
+    this.messages = const [],
+    this.errorMessage,
+    this.isOffline = false,
+    this.isProcessing = false,
+  });
+
+  VoiceSessionState copyWith({
+    VoiceState? voiceState,
+    String? interimText,
+    ParseResult? parseResult,
+    DraftBatch? draftBatch,
+    List<ChatMessage>? messages,
+    String? errorMessage,
+    bool? isOffline,
+    bool? isProcessing,
+    bool clearParseResult = false,
+    bool clearError = false,
+  }) {
+    return VoiceSessionState(
+      voiceState: voiceState ?? this.voiceState,
+      interimText: interimText ?? this.interimText,
+      parseResult: clearParseResult ? null : (parseResult ?? this.parseResult),
+      draftBatch: clearParseResult ? null : (draftBatch ?? this.draftBatch),
+      messages: messages ?? this.messages,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      isOffline: isOffline ?? this.isOffline,
+      isProcessing: isProcessing ?? this.isProcessing,
+    );
+  }
+}
+
+/// Manages the voice session lifecycle and delegates hardware control
+/// to [VoiceOrchestrator].
+///
+/// State machine: idle → listening → recognizing → confirming → listening/idle
+class VoiceSessionNotifier extends Notifier<VoiceSessionState>
+    implements VoiceOrchestratorDelegate {
+  VoiceOrchestrator? _orchestrator;
+  bool _sessionActive = false;
+  StreamSubscription<bool>? _networkSub;
+  TransactionSaveHelper? _saveHelper;
+
+  @override
+  VoiceSessionState build() {
+    _sessionActive = false;
+    return const VoiceSessionState();
+  }
+
+  static const _uuid = Uuid();
+
+  /// Enter voice mode — create orchestrator and start listening.
+  Future<void> startSession() async {
+    if (kDebugMode) debugPrint('[VoiceInit] === startSession BEGIN ===');
+    _orchestrator?.dispose();
+    _sessionActive = true;
+
+    final sessionId = _uuid.v4().substring(0, 8);
+    ref.read(apiClientProvider).setSessionId(sessionId);
+    dev.log('Session started: $sessionId', name: 'VoiceSession');
+
+    if (kDebugMode) debugPrint('[VoiceInit] Step 1: Configuring audio session...');
+    final audioSessionService = ref.read(audioSessionServiceProvider);
+    await audioSessionService.configureForVoiceAssistant();
+
+    if (kDebugMode) debugPrint('[VoiceInit] Step 2: Initializing TTS...');
+    final tts = ref.read(ttsServiceProvider);
+    try {
+      await tts.init();
+      if (kDebugMode) debugPrint('[VoiceInit] TTS state: enabled=${tts.enabled}, available=${tts.available}');
+    } catch (e) {
+      if (kDebugMode) debugPrint('[VoiceInit] TTS init failed (non-critical): $e');
+    }
+
+    if (kDebugMode) debugPrint('[VoiceInit] Step 3: Creating VoiceOrchestrator...');
+    final txService = ref.read(voiceTransactionServiceProvider);
+    _saveHelper = TransactionSaveHelper(
+      persist: (result) => txService.save(result),
+      persistBatch: (results) => txService.saveBatch(results),
+      invalidateQueries: () {
+        ref.invalidate(quickSuggestionsProvider);
+        invalidateTransactionQueries(ref);
+      },
+      checkBudget: _checkBudgetAsyncFromEntity,
+    );
+    _orchestrator = VoiceOrchestrator(
+      asrRepository: ref.read(asrRepositoryProvider),
+      nlpOrchestrator: ref.read(nlpOrchestratorProvider),
+      correctionHandler: ref.read(voiceCorrectionHandlerProvider),
+      delegate: this,
+      ttsService: tts,
+    );
+
+    final networkService = ref.read(networkStatusServiceProvider);
+    final isOffline = !networkService.isOnline;
+    if (kDebugMode) debugPrint('[VoiceInit] Network: isOffline=$isOffline');
+    state = state.copyWith(
+      voiceState: VoiceState.listening,
+      isOffline: isOffline,
+      clearError: true,
+    );
+
+    if (isOffline) {
+      _addAssistantMessage('当前处于离线模式，仅使用本地识别', type: ChatMessageType.system);
+    }
+    _addAssistantMessage('我在听，请说...');
+
+    _networkSub?.cancel();
+    _networkSub = networkService.onStatusChange.listen(_onNetworkChanged);
+
+    final mode = ref.read(voiceSettingsProvider).inputMode;
+    if (kDebugMode) debugPrint('[VoiceInit] Step 4: Starting listening (mode=$mode)...');
+    try {
+      await _orchestrator!.startListening(mode);
+      if (kDebugMode) debugPrint('[VoiceInit] === startSession COMPLETE ===');
+    } catch (e) {
+      if (kDebugMode) debugPrint('[VoiceInit] startListening FAILED: $e');
+      if (!_sessionActive) return;
+      state = state.copyWith(errorMessage: '$e', voiceState: VoiceState.idle);
+      _addAssistantMessage('启动失败：$e', type: ChatMessageType.error);
+    }
+  }
+
+  /// Process text input from keyboard mode.
+  ///
+  /// Note: user message is added by [onFinalText] callback from orchestrator,
+  /// NOT here, to avoid duplicates.
+  /// Auto-restarts session if it was ended (e.g. by inactivity timeout).
+  Future<void> submitTextInput(String text) async {
+    if (_orchestrator == null) {
+      await startSession();
+      if (_orchestrator == null) {
+        _addAssistantMessage('会话未就绪，请重试', type: ChatMessageType.error);
+        return;
+      }
+    }
+    state = state.copyWith(isProcessing: true);
+    try {
+      await _orchestrator?.processTextInput(text);
+    } catch (e) {
+      if (!_sessionActive) return;
+      _addAssistantMessage('处理失败：$e', type: ChatMessageType.error);
+    } finally {
+      if (_sessionActive) state = state.copyWith(isProcessing: false);
+    }
+  }
+
+  /// Switch voice input mode, managing audio lifecycle accordingly.
+  Future<void> switchMode(VoiceInputMode newMode) async {
+    final settings = ref.read(voiceSettingsProvider.notifier);
+    final oldMode = ref.read(voiceSettingsProvider).inputMode;
+    settings.setInputMode(newMode);
+
+    if (oldMode == newMode) return;
+
+    final isAudioMode =
+        newMode == VoiceInputMode.auto || newMode == VoiceInputMode.pushToTalk;
+    final wasAudioMode =
+        oldMode == VoiceInputMode.auto || oldMode == VoiceInputMode.pushToTalk;
+
+    if (wasAudioMode && newMode == VoiceInputMode.keyboard) {
+      // Switching to keyboard — release mic and VAD
+      await _orchestrator?.stopListening();
+      state = state.copyWith(voiceState: VoiceState.listening);
+    } else if (!wasAudioMode && isAudioMode) {
+      // Switching from keyboard to audio mode — restart audio
+      try {
+        await _orchestrator?.startListening(newMode);
+        state = state.copyWith(voiceState: VoiceState.listening);
+      } catch (e) {
+        if (!_sessionActive) return;
+        _addAssistantMessage('启动麦克风失败：$e', type: ChatMessageType.error);
+      }
+    }
+  }
+
+  /// Push-to-talk: start recording.
+  /// Auto-restarts session if it was ended (e.g. by inactivity timeout).
+  Future<void> pushStart() async {
+    if (_orchestrator == null) {
+      await startSession();
+      if (_orchestrator == null) {
+        _addAssistantMessage('会话未就绪，请重试', type: ChatMessageType.error);
+        return;
+      }
+    }
+    try {
+      await _orchestrator?.pushStart();
+    } catch (e) {
+      if (!_sessionActive) return;
+      _addAssistantMessage('录音启动失败：$e', type: ChatMessageType.error);
+    }
+  }
+
+  /// Push-to-talk: stop recording.
+  void pushEnd() {
+    _orchestrator?.pushEnd();
+  }
+
+  /// User confirmed the transaction — save to DB and continue listening.
+  Future<void> confirmTransaction() async {
+    final result = state.parseResult;
+    if (result == null) return;
+
+    try {
+      await _saveHelper?.saveOne(result);
+      HapticFeedback.heavyImpact();
+      _addAssistantMessage(
+        '已记录 ¥${result.amount?.toStringAsFixed(2) ?? "--"}'
+        '${result.category != null ? " · ${result.category}" : ""}',
+        type: ChatMessageType.success,
+      );
+    } catch (e) {
+      HapticFeedback.vibrate();
+      _addAssistantMessage('保存失败：$e', type: ChatMessageType.error);
+    }
+    state = state.copyWith(
+      voiceState: VoiceState.listening,
+      clearParseResult: true,
+    );
+    _orchestrator?.speakAndResumeTimer(TtsTemplates.saved());
+  }
+
+  /// Update a single field on the current parse result.
+  void updateField(String field, dynamic value) {
+    final current = state.parseResult;
+    if (current == null) return;
+
+    final updated = switch (field) {
+      'amount' => current.copyWith(amount: value as double),
+      'category' => current.copyWith(category: value as String),
+      'date' => current.copyWith(date: value as String),
+      'account' => current.copyWith(account: value as String),
+      'description' => current.copyWith(description: value as String),
+      'type' => current.copyWith(type: value as String),
+      _ => current,
+    };
+    state = state.copyWith(parseResult: updated);
+  }
+
+  /// Confirm a specific item in the current batch by index.
+  void confirmBatchItem(int index) {
+    final batch = state.draftBatch;
+    if (batch == null) return;
+    _orchestrator?.processTextInput('确认第${index + 1}笔');
+  }
+
+  /// Cancel a specific item in the current batch by index.
+  void cancelBatchItem(int index) {
+    final batch = state.draftBatch;
+    if (batch == null) return;
+    _orchestrator?.processTextInput('取消第${index + 1}笔');
+  }
+
+  /// Confirm all pending items in the current batch.
+  void confirmAllBatchItems() {
+    _orchestrator?.processTextInput('确认');
+  }
+
+  /// Cancel all pending items in the current batch.
+  void cancelAllBatchItems() {
+    _orchestrator?.processTextInput('取消');
+  }
+
+  /// User cancelled the current transaction.
+  void cancelTransaction() {
+    _addAssistantMessage('好的，已取消。请继续');
+    state = state.copyWith(
+      voiceState: VoiceState.listening,
+      clearParseResult: true,
+    );
+  }
+
+  /// Exit voice mode entirely — dispose orchestrator.
+  Future<void> endSession() async {
+    _sessionActive = false;
+    _networkSub?.cancel();
+    _networkSub = null;
+    final orch = _orchestrator;
+    _orchestrator = null;
+    await orch?.dispose();
+    _saveHelper?.clear();
+    _saveHelper = null;
+    ref.read(apiClientProvider).clearSessionId();
+    dev.log('Session ended', name: 'VoiceSession');
+    state = const VoiceSessionState();
+  }
+
+  void _onNetworkChanged(bool isOnline) {
+    if (!_sessionActive) return;
+    state = state.copyWith(isOffline: !isOnline);
+    if (!isOnline) {
+      _addAssistantMessage('网络已断开，切换到离线模式', type: ChatMessageType.system);
+    } else {
+      _addAssistantMessage('网络已恢复，AI 识别可用', type: ChatMessageType.system);
+    }
+  }
+
+  // ======================== VoiceOrchestratorDelegate ========================
+
+  @override
+  void onSpeechDetected() {
+    if (!_sessionActive) return;
+    HapticFeedback.lightImpact();
+    state = state.copyWith(voiceState: VoiceState.recognizing, interimText: '');
+  }
+
+  @override
+  void onInterimText(String text) {
+    if (!_sessionActive) return;
+    state = state.copyWith(interimText: text);
+  }
+
+  @override
+  void onFinalText(String text, DraftBatch draftBatch) {
+    if (!_sessionActive) return;
+    HapticFeedback.mediumImpact();
+    _addUserMessage(text);
+    final result = draftBatch.items.isNotEmpty
+        ? draftBatch.items.first.result
+        : null;
+    state = state.copyWith(
+      voiceState: VoiceState.confirming,
+      interimText: '',
+      parseResult: result,
+      draftBatch: draftBatch,
+    );
+  }
+
+  @override
+  void onDraftBatchUpdated(DraftBatch draftBatch) {
+    if (!_sessionActive) return;
+    final result = draftBatch.pendingItems.isNotEmpty
+        ? draftBatch.pendingItems.first.result
+        : null;
+    state = state.copyWith(parseResult: result, draftBatch: draftBatch);
+  }
+
+  @override
+  void onBatchSaved(List<DraftTransaction> confirmedItems) {
+    if (!_sessionActive) return;
+    _saveBatch(confirmedItems);
+  }
+
+  Future<void> _saveBatch(List<DraftTransaction> items) async {
+    final result = await _saveHelper?.saveBatch(items);
+    if (result != null && result.hasErrors) {
+      _addAssistantMessage(
+        '批量保存部分失败：${result.errors.first}',
+        type: ChatMessageType.error,
+      );
+    }
+  }
+
+  void onParseResultUpdated(ParseResult result) {
+    if (!_sessionActive) return;
+    state = state.copyWith(parseResult: result);
+  }
+
+  @override
+  void onConfirmTransaction() {
+    if (!_sessionActive) return;
+    // Batch saving is handled by onBatchSaved; this is a UI-only notification.
+    state = state.copyWith(
+      voiceState: VoiceState.listening,
+      clearParseResult: true,
+    );
+  }
+
+  @override
+  void onCancelTransaction() {
+    if (!_sessionActive) return;
+    cancelTransaction();
+  }
+
+  @override
+  Future<void> onContinueRecording() async {
+    if (!_sessionActive) return;
+    // Persisting confirmed items is handled by onBatchSaved.
+    state = state.copyWith(
+      voiceState: VoiceState.listening,
+      clearParseResult: true,
+    );
+  }
+
+  @override
+  void onExitSession() async {
+    if (!_sessionActive) return;
+    _showSessionSummary();
+    await _speakSessionSummary();
+    endSession();
+  }
+
+  @override
+  void onTimeoutWarning() {
+    if (!_sessionActive) return;
+    _addAssistantMessage('还在吗？30秒后我就先走啦', type: ChatMessageType.system);
+  }
+
+  @override
+  void onSessionTimeout() async {
+    if (!_sessionActive) return;
+    _showSessionSummary();
+    _addAssistantMessage('长时间无操作，已自动退出', type: ChatMessageType.system);
+    await _speakSessionSummary();
+    endSession();
+  }
+
+  @override
+  void onSuggestPushToTalk() {
+    if (!_sessionActive) return;
+    _addAssistantMessage(
+      '检测到多次环境噪音误触，建议切换到「按住说话」模式',
+      type: ChatMessageType.system,
+    );
+  }
+
+  @override
+  void onError(String message) {
+    if (!_sessionActive) return;
+    HapticFeedback.vibrate();
+    state = state.copyWith(
+      errorMessage: message,
+      voiceState: VoiceState.listening,
+    );
+    _addAssistantMessage('出了点问题：$message', type: ChatMessageType.error);
+  }
+
+  // ======================== Session Summary ========================
+
+  void _showSessionSummary() {
+    final text = _saveHelper?.buildSummaryText();
+    if (text != null) {
+      _addAssistantMessage(text, type: ChatMessageType.success);
+    }
+  }
+
+  /// TTS session summary on exit.
+  Future<void> _speakSessionSummary() async {
+    final helper = _saveHelper;
+    if (helper == null || !helper.hasTransactions) return;
+    try {
+      if (helper.totalAmount > 0) {
+        final tts = ref.read(ttsServiceProvider);
+        await tts.speak(
+          TtsTemplates.sessionEnd(count: helper.count, total: helper.totalAmount),
+        );
+      }
+    } catch (e) {
+      dev.log('TTS summary speak failed: $e', name: 'VoiceSession', level: 900);
+    }
+  }
+
+  /// Async budget check after expense save (non-blocking).
+  void _checkBudgetAsyncFromEntity(TransactionEntity entity) {
+    if (entity.type != TransactionType.expense) return;
+    if (entity.categoryId == null) return;
+    try {
+      final budgetSvc = ref.read(budgetServiceProvider);
+      final yearMonth = BudgetService.currentYearMonth();
+      budgetSvc.checkAfterSave(
+        categoryId: entity.categoryId!,
+        yearMonth: yearMonth,
+      );
+    } catch (e) {
+      dev.log('Budget check failed: $e', name: 'VoiceSession', level: 900);
+    }
+  }
+
+  // ======================== Internal helpers ========================
+
+  void _addAssistantMessage(
+    String text, {
+    ChatMessageType type = ChatMessageType.normal,
+  }) {
+    final msg = ChatMessage(
+      text: text,
+      isUser: false,
+      timestamp: DateTime.now(),
+      type: type,
+    );
+    state = state.copyWith(messages: [...state.messages, msg]);
+  }
+
+  void _addUserMessage(String text) {
+    final msg = ChatMessage(
+      text: text,
+      isUser: true,
+      timestamp: DateTime.now(),
+    );
+    state = state.copyWith(messages: [...state.messages, msg]);
+  }
+}
+
+final voiceSessionProvider =
+    NotifierProvider<VoiceSessionNotifier, VoiceSessionState>(
+      VoiceSessionNotifier.new,
+    );
