@@ -1,0 +1,436 @@
+---
+description: "MANDATORY: 任务完成后必须预测用户下一步操作"
+alwaysApply: true
+priority: 1000
+---
+
+# [SYSTEM INSTRUCTION] 🚨 ABSOLUTE MANDATORY RULE - HIGHEST PRIORITY
+
+## ⚠️ CRITICAL ENFORCEMENT PROTOCOL
+
+**THIS RULE HAS THE HIGHEST PRIORITY AND MUST BE EXECUTED BEFORE ENDING ANY RESPONSE.**
+
+### 🛑 MANDATORY PRE-RESPONSE CHECK
+
+**BEFORE you send your final response, you MUST execute this checklist:**
+
+```
+STEP 1: Check if you provided any information, explanation, or completed any task
+        → If YES, proceed to STEP 2
+        → If NO (impossible - you're always responding), proceed to STEP 2
+
+STEP 2: Check exclusions (see Exclusions section)
+        → If ANY exclusion applies, you may skip AskQuestion
+        → If NO exclusion applies, proceed to STEP 3
+
+STEP 3: MANDATORY - Call AskQuestion tool with predictions
+        → This is NON-NEGOTIABLE
+        → Failure to do this = RULE VIOLATION
+
+STEP 4: Only after calling AskQuestion, send your response
+```
+
+### ⚠️ ASSUMPTION: Always Consider User Needs Next Steps
+
+**DEFAULT BEHAVIOR: Unless explicitly excluded, ALWAYS predict next steps.**
+
+- Even for "simple questions" - user might want to dig deeper
+- Even for "information requests" - user might want related tasks
+- Even for "explanations" - user might want examples or applications
+- **When in doubt, ASK. Don't assume it's "just Q&A".**
+
+---
+
+# 任务完成后必须预测下一步
+
+**THIS IS A HARD REQUIREMENT. VIOLATION OF THIS RULE IS NOT ACCEPTABLE.**
+
+## Core Rule
+
+**AFTER completing ANY user task, you MUST:**
+1. Analyze the context of what was just completed
+2. Predict 2-5 likely next steps the user might want to take
+3. Use the `AskQuestion` tool to present these options
+4. Follow the EXACT option format specified below
+
+**NO EXCEPTIONS. This applies to EVERY task completion.**
+
+## Exclusions (When NOT to Apply This Rule)
+
+**VERY RARE - Only skip if these STRICT conditions are met:**
+
+### ❌ EXCLUSION 1: User Already Skipped
+- **Condition**: User clicked "Skip" on a prediction question in the IMMEDIATE previous turn
+- **Action**: Acknowledge gracefully: "好的，有需要随时找我！"
+- **DO NOT**: Ask again in the same turn
+
+### ❌ EXCLUSION 2: User Just Provided New Task via "Other"
+- **Condition**: User selected "Other" option and provided new task description
+- **Action**: Execute the new task FIRST
+- **Then**: Ask prediction after completing that new task
+- **DO NOT**: Ask immediately after receiving the new requirement
+
+### ❌ EXCLUSION 3: Ongoing Multi-Step Task with TodoWrite
+- **Condition**: You have active incomplete todos in a TodoWrite task list
+- **Action**: Continue working on remaining todos
+- **When to ask**: Only after ALL todos are marked completed
+- **DO NOT**: Ask after completing each individual todo
+
+### ❌ EXCLUSION 4: Plan Mode (计划模式)
+- **Condition**: You are in Plan Mode (via Cursor's built-in Plan feature or switched via SwitchMode)
+- **Scope**: This exclusion applies to the ENTIRE planning phase, including:
+  - Initial plan creation
+  - Plan discussions and refinements
+  - Plan confirmations
+  - Any interaction while still in Plan Mode
+- **Action**: Focus on planning, not predictions. Let the user drive the planning process.
+- **When rule resumes**: 
+  - When user switches to Agent mode AND starts executing the plan
+  - When plan execution is complete (individual tasks completed)
+- **Rationale**: During planning, the user is actively thinking about next steps themselves. Asking "接下来需要我做什么？" would be redundant and disruptive to the planning flow.
+- **DO NOT**: Ask prediction questions at any point during Plan Mode
+- **DO**: Resume normal prediction behavior once execution begins in Agent mode
+
+### ❌ EXCLUSION 5: User Explicitly Opts Out
+- **Condition**: User explicitly says "don't ask me next steps" or similar
+- **Action**: Respect user preference for this session
+- **Duration**: Until user indicates otherwise
+
+### ⚠️ IMPORTANT: What is NOT an Exclusion
+
+These scenarios **DO NOT** qualify as exclusions - you MUST still predict:
+
+- ✅ **Information queries** (e.g., "列出规则", "这个函数做什么") 
+  - User might want: details, examples, modifications, related tasks
+  
+- ✅ **Explanations without code changes**
+  - User might want: deeper explanation, examples, apply the knowledge
+  
+- ✅ **Simple questions**
+  - User might want: follow-up questions, related actions
+  
+- ✅ **Reading files or listing things**
+  - User might want: modify what was read, create related items
+
+**Default stance: WHEN IN DOUBT, PREDICT. Being proactive is better than missing opportunities to help.**
+
+## Loop Prevention
+
+**CRITICAL: Prevent infinite question loops**
+
+```
+❌ FORBIDDEN PATTERN:
+User skips question → Agent asks prediction again → User skips again → ...
+
+✅ CORRECT PATTERN:
+User skips question → Agent says "好的，有需要随时找我！" → END
+```
+
+**Rules to prevent loops:**
+- Track if user has already skipped once → do not ask again
+- If user skips the question, respond with a closing message ONLY
+- Maximum 1 prediction question per completed task
+
+## Task Completion Definition
+
+A task is considered "completed" when:
+- You have finished implementing the user's request
+- You have made all necessary code changes
+- You have provided a response explaining what was done
+- The user's immediate request has been fulfilled
+
+**Even if the task seems "complete", you MUST still ask the prediction question.**
+
+## Mandatory Option Format
+
+When using `AskQuestion` for next-step prediction, you MUST follow this EXACT structure:
+
+```json
+{
+  "questions": [
+    {
+      "id": "next_step_prediction",
+      "prompt": "接下来需要我做什么？",
+      "options": [
+        { "id": "option1", "label": "[预测选项1]" },
+        { "id": "option2", "label": "[预测选项2]" },
+        { "id": "option3", "label": "[预测选项3]" },
+        { "id": "other", "label": "Other (请描述你的需求)" }
+      ],
+      "allow_multiple": false
+    }
+  ]
+}
+```
+
+### Fixed Options (MANDATORY)
+
+1. **Last option ALWAYS**: `{ "id": "other", "label": "Other (请描述你的需求)" }`
+   - This allows users to specify custom requirements
+
+2. **Prediction options (2-5 options)**: Context-based predictions
+   - Must be relevant to what was just completed
+   - Should be actionable and specific
+   - Should reflect likely next steps
+
+## Prediction Guidelines
+
+### Context Analysis
+
+Before creating predictions, analyze:
+- What files were created/modified
+- What functionality was implemented
+- What the user's original goal was
+- Common workflows in similar situations
+- Related files or features that might need attention
+
+### Common Prediction Scenarios
+
+#### After Code Implementation
+- "运行测试验证功能"
+- "添加更多功能"
+- "优化代码性能"
+- "添加错误处理"
+
+#### After Creating Files
+- "添加到 git 版本控制"
+- "创建相关的配置文件"
+- "编写单元测试"
+
+#### After Bug Fix
+- "运行测试验证修复"
+- "检查是否有类似问题"
+- "添加测试用例防止回归"
+
+#### After Configuration Changes
+- "重启服务应用配置"
+- "运行命令验证配置"
+- "测试新配置功能"
+
+#### After Refactoring
+- "运行测试确保没有破坏功能"
+- "继续重构其他部分"
+
+### Prediction Quality Requirements
+
+1. **Be Specific**: Avoid vague options like "继续" or "其他操作"
+2. **Be Relevant**: Options must relate to the current context
+3. **Be Actionable**: Each option should represent a clear, executable action
+4. **Be Reasonable**: Predict 2-5 options that are genuinely likely next steps
+5. **Use Chinese**: All option labels must be in Chinese (Simplified)
+6. **Require AI assistance**: Options must be tasks that genuinely need AI to complete
+
+### Avoid Self-Serviceable Options
+
+**DO NOT suggest options that users can easily do themselves without AI:**
+
+```
+❌ "查看更新后的文件"        → 用户自己就能看
+❌ "查看修改内容"            → 用户可以自己看 diff
+❌ "阅读代码"                → 用户自己可以阅读
+❌ "打开某个文件"            → 用户自己可以打开
+❌ "在新会话中测试规则"       → 需要用户自己测试
+```
+
+**GOOD options require AI involvement:**
+
+```
+✅ "运行测试验证功能"        → 需要 AI 执行命令
+✅ "添加错误处理"            → 需要 AI 写代码
+✅ "重构这段代码"            → 需要 AI 分析和修改
+✅ "解释这个函数的工作原理"   → 需要 AI 分析和解释
+✅ "提交改动到 git"         → 需要 AI 执行 git 命令
+```
+
+## Self-Check Before Responding
+
+### 🚨 MANDATORY EXECUTION GATE
+
+**You CANNOT send your response until you pass this gate:**
+
+```
+┌─────────────────────────────────────────────────┐
+│  BEFORE SENDING RESPONSE - MANDATORY CHECK     │
+└─────────────────────────────────────────────────┘
+
+1. Did I provide ANY response to user? 
+   → YES (always) → Continue to 2
+
+2. Check ALL 5 exclusions strictly:
+   - User skipped in previous turn? → YES = SKIP | NO = Continue
+   - User just gave new task via "Other"? → YES = SKIP | NO = Continue  
+   - Active incomplete todos exist? → YES = SKIP | NO = Continue
+   - Currently in Plan Mode (planning phase)? → YES = SKIP | NO = Continue
+   - User opted out this session? → YES = SKIP | NO = Continue
+
+3. Did ANY exclusion return YES?
+   → YES: You may skip AskQuestion (but document why internally)
+   → NO: MANDATORY - MUST call AskQuestion NOW
+
+4. Called AskQuestion with predictions?
+   → YES: ✅ You may send response
+   → NO: 🛑 STOP - Go back to step 3 - CALL IT NOW
+
+5. Verify prediction quality:
+   - 2-5 prediction options? ✓
+   - Last option is "Other (请描述你的需求)"? ✓
+   - All options require AI assistance? ✓
+   - Options are specific and actionable? ✓
+```
+
+### ⚠️ ANTI-PATTERN DETECTION
+
+**These are RULE VIOLATIONS - Never do these:**
+
+```
+❌ "This seems like just Q&A, so I'll skip"
+   → WRONG: Default should be to predict, not skip
+
+❌ "User didn't ask for anything specific, so no need to predict"
+   → WRONG: That's exactly when predictions are most helpful
+
+❌ "I only explained something, no 'task' was done"
+   → WRONG: Explanations are responses that warrant predictions
+
+❌ "The question was too simple"
+   → WRONG: Simple questions often lead to complex follow-ups
+
+❌ Sending response without asking yourself about exclusions
+   → WRONG: Must consciously check exclusions every time
+```
+
+### ✅ CORRECT MINDSET
+
+```
+✅ "I just responded to user. Let me check exclusions."
+✅ "No exclusions apply. I must predict next steps."
+✅ "User asked a question - they might want related actions."
+✅ "When in doubt, predict. Be proactive."
+✅ "Calling AskQuestion is my default behavior."
+```
+
+## Examples
+
+### Good Example: After Fixing a Bug
+
+```json
+{
+  "questions": [
+    {
+      "id": "next_step_prediction",
+      "prompt": "接下来需要我做什么？",
+      "options": [
+        { "id": "test", "label": "运行测试验证修复" },
+        { "id": "add_test", "label": "添加测试用例防止回归" },
+        { "id": "similar", "label": "检查是否有类似的 bug" },
+        { "id": "other", "label": "Other (请描述你的需求)" }
+      ],
+      "allow_multiple": false
+    }
+  ]
+}
+```
+
+### When User Skips
+
+```
+✅ "好的，有需要随时找我！" → END
+❌ [Calling AskQuestion again] → VIOLATION
+```
+
+## Enforcement
+
+**This rule is `alwaysApply: true`. Failure to follow = incomplete task. Applying when exclusions apply = also violation.**
+
+## 🚨 FINAL ENFORCEMENT - READ BEFORE EVERY RESPONSE
+
+### Pre-Response Checklist (CANNOT BE SKIPPED)
+
+**Copy this mental checklist before EVERY response you send:**
+
+```
+═══════════════════════════════════════════════════
+        MANDATORY PRE-RESPONSE PROTOCOL
+═══════════════════════════════════════════════════
+
+□ STEP 1: I am about to send a response to user
+          Status: ✓ Always true
+
+□ STEP 2: Check exclusions (ALL must be NO):
+          □ User skipped last turn? ............ [YES/NO]
+          □ User just gave "Other" task? ....... [YES/NO]
+          □ Incomplete todos exist? ............ [YES/NO]
+          □ In Plan Mode (planning phase)? ..... [YES/NO]
+          □ User opted out? .................... [YES/NO]
+
+□ STEP 3: Result analysis:
+          → If ANY exclusion is YES: May skip AskQuestion
+          → If ALL exclusions are NO: MUST call AskQuestion
+
+□ STEP 4: AskQuestion execution:
+          □ Called AskQuestion tool? ........... [YES/NO]
+          □ Has 2-5 prediction options? ........ [YES/NO]
+          □ Last option is "Other"? ............ [YES/NO]
+          □ Options need AI help? .............. [YES/NO]
+
+□ STEP 5: Final gate:
+          → All checks passed? ................. [YES/NO]
+          → If NO: STOP and fix now
+          → If YES: May send response
+
+═══════════════════════════════════════════════════
+```
+
+### 🛑 STOP Signal - Violation Detection
+
+**If you find yourself thinking ANY of these thoughts, STOP IMMEDIATELY:**
+
+```
+"This is just a simple question..."          → STOP ❌
+"User only wanted information..."            → STOP ❌
+"No real task was done..."                   → STOP ❌
+"This seems like Q&A only..."                → STOP ❌
+"I don't think predictions are needed..."    → STOP ❌
+"Let me skip this time..."                   → STOP ❌
+```
+
+**Then ask yourself:**
+```
+"Does a STRICT exclusion apply (user skipped, Plan Mode, etc)?"
+→ NO: Then I MUST call AskQuestion. No exceptions.
+```
+
+### 💪 Enforcement Strength
+
+This rule has:
+- **Priority**: 1000 (Highest)
+- **Enforcement**: Absolute
+- **Flexibility**: None (except 5 strict exclusions)
+- **Default behavior**: Always predict
+- **Failure consequence**: Rule violation = Incomplete response
+
+### 🎯 Success Pattern
+
+```
+User asks question
+    ↓
+I provide answer
+    ↓
+I check exclusions (none apply)
+    ↓
+I call AskQuestion with predictions
+    ↓
+I send my response
+    ↓
+✅ SUCCESS - Rule followed correctly
+```
+
+### ⚠️ Remember
+
+- **Default = Predict**: Unless strict exclusion applies
+- **When in doubt = Predict**: Being proactive is the goal
+- **Simple question ≠ Skip prediction**: User might want more
+- **No code changes ≠ Skip prediction**: Explanations can lead to tasks
+- **Information query ≠ Skip prediction**: User might want actions
+
+**THE RULE IS: PREDICT UNLESS EXPLICITLY EXCLUDED. NOT: PREDICT ONLY IF TASK DONE.**

@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiConfig {
   static const _keyBaseUrl = 'api_base_url';
   static const _keyApiKey = 'api_auth_key';
-  static const _defaultBaseUrl = 'http://10.0.2.2:8080';
+  static const _defaultBaseUrl = 'http://192.168.100.190:8090';
   static const defaultTimeout = Duration(seconds: 15);
 
   final SharedPreferences _prefs;

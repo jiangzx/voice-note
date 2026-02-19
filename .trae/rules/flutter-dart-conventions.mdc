@@ -1,0 +1,49 @@
+---
+description: Flutter/Dart coding conventions and best practices. Activates when working with Dart or Flutter files.
+globs: "**/*.dart"
+alwaysApply: false
+---
+
+# Flutter/Dart Conventions
+
+## Dart Style
+
+- `UpperCamelCase` for types, `lowerCamelCase` for members/constants, `snake_case` for files
+- Explicit return types on public APIs; avoid `var`/`dynamic` in signatures
+- `final` for locals, `const` constructors wherever possible
+- Null-aware operators over force-unwrap; check `mounted` after `await`
+- Use `dart format`; max 80 chars per line; trailing commas for multi-line
+
+## Widget Rules
+
+- Prefer `const` constructors — most impactful perf optimization
+- Compose small `StatelessWidget`s; avoid large `build()` or helper functions
+- Localize `setState` to the smallest subtree; never call it at root
+- Use `switch` expressions on sealed classes for state rendering
+
+## State Management (Riverpod)
+
+- `@Riverpod(keepAlive: true)` for services/repos; `@riverpod` for computed state
+- Never initialize providers in widgets or use providers for ephemeral state
+- Use `.select()` for precise rebuilds; watch providers in leaf widgets
+
+## Code Quality
+
+- Functions ≤ 50 lines; max nesting 3 levels (use early returns)
+- No magic numbers — named constants only
+- No `print()` — use `debugPrint()` or a logger
+- Repository pattern: interface in `domain/`, implementation in `data/`
+
+## Testing
+
+- 70% unit / 20% widget / 10% integration
+- AAA pattern (Arrange-Act-Assert); descriptive test names
+- Each test self-contained; avoid `pumpAndSettle`
+
+## Import Order
+
+```dart
+import 'dart:async';               // 1. dart:
+import 'package:flutter/material.dart'; // 2. package: (alphabetical)
+import '../core/utils.dart';        // 3. relative (alphabetical)
+```

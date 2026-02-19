@@ -1,0 +1,67 @@
+---
+description: "CRITICAL: Use AskQuestion tool instead of plain text questions"
+alwaysApply: true
+---
+
+# CRITICAL: Use AskQuestion Tool for Questions
+
+**⚠️ MANDATORY RULE: This is a STRICT requirement, not a suggestion.**
+
+When you need to ask the user clarifying questions or gather input, you MUST ALWAYS use the `AskQuestion` tool. 
+
+**NEVER** ask questions using plain text format like:
+- "请选择："
+- "您希望怎么处理？"
+- Numbered lists asking user to respond with a number
+- Any text-based question expecting user to type their choice
+
+**ALWAYS** use the `AskQuestion` tool to provide structured options.
+
+## Why Use AskQuestion Tool
+
+- Provides a structured, interactive UI for the user
+- Makes it easier for users to respond with clear options
+- Improves conversation flow and reduces ambiguity
+- Enables multi-select options when appropriate
+
+## When to Use
+
+Use the `AskQuestion` tool when:
+- You need the user to choose between multiple options
+- You need clarification on requirements or preferences
+- You want to confirm an approach before proceeding
+- Any situation where presenting structured choices would be clearer than open-ended text
+
+## How to Use
+
+```json
+{
+  "questions": [
+    {
+      "id": "unique_id",
+      "prompt": "Your question here",
+      "options": [
+        { "id": "option1", "label": "First option" },
+        { "id": "option2", "label": "Second option" },
+        { "id": "other", "label": "Other (please specify)" }
+      ],
+      "allow_multiple": true
+    }
+  ]
+}
+```
+
+## Best Practices
+
+1. **Enable multi-select when appropriate** - Set `allow_multiple: true` when the user might want to select multiple options simultaneously (e.g., selecting features, preferences, or categories)
+
+2. **Always include an "Other" option** - Add an "Other" option at the end of the options list to give users flexibility when their answer doesn't fit the predefined choices. If the user selects "Other", follow up with a plain text question to get their specific input.
+
+3. **Use clear, descriptive labels** - Make each option label self-explanatory so users can quickly understand their choices
+
+## Exception
+
+Only use plain text questions when:
+- The question requires a free-form text response that cannot be captured by predefined options
+- You need the user to provide specific values (like file paths, names, etc.)
+- The possible answers are too numerous or unpredictable to enumerate
