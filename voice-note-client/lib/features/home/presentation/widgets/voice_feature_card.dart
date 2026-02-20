@@ -7,8 +7,11 @@ import '../../../../app/design_tokens.dart';
 ///
 /// Features:
 /// - Pulsing animation on microphone icon
+/// - Shadow and border highlight animations
+/// - Arrow icon with slide animation
+/// - Action callout text
+/// - Enhanced touch feedback
 /// - Clickable card that navigates to voice recording screen
-/// - Example prompt text to guide users
 class VoiceFeatureCard extends StatefulWidget {
   const VoiceFeatureCard({super.key});
 
@@ -17,13 +20,20 @@ class VoiceFeatureCard extends StatefulWidget {
 }
 
 class _VoiceFeatureCardState extends State<VoiceFeatureCard>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnimation;
+  late final AnimationController _shadowController;
+  late final Animation<double> _shadowAnimation;
+  late final AnimationController _arrowController;
+  late final Animation<Offset> _arrowAnimation;
+  bool _isPressed = false;
 
   @override
   void initState() {
     super.initState();
+    
+    // Icon pulse animation
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
@@ -38,11 +48,45 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
         curve: Curves.easeInOut,
       ),
     );
+
+    // Shadow pulse animation (slightly offset phase)
+    _shadowController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _shadowAnimation = Tween<double>(
+      begin: 2.0,
+      end: 6.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _shadowController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Arrow slide animation
+    _arrowController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _arrowAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0.15, 0),
+    ).animate(
+      CurvedAnimation(
+        parent: _arrowController,
+        curve: Curves.easeInOut,
+      ),
+    );
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _shadowController.dispose();
+    _arrowController.dispose();
     super.dispose();
   }
 
@@ -51,88 +95,144 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.sm,
-      ),
-      child: InkWell(
-        borderRadius: AppRadius.mdAll,
-        onTap: () => context.push('/voice-recording'),
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          decoration: BoxDecoration(
+    return AnimatedBuilder(
+      animation: Listenable.merge([_shadowAnimation, _pulseAnimation]),
+      builder: (context, child) {
+        return Card(
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.sm,
+          ),
+          elevation: _shadowAnimation.value,
+          shape: RoundedRectangleBorder(
             borderRadius: AppRadius.mdAll,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                colorScheme.tertiaryContainer,
-                colorScheme.tertiaryContainer.withOpacity(0.7),
-              ],
+            side: BorderSide(
+              color: colorScheme.tertiary.withOpacity(
+                0.3 + (_shadowAnimation.value - 2.0) / 4.0 * 0.2,
+              ),
+              width: 1.5,
             ),
           ),
-          child: Row(
-            children: [
-              RepaintBoundary(
-                child: AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _pulseAnimation.value,
-                      child: Icon(
-                        Icons.mic_rounded,
-                        size: AppIconSize.xl,
-                        color: colorScheme.onTertiaryContainer,
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: AppSpacing.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '语音记账',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onTertiaryContainer,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      '说一句就记好',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onTertiaryContainer.withOpacity(0.9),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.lightbulb_outline,
-                          size: AppIconSize.sm,
-                          color: colorScheme.onTertiaryContainer.withOpacity(0.7),
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          '试试说：午饭35元',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onTertiaryContainer.withOpacity(0.8),
-                          ),
-                        ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: AppRadius.mdAll,
+              onTap: () => context.push('/voice-recording'),
+              onTapDown: (_) => setState(() => _isPressed = true),
+              onTapUp: (_) => setState(() => _isPressed = false),
+              onTapCancel: () => setState(() => _isPressed = false),
+              splashColor: colorScheme.tertiary.withOpacity(0.2),
+              highlightColor: colorScheme.tertiary.withOpacity(0.1),
+              child: AnimatedScale(
+                scale: _isPressed ? 0.98 : 1.0,
+                duration: AppDuration.fast,
+                curve: Curves.easeOut,
+                child: Container(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  decoration: BoxDecoration(
+                    borderRadius: AppRadius.mdAll,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        colorScheme.tertiaryContainer,
+                        colorScheme.tertiaryContainer.withOpacity(0.7),
                       ],
                     ),
-                  ],
+                  ),
+                  child: Row(
+                    children: [
+                      RepaintBoundary(
+                        child: AnimatedBuilder(
+                          animation: _pulseAnimation,
+                          builder: (context, child) {
+                            return Transform.scale(
+                              scale: _pulseAnimation.value,
+                              child: Icon(
+                                Icons.mic_rounded,
+                                size: AppIconSize.xl,
+                                color: colorScheme.onTertiaryContainer,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.lg),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '语音记账',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onTertiaryContainer,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              '说一句就记好',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onTertiaryContainer.withOpacity(0.9),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.lightbulb_outline,
+                                  size: AppIconSize.sm,
+                                  color: colorScheme.onTertiaryContainer.withOpacity(0.7),
+                                ),
+                                const SizedBox(width: AppSpacing.xs),
+                                Text(
+                                  '试试说：午饭35元',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onTertiaryContainer.withOpacity(0.8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.touch_app_rounded,
+                                  size: AppIconSize.sm,
+                                  color: colorScheme.tertiary,
+                                ),
+                                const SizedBox(width: AppSpacing.xs),
+                                Text(
+                                  '点击开始',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.tertiary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      SlideTransition(
+                        position: _arrowAnimation,
+                        child: Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: AppIconSize.md,
+                          color: colorScheme.onTertiaryContainer.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

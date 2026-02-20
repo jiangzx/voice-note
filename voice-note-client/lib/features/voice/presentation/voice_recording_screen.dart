@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/design_tokens.dart';
@@ -33,6 +34,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
   final _textController = TextEditingController();
   ProviderSubscription<VoiceSessionState>? _sessionSubscription;
   static const _tutorialSeenKey = 'voice_tutorial_seen';
+  bool _hasNavigatedOnTimeout = false;
 
   @override
   void initState() {
@@ -49,38 +51,57 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
 
   void _onSessionChanged(VoiceSessionState? prev, VoiceSessionState next) {
     if (prev == null) return;
-    if (next.messages.length <= prev.messages.length) return;
-    final latest = next.messages.last;
-    if (latest.type != ChatMessageType.success &&
-        latest.type != ChatMessageType.error) {
-      return;
-    }
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    final isSuccess = latest.type == ChatMessageType.success;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isSuccess
-                  ? Icons.check_circle_rounded
-                  : Icons.error_rounded,
-              color: Colors.white,
-              size: AppIconSize.sm,
+
+    // Check for session timeout message in auto mode
+    if (next.messages.length > prev.messages.length) {
+      final latest = next.messages.last;
+
+      // Handle session timeout: auto-navigate to home in auto mode
+      if (latest.type == ChatMessageType.system &&
+          latest.text == '长时间无操作，已自动退出' &&
+          !_hasNavigatedOnTimeout) {
+        final inputMode = ref.read(voiceSettingsProvider).inputMode;
+        if (inputMode == VoiceInputMode.auto) {
+          _hasNavigatedOnTimeout = true;
+          // Delay navigation to let user see the message
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (mounted) {
+              context.go('/home');
+            }
+          });
+          return;
+        }
+      }
+
+      // Handle success/error messages with snackbar
+      if (latest.type == ChatMessageType.success ||
+          latest.type == ChatMessageType.error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).clearSnackBars();
+        final isSuccess = latest.type == ChatMessageType.success;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  isSuccess ? Icons.check_circle_rounded : Icons.error_rounded,
+                  color: Colors.white,
+                  size: AppIconSize.sm,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(child: Text(latest.text)),
+              ],
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(child: Text(latest.text)),
-          ],
-        ),
-        backgroundColor: isSuccess
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.error,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(milliseconds: isSuccess ? 1500 : 3000),
-        shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-      ),
-    );
+            backgroundColor: isSuccess
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(milliseconds: isSuccess ? 1500 : 3000),
+            shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _showTutorialIfNeeded() async {
@@ -113,9 +134,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     final voiceState = ref.watch(
       voiceSessionProvider.select((s) => s.voiceState),
     );
-    final messages = ref.watch(
-      voiceSessionProvider.select((s) => s.messages),
-    );
+    final messages = ref.watch(voiceSessionProvider.select((s) => s.messages));
     final isProcessing = ref.watch(
       voiceSessionProvider.select((s) => s.isProcessing),
     );
@@ -159,8 +178,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                       interimText.isNotEmpty)
                     _buildInterimText(interimText),
 
-                  if (isProcessing)
-                    _buildProcessingIndicator(),
+                  if (isProcessing) _buildProcessingIndicator(),
 
                   if (voiceState == VoiceState.confirming) ...[
                     if (draftBatch != null && !draftBatch.isSingleItem)
@@ -178,21 +196,32 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
               ),
             ),
             // Exit FAB toggle button positioned below the exit FAB
-            // Position: right edge, directly below FAB center
+            // Position: right edge, directly below FAB bottom
             if (voiceState != VoiceState.confirming)
-              Positioned(
-                right: MediaQuery.of(context).padding.right + 
-                       16 + // kFloatingActionButtonMargin
-                       (100 - 40) / 2, // Center toggle button horizontally with FAB (FAB width - toggle width) / 2
-                top: MediaQuery.of(context).padding.top + 
-                     kToolbarHeight + // AppBar height
-                     (MediaQuery.of(context).size.height - 
-                      MediaQuery.of(context).padding.top - 
-                      MediaQuery.of(context).padding.bottom - 
-                      kToolbarHeight) / 2 + 
-                     28 + // Half of FAB height (56/2) to get FAB bottom
-                     AppSpacing.sm, // Spacing between FAB and toggle button
-                child: const VoiceExitFabToggleButton(),
+              Builder(
+                builder: (context) {
+                  // Calculate FAB position using same logic as _VoiceScreenFabLocation
+                  final contentTop =
+                      MediaQuery.of(context).padding.top + kToolbarHeight;
+                  final contentBottom =
+                      MediaQuery.of(context).size.height -
+                      MediaQuery.of(context).padding.bottom;
+                  final contentCenter = (contentTop + contentBottom) / 2;
+                  const fabHeight =
+                      0.0; // Match _VoiceScreenFabLocation._fabHeight
+                  final fabBottomY = contentCenter + (fabHeight / 2);
+                  const spacing = 2.0; // Reduced spacing for closer positioning
+
+                  return Positioned(
+                    right:
+                        MediaQuery.of(context).padding.right +
+                        16 + // kFloatingActionButtonMargin
+                        (100 - 40) /
+                            2, // Center toggle button horizontally with FAB (FAB width - toggle width) / 2
+                    top: fabBottomY + spacing,
+                    child: const VoiceExitFabToggleButton(),
+                  );
+                },
               ),
           ],
         ),
@@ -247,9 +276,9 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       child: Text(
         text,
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontStyle: FontStyle.italic,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+          fontStyle: FontStyle.italic,
+        ),
         textAlign: TextAlign.center,
       ),
     );
@@ -319,8 +348,8 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           Text(
             '正在解析...',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
+              color: Theme.of(context).colorScheme.outline,
+            ),
           ),
         ],
       ),
@@ -414,8 +443,18 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
   }
 
   static const _defaultSuggestions = [
-    '午饭', '晚饭', '早餐', '打车', '地铁', '咖啡',
-    '奶茶', '水果', '超市', '外卖', '话费', '工资',
+    '午饭',
+    '晚饭',
+    '早餐',
+    '打车',
+    '地铁',
+    '咖啡',
+    '奶茶',
+    '水果',
+    '超市',
+    '外卖',
+    '话费',
+    '工资',
   ];
 
   void _onTextSubmit(String text) {
@@ -511,15 +550,14 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       VoiceState.idle => '点击开始',
       VoiceState.listening => '正在聆听...',
       VoiceState.recognizing => '正在识别...',
-      VoiceState.confirming =>
-        isBatch ? '请确认或说出要修改的内容' : '请确认以下信息',
+      VoiceState.confirming => isBatch ? '请确认或说出要修改的内容' : '请确认以下信息',
     };
 
     return Text(
       text,
       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.outline,
-          ),
+        color: Theme.of(context).colorScheme.outline,
+      ),
     );
   }
 }
