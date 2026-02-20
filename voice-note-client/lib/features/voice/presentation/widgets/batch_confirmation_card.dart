@@ -110,6 +110,8 @@ class _BatchConfirmationCardState extends State<BatchConfirmationCard>
 
   Widget _buildItemList(ThemeData theme, DraftBatch batch) {
     final items = batch.items;
+    final onConfirmItem = widget.onConfirmItem;
+    final onCancelItem = widget.onCancelItem;
     
     // Use ListView.builder for long lists to improve performance
     if (items.length > 3) {
@@ -123,12 +125,8 @@ class _BatchConfirmationCardState extends State<BatchConfirmationCard>
             displayIndex: i + 1,
             isLoading:
                 widget.isLoading && items[i].status == DraftStatus.pending,
-            onConfirm: widget.onConfirmItem != null
-                ? () => widget.onConfirmItem!(items[i].index)
-                : null,
-            onCancel: widget.onCancelItem != null
-                ? () => widget.onCancelItem!(items[i].index)
-                : null,
+            onConfirmItem: onConfirmItem,
+            onCancelItem: onCancelItem,
           ),
         ),
       );
@@ -144,12 +142,8 @@ class _BatchConfirmationCardState extends State<BatchConfirmationCard>
             displayIndex: i + 1,
             isLoading:
                 widget.isLoading && items[i].status == DraftStatus.pending,
-            onConfirm: widget.onConfirmItem != null
-                ? () => widget.onConfirmItem!(items[i].index)
-                : null,
-            onCancel: widget.onCancelItem != null
-                ? () => widget.onCancelItem!(items[i].index)
-                : null,
+            onConfirmItem: onConfirmItem,
+            onCancelItem: onCancelItem,
           ),
       ],
     );
@@ -223,15 +217,15 @@ class _BatchItemRow extends StatelessWidget {
   final DraftTransaction item;
   final int displayIndex;
   final bool isLoading;
-  final VoidCallback? onConfirm;
-  final VoidCallback? onCancel;
+  final BatchItemCallback? onConfirmItem;
+  final BatchItemCallback? onCancelItem;
 
   const _BatchItemRow({
     required this.item,
     required this.displayIndex,
     this.isLoading = false,
-    this.onConfirm,
-    this.onCancel,
+    this.onConfirmItem,
+    this.onCancelItem,
   });
 
   @override
@@ -303,9 +297,9 @@ class _BatchItemRow extends StatelessWidget {
           confirmDismiss: (direction) async {
             HapticFeedback.selectionClick();
             if (direction == DismissDirection.endToStart) {
-              onCancel?.call();
+              onCancelItem?.call(item.index);
             } else {
-              onConfirm?.call();
+              onConfirmItem?.call(item.index);
             }
             return false;
           },

@@ -136,6 +136,23 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
         : resolveDateRange(_datePreset);
     final groupsAsync = ref.watch(dailyGroupedProvider(range.from, range.to));
 
+    // Watch category providers once at parent level to avoid per-tile rebuilds
+    final incomeCategoriesAsync = ref.watch(visibleCategoriesProvider('income'));
+    final expenseCategoriesAsync = ref.watch(visibleCategoriesProvider('expense'));
+    
+    // Build category name map for efficient lookup
+    final categoryNameMap = <String, String>{};
+    incomeCategoriesAsync.whenData((cats) {
+      for (final cat in cats) {
+        categoryNameMap[cat.id] = cat.name;
+      }
+    });
+    expenseCategoriesAsync.whenData((cats) {
+      for (final cat in cats) {
+        categoryNameMap[cat.id] = cat.name;
+      }
+    });
+
     final hasRouteFilter = _categoryFilter != null ||
         _customDateFrom != null ||
         _customDateTo != null;
@@ -183,26 +200,14 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                 onAdvancedFilter: () => _showAdvancedFilter(context),
               ),
               const Divider(height: 1),
-              Expanded(child: _buildList(groupsAsync)),
+              Expanded(child: _buildList(groupsAsync, categoryNameMap)),
             ],
           ),
           // FAB toggle button positioned near FAB area (bottom right)
           // Position: right of FAB column, vertically centered with FAB column
           // FAB location: right edge with margin, bottom aligned with action bar top
           if (!_isSelectionMode)
-            Positioned(
-              right: MediaQuery.of(context).padding.right + 
-                     16 + // kFloatingActionButtonMargin
-                     56 + // FAB width
-                     AppSpacing.md, // Spacing between FAB and toggle button
-              bottom: MediaQuery.of(context).padding.bottom + 
-                      80 + // Bottom navigation bar height
-                      100 + // Action bar height
-                      56 + // Plus FAB height
-                      AppSpacing.sm + // Spacing between FABs
-                      28, // Half of toggle button height (40/2) to center it with FAB column
-              child: const FabToggleButton(),
-            ),
+            _buildFabTogglePosition(),
         ],
       ),
       bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar(groupsAsync) : null,
@@ -382,7 +387,10 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     });
   }
 
-  Widget _buildList(AsyncValue<List<DailyTransactionGroup>> groupsAsync) {
+  Widget _buildList(
+    AsyncValue<List<DailyTransactionGroup>> groupsAsync,
+    Map<String, String> categoryNameMap,
+  ) {
     return groupsAsync.when(
       data: (groups) {
         final filtered = _applyClientFilters(groups);
@@ -400,7 +408,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
             key: ValueKey(filtered.hashCode),
             itemCount: _countItems(filtered),
             itemBuilder: (context, index) =>
-                _buildItem(context, filtered, index),
+                _buildItem(context, filtered, index, categoryNameMap),
           ),
         );
       },
@@ -469,6 +477,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     BuildContext context,
     List<DailyTransactionGroup> groups,
     int index,
+    Map<String, String> categoryNameMap,
   ) {
     var offset = 0;
     for (final group in groups) {
@@ -482,8 +491,12 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       offset++;
       if (index < offset + group.transactions.length) {
         final tx = group.transactions[index - offset] as TransactionEntity;
+        final categoryName = tx.categoryId != null
+            ? categoryNameMap[tx.categoryId]
+            : null;
         return _TransactionTileWithCategory(
           transaction: tx,
+          categoryName: categoryName,
           isSelectionMode: _isSelectionMode,
           isSelected: _selectedIds.contains(tx.id),
           onEdit: () => context.push('/record/${tx.id}'),
@@ -603,12 +616,35 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       ),
     );
   }
+
+  /// Builds the FAB toggle button positioned near the FAB area.
+  /// Extracts MediaQuery calculation to avoid repeated calculations in build method.
+  Widget _buildFabTogglePosition() {
+    final mediaQuery = MediaQuery.of(context);
+    return Positioned(
+      right: mediaQuery.padding.right +
+          16 + // kFloatingActionButtonMargin
+          56 + // FAB width
+          AppSpacing.md, // Spacing between FAB and toggle button
+      bottom: mediaQuery.padding.bottom +
+          80 + // Bottom navigation bar height
+          100 + // Action bar height
+          56 + // Plus FAB height
+          AppSpacing.sm + // Spacing between FABs
+          28, // Half of toggle button height (40/2) to center it with FAB column
+      child: RepaintBoundary(
+        child: const FabToggleButton(),
+      ),
+    );
+  }
 }
 
-/// Resolves category name for a transaction tile.
-class _TransactionTileWithCategory extends ConsumerWidget {
+/// Transaction tile with category name resolved at parent level.
+/// No longer watches category provider to avoid per-tile rebuilds.
+class _TransactionTileWithCategory extends StatelessWidget {
   const _TransactionTileWithCategory({
     required this.transaction,
+    this.categoryName,
     this.isSelectionMode = false,
     this.isSelected = false,
     required this.onEdit,
@@ -618,6 +654,7 @@ class _TransactionTileWithCategory extends ConsumerWidget {
   });
 
   final TransactionEntity transaction;
+  final String? categoryName;
   final bool isSelectionMode;
   final bool isSelected;
   final VoidCallback onEdit;
@@ -626,24 +663,10 @@ class _TransactionTileWithCategory extends ConsumerWidget {
   final VoidCallback? onLongPress;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    String? catName;
-    if (transaction.categoryId != null) {
-      final type = transaction.type == TransactionType.income
-          ? 'income'
-          : 'expense';
-      final catsAsync = ref.watch(visibleCategoriesProvider(type));
-      catName = catsAsync.whenOrNull(
-        data: (cats) {
-          final match = cats.where((c) => c.id == transaction.categoryId);
-          return match.isNotEmpty ? match.first.name : null;
-        },
-      );
-    }
-
+  Widget build(BuildContext context) {
     return TransactionTile(
       transaction: transaction,
-      categoryName: catName,
+      categoryName: categoryName,
       isSelectionMode: isSelectionMode,
       isSelected: isSelected,
       onEdit: onEdit,

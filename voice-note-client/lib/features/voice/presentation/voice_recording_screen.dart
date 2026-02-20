@@ -198,31 +198,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
             // Exit FAB toggle button positioned below the exit FAB
             // Position: right edge, directly below FAB bottom
             if (voiceState != VoiceState.confirming)
-              Builder(
-                builder: (context) {
-                  // Calculate FAB position using same logic as _VoiceScreenFabLocation
-                  final contentTop =
-                      MediaQuery.of(context).padding.top + kToolbarHeight;
-                  final contentBottom =
-                      MediaQuery.of(context).size.height -
-                      MediaQuery.of(context).padding.bottom;
-                  final contentCenter = (contentTop + contentBottom) / 2;
-                  const fabHeight =
-                      0.0; // Match _VoiceScreenFabLocation._fabHeight
-                  final fabBottomY = contentCenter + (fabHeight / 2);
-                  const spacing = 2.0; // Reduced spacing for closer positioning
-
-                  return Positioned(
-                    right:
-                        MediaQuery.of(context).padding.right +
-                        16 + // kFloatingActionButtonMargin
-                        (100 - 40) /
-                            2, // Center toggle button horizontally with FAB (FAB width - toggle width) / 2
-                    top: fabBottomY + spacing,
-                    child: const VoiceExitFabToggleButton(),
-                  );
-                },
-              ),
+              _buildExitFabTogglePosition(),
           ],
         ),
         floatingActionButton: voiceState == VoiceState.confirming
@@ -557,6 +533,34 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       text,
       style: Theme.of(context).textTheme.bodySmall?.copyWith(
         color: Theme.of(context).colorScheme.outline,
+      ),
+    );
+  }
+
+  /// Builds the exit FAB toggle button positioned below the exit FAB.
+  /// Extracts MediaQuery calculation to avoid repeated calculations in build method.
+  Widget _buildExitFabTogglePosition() {
+    final mediaQuery = MediaQuery.of(context);
+    // Calculate toggle button position: below the exit FAB center
+    // FAB is positioned at screen center vertically, toggle should be below FAB bottom
+    final top = mediaQuery.padding.top +
+        kToolbarHeight + // AppBar height
+        (mediaQuery.size.height -
+                mediaQuery.padding.top -
+                mediaQuery.padding.bottom -
+                kToolbarHeight) /
+            2 +
+        28 + // Half of FAB height (56/2) to get FAB bottom
+        AppSpacing.sm; // Spacing between FAB and toggle button
+
+    return Positioned(
+      right: mediaQuery.padding.right +
+          16 + // kFloatingActionButtonMargin
+          (100 - 40) /
+              2, // Center toggle button horizontally with FAB (FAB width - toggle width) / 2
+      top: top,
+      child: RepaintBoundary(
+        child: const VoiceExitFabToggleButton(),
       ),
     );
   }
