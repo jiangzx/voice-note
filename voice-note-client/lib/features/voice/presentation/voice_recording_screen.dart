@@ -160,7 +160,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
 
               if (voiceState == VoiceState.confirming) ...[
                 if (draftBatch != null && !draftBatch.isSingleItem)
-                  _buildBatchConfirmationCard(draftBatch)
+                  _buildBatchConfirmationCard(draftBatch, isProcessing)
                 else if (parseResult != null)
                   _buildConfirmationCard(voiceState, parseResult),
               ],
@@ -228,11 +228,8 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     );
   }
 
-  Widget _buildBatchConfirmationCard(DraftBatch batch) {
+  Widget _buildBatchConfirmationCard(DraftBatch batch, bool isProcessing) {
     final notifier = ref.read(voiceSessionProvider.notifier);
-    final isProcessing = ref.watch(
-      voiceSessionProvider.select((s) => s.isProcessing),
-    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       child: BatchConfirmationCard(

@@ -85,6 +85,11 @@ class VoiceOrchestrator {
   Timer? _inactivityTimer;
   Timer? _timeoutWarningTimer;
 
+  // Push-to-talk timing constants
+  static const Duration _pushStartDelay = Duration(milliseconds: 150);
+  static const Duration _pushEndCommitDelay = Duration(milliseconds: 300);
+  static const Duration _pushEndTimeout = Duration(seconds: 1);
+
   // Correction in-flight guard — blocks confirm/cancel during LLM request
   bool _isCorrecting = false;
 
@@ -204,7 +209,7 @@ class VoiceOrchestrator {
           await native.startCapture(sessionId: nativeSessionId);
           // 等待足够的时间确保 captureRuntime 完全启动和 ASR 连接建立
           // 增加延迟以提高短按的可靠性
-          await Future.delayed(const Duration(milliseconds: 150), () {});
+          await Future.delayed(_pushStartDelay, () {});
           // 然后 unmute ASR
           await native.setAsrMuted(
             sessionId: nativeSessionId,
@@ -231,11 +236,11 @@ class VoiceOrchestrator {
     if (native != null && nativeSessionId != null) {
       // 在 pushToTalk 模式下，按正确顺序停止
       if (_currentInputMode == VoiceInputMode.pushToTalk) {
-        try {
-          // 设置标志，表示正在等待 asrFinalText
-          _isPushEndPending = true;
-          _pushEndCompleter = Completer<void>();
+        // 设置标志，表示正在等待 asrFinalText
+        _isPushEndPending = true;
+        _pushEndCompleter = Completer<void>();
 
+        try {
           if (kDebugMode) {
             debugPrint('[VoiceMode] pushEnd: Starting, waiting for asrFinalText');
           }
@@ -250,7 +255,7 @@ class VoiceOrchestrator {
 
           // 步骤 2: 等待一小段时间，让已发送的音频帧被 ASR 服务器处理
           // 这确保完整的音频流被处理，避免截断
-          await Future.delayed(const Duration(milliseconds: 300), () {});
+          await Future.delayed(_pushEndCommitDelay, () {});
 
           // 步骤 3: 然后 commit（告诉服务器处理已发送的音频）
           native.commitAsr(nativeSessionId);
@@ -265,7 +270,7 @@ class VoiceOrchestrator {
           // 步骤 5: 等待 asrFinalText 事件（最多等待 1 秒）
           try {
             await _pushEndCompleter!.future.timeout(
-              const Duration(seconds: 1),
+              _pushEndTimeout,
               onTimeout: () {
                 if (kDebugMode) {
                   debugPrint('[VoiceMode] pushEnd: Timeout waiting for asrFinalText');
@@ -284,20 +289,23 @@ class VoiceOrchestrator {
             if (_isPushEndPending) {
               _delegate.onError('哎呀，没听到声音呢～再试一次吧！');
             }
-          } finally {
-            _isPushEndPending = false;
-            _pushEndCompleter = null;
           }
 
           if (kDebugMode) {
             debugPrint('[VoiceMode] Stopped capture and muted ASR for pushToTalk mode');
           }
         } catch (e) {
-          _isPushEndPending = false;
-          _pushEndCompleter = null;
           if (kDebugMode) {
             debugPrint('[VoiceMode] Failed to stop capture/mute ASR: $e');
           }
+          // Ensure error is reported if not already handled
+          if (_isPushEndPending) {
+            _delegate.onError('录音处理失败：$e');
+          }
+        } finally {
+          // Always clean up state flags, even if errors occurred
+          _isPushEndPending = false;
+          _pushEndCompleter = null;
         }
       } else {
         // 非 pushToTalk 模式，直接 commit
@@ -367,6 +375,17 @@ class VoiceOrchestrator {
     } catch (e) {
       if (kDebugMode) debugPrint('[VoiceMode] Failed to switch mode: $e');
       _delegate.onError('切换模式失败：$e');
+    }
+  }
+
+  /// Clear draft batch and reset to listening state.
+  /// Called when user confirms transaction via UI button to ensure
+  /// subsequent input is treated as new input, not correction.
+  void clearDraftBatch() {
+    _draftBatch = null;
+    if (_currentState == VoiceState.confirming) {
+      _currentState = VoiceState.listening;
+      _startInactivityTimer();
     }
   }
 
@@ -749,6 +768,10 @@ class VoiceOrchestrator {
   Future<void> dispose() async {
     _disposed = true;
     _asrConnection.markDisposed();
+    // Clean up pushEnd pending state
+    _isPushEndPending = false;
+    _pushEndCompleter?.completeError(StateError('Orchestrator disposed'));
+    _pushEndCompleter = null;
     await stopListening();
   }
 

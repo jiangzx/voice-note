@@ -110,7 +110,32 @@ class _BatchConfirmationCardState extends State<BatchConfirmationCard>
 
   Widget _buildItemList(ThemeData theme, DraftBatch batch) {
     final items = batch.items;
-    final list = Column(
+    
+    // Use ListView.builder for long lists to improve performance
+    if (items.length > 3) {
+      return ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: _maxBatchListHeight),
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: items.length,
+          itemBuilder: (context, i) => _BatchItemRow(
+            item: items[i],
+            displayIndex: i + 1,
+            isLoading:
+                widget.isLoading && items[i].status == DraftStatus.pending,
+            onConfirm: widget.onConfirmItem != null
+                ? () => widget.onConfirmItem!(items[i].index)
+                : null,
+            onCancel: widget.onCancelItem != null
+                ? () => widget.onCancelItem!(items[i].index)
+                : null,
+          ),
+        ),
+      );
+    }
+    
+    // Use Column for short lists (≤3 items) for simpler structure
+    return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < items.length; i++)
@@ -128,12 +153,9 @@ class _BatchConfirmationCardState extends State<BatchConfirmationCard>
           ),
       ],
     );
-    if (items.length <= 3) return list;
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxHeight: 240),
-      child: SingleChildScrollView(child: list),
-    );
   }
+  
+  static const double _maxBatchListHeight = 240.0;
 }
 
 // ======================== Header ========================
@@ -236,6 +258,11 @@ class _BatchItemRow extends StatelessWidget {
       'TRANSFER' => txColors.transfer,
       _ => txColors.expense,
     };
+    
+    // Apply opacity to colors instead of using Opacity widget for better performance
+    final outlineColor = theme.colorScheme.outline.withValues(alpha: textOpacity);
+    final onSurfaceColor = theme.colorScheme.onSurface.withValues(alpha: textOpacity);
+    final typeColorWithOpacity = typeColor.withValues(alpha: textOpacity);
 
     final typeLabel = switch (result.type.toUpperCase()) {
       'INCOME' => '收入',
@@ -295,70 +322,67 @@ class _BatchItemRow extends StatelessWidget {
           child: _maybeShimmer(
             isLoading: isLoading,
             theme: theme,
-            child: Opacity(
-              opacity: textOpacity,
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 24,
-                    child: Text(
-                      '$displayIndex',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.outline,
-                      ),
-                      textAlign: TextAlign.center,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 24,
+                  child: Text(
+                    '$displayIndex',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: outlineColor,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: typeColor.withValues(alpha: 0.12),
-                      borderRadius: AppRadius.smAll,
-                    ),
-                    child: Text(
-                      typeLabel,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: typeColor,
-                        fontWeight: FontWeight.w600,
-                        decoration: isCancelled
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
-                    ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      '${result.category ?? ""}'
-                      '${result.description != null ? " · ${result.description}" : ""}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface,
-                        decoration: isCancelled
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  decoration: BoxDecoration(
+                    color: typeColor.withValues(alpha: 0.12 * textOpacity),
+                    borderRadius: AppRadius.smAll,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    amountStr,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: typeColor,
+                  child: Text(
+                    typeLabel,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: typeColorWithOpacity,
                       fontWeight: FontWeight.w600,
                       decoration: isCancelled
                           ? TextDecoration.lineThrough
                           : null,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.xs),
-                  _StatusIcon(status: status),
-                ],
-              ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    '${result.category ?? ""}'
+                    '${result.description != null ? " · ${result.description}" : ""}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: onSurfaceColor,
+                      decoration: isCancelled
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  amountStr,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: typeColorWithOpacity,
+                    fontWeight: FontWeight.w600,
+                    decoration: isCancelled
+                        ? TextDecoration.lineThrough
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                _StatusIcon(status: status),
+              ],
             ),
           ),
         ),

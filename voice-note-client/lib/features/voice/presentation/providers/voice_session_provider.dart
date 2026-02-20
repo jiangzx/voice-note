@@ -265,6 +265,9 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       HapticFeedback.vibrate();
       _addAssistantMessage('保存失败：$e', type: ChatMessageType.error);
     }
+    // Clear orchestrator's internal draftBatch to ensure subsequent input
+    // is treated as new input, not correction
+    _orchestrator?.clearDraftBatch();
     state = state.copyWith(
       voiceState: VoiceState.listening,
       clearParseResult: true,
@@ -443,6 +446,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         interimText: '',
         parseResult: result,
         draftBatch: draftBatch,
+        isProcessing: false, // 解析完成，设置 isProcessing = false
       );
     }
   }
@@ -568,6 +572,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     state = state.copyWith(
       errorMessage: message,
       voiceState: VoiceState.listening,
+      isProcessing: false, // 错误发生时，确保重置 isProcessing 状态
     );
     _addAssistantMessage('出了点问题：$message', type: ChatMessageType.error);
   }
