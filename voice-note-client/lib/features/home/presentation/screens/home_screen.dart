@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/design_tokens.dart';
@@ -35,8 +36,9 @@ class HomeScreen extends ConsumerWidget {
         appBar: AppBar(title: const Text('随口记')),
         body: Stack(
           children: [
-            ListView(
-          children: [
+            SlidableAutoCloseBehavior(
+              child: ListView(
+                children: [
             // Voice feature promotion card
             const VoiceFeatureCard(),
 
@@ -96,8 +98,9 @@ class HomeScreen extends ConsumerWidget {
                 onRetry: () => ref.invalidate(recentTransactionsProvider),
               ),
             ),
-          ],
-        ),
+                ],
+              ),
+            ),
             const VoiceOnboardingTooltip(),
           ],
         ),
@@ -233,23 +236,28 @@ class _TxTileWithCategory extends ConsumerWidget {
     );
   }
 
-  Future<bool> _deleteTransaction(
+  void _deleteTransaction(
     BuildContext context,
     WidgetRef ref,
     String id,
-  ) async {
+  ) {
     try {
       final repo = ref.read(transactionRepositoryProvider);
-      await repo.delete(id);
-      invalidateTransactionQueries(ref);
-      return true;
+      repo.delete(id).then((_) {
+        invalidateTransactionQueries(ref);
+      }).catchError((Object e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('删除失败：$e')),
+          );
+        }
+      });
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('删除失败：$e')),
         );
       }
-      return false;
     }
   }
 }

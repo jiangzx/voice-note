@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
 import '../../../transaction/domain/entities/transaction_entity.dart';
 
@@ -20,7 +21,7 @@ class RecentTransactionTile extends StatelessWidget {
   final String? categoryName;
   final Widget? categoryIcon;
   final VoidCallback? onTap;
-  final Future<bool> Function()? onDelete;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -76,52 +77,27 @@ class RecentTransactionTile extends StatelessWidget {
       return tile;
     }
 
-    return Dismissible(
+    return Slidable(
       key: ValueKey(transaction.id),
-      direction: DismissDirection.endToStart,
-      confirmDismiss: (_) => _confirmAndDelete(context),
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: AppSpacing.lg),
-        color: theme.colorScheme.error,
-        child: Icon(Icons.delete, color: theme.colorScheme.onError),
-      ),
-      child: tile,
-    );
-  }
-
-  Future<bool> _confirmAndDelete(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('确认删除'),
-        content: const Text('确定要删除这条交易记录吗？此操作不可撤销。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
+      groupTag: 'recent-transactions',
+      endActionPane: ActionPane(
+        motion: const DrawerMotion(),
+        extentRatio: 0.25,
+        children: [
+          SlidableAction(
+            onPressed: (_) {
+              HapticFeedback.mediumImpact();
+              onDelete?.call();
+            },
+            backgroundColor: theme.colorScheme.error,
+            foregroundColor: theme.colorScheme.onError,
+            icon: Icons.delete,
+            label: '删除',
+            borderRadius: BorderRadius.zero,
           ),
         ],
       ),
+      child: tile,
     );
-
-    if (confirmed != true || onDelete == null) {
-      return false;
-    }
-
-    try {
-      return await onDelete!();
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('删除失败：$e')),
-        );
-      }
-      return false;
-    }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -404,11 +405,13 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
 
         return AnimatedSwitcher(
           duration: AppDuration.normal,
-          child: ListView.builder(
-            key: ValueKey(filtered.hashCode),
-            itemCount: _countItems(filtered),
-            itemBuilder: (context, index) =>
-                _buildItem(context, filtered, index, categoryNameMap),
+          child: SlidableAutoCloseBehavior(
+            child: ListView.builder(
+              key: ValueKey(filtered.hashCode),
+              itemCount: _countItems(filtered),
+              itemBuilder: (context, index) =>
+                  _buildItem(context, filtered, index, categoryNameMap),
+            ),
           ),
         );
       },
@@ -632,8 +635,8 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
           56 + // Plus FAB height
           AppSpacing.sm + // Spacing between FABs
           28, // Half of toggle button height (40/2) to center it with FAB column
-      child: RepaintBoundary(
-        child: const FabToggleButton(),
+      child: const RepaintBoundary(
+        child: FabToggleButton(),
       ),
     );
   }
