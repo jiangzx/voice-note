@@ -198,23 +198,33 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
                               ],
                             ),
                             const SizedBox(height: AppSpacing.md),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.touch_app_rounded,
-                                  size: AppIconSize.sm,
-                                  color: colorScheme.tertiary,
-                                ),
-                                const SizedBox(width: AppSpacing.xs),
-                                Text(
-                                  '点击开始',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.tertiary,
-                                    fontWeight: FontWeight.w600,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: AppSpacing.xs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.tertiary,
+                                borderRadius: AppRadius.mdAll,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.touch_app_rounded,
+                                    size: AppIconSize.sm,
+                                    color: colorScheme.onTertiary,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Text(
+                                    '点击开始',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.onTertiary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
