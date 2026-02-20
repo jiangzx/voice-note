@@ -28,75 +28,78 @@ class HomeScreen extends ConsumerWidget {
     );
     final recentAsync = ref.watch(recentTransactionsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('随口记')),
-      body: Stack(
-        children: [
-          ListView(
-        children: [
-          // Voice feature promotion card
-          const VoiceFeatureCard(),
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('随口记')),
+        body: Stack(
+          children: [
+            ListView(
+          children: [
+            // Voice feature promotion card
+            const VoiceFeatureCard(),
 
-          // Monthly summary card
-          summaryAsync.when(
-            data: (summary) => SummaryCard(
-              totalIncome: summary.totalIncome,
-              totalExpense: summary.totalExpense,
-            ),
-            loading: () => ShimmerPlaceholder.card(height: 100),
-            error: (e, st) => ErrorStateWidget(
-              message: '汇总加载失败: $e',
-              onRetry: () => ref.invalidate(
-                summaryProvider(monthRange.from, monthRange.to),
+            // Monthly summary card
+            summaryAsync.when(
+              data: (summary) => SummaryCard(
+                totalIncome: summary.totalIncome,
+                totalExpense: summary.totalExpense,
+              ),
+              loading: () => ShimmerPlaceholder.card(height: 100),
+              error: (e, st) => ErrorStateWidget(
+                message: '汇总加载失败: $e',
+                onRetry: () => ref.invalidate(
+                  summaryProvider(monthRange.from, monthRange.to),
+                ),
               ),
             ),
-          ),
 
-          // Budget progress summary card
-          _BudgetSummaryCard(),
+            // Budget progress summary card
+            _BudgetSummaryCard(),
 
-          // Recent transactions header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Text('最近交易', style: Theme.of(context).textTheme.titleMedium),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // Recent transactions list
-          recentAsync.when(
-            data: (transactions) {
-              if (transactions.isEmpty) {
-                return const EmptyStateWidget(
-                  icon: Icons.receipt_long_outlined,
-                  title: '暂无交易记录',
-                  description: '点击右下角 + 开始记账',
-                );
-              }
-
-              return AnimatedSwitcher(
-                duration: AppDuration.normal,
-                child: Column(
-                  key: ValueKey(transactions.length),
-                  children: transactions.map((tx) {
-                    return _TxTileWithCategory(
-                      key: ValueKey(tx.id),
-                      transaction: tx,
-                      onTap: () => context.push('/record/${tx.id}'),
-                    );
-                  }).toList(),
-                ),
-              );
-            },
-            loading: () => ShimmerPlaceholder.listPlaceholder(itemCount: 3),
-            error: (e, st) => ErrorStateWidget(
-              message: '加载失败: $e',
-              onRetry: () => ref.invalidate(recentTransactionsProvider),
+            // Recent transactions header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: Text('最近交易', style: Theme.of(context).textTheme.titleMedium),
             ),
-          ),
-        ],
-      ),
-          const VoiceOnboardingTooltip(),
-        ],
+            const SizedBox(height: AppSpacing.sm),
+
+            // Recent transactions list
+            recentAsync.when(
+              data: (transactions) {
+                if (transactions.isEmpty) {
+                  return const EmptyStateWidget(
+                    icon: Icons.receipt_long_outlined,
+                    title: '暂无交易记录',
+                    description: '点击右下角 + 开始记账',
+                  );
+                }
+
+                return AnimatedSwitcher(
+                  duration: AppDuration.normal,
+                  child: Column(
+                    key: ValueKey(transactions.length),
+                    children: transactions.map((tx) {
+                      return _TxTileWithCategory(
+                        key: ValueKey(tx.id),
+                        transaction: tx,
+                        onTap: () => context.push('/record/${tx.id}'),
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
+              loading: () => ShimmerPlaceholder.listPlaceholder(itemCount: 3),
+              error: (e, st) => ErrorStateWidget(
+                message: '加载失败: $e',
+                onRetry: () => ref.invalidate(recentTransactionsProvider),
+              ),
+            ),
+          ],
+        ),
+            const VoiceOnboardingTooltip(),
+          ],
+        ),
       ),
     );
   }
