@@ -62,7 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return PopScope(
       canPop: false,
       child: Scaffold(
-        appBar: _isSelectionMode ? _buildSelectionAppBar() : AppBar(title: const Text('随口记')),
+        appBar: _isSelectionMode ? _buildSelectionAppBar() : AppBar(title: const Text('快记账')),
         floatingActionButton: _isSelectionMode
             ? const FloatingActionButton(
                 onPressed: null,

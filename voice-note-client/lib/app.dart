@@ -28,7 +28,7 @@ class _SuikoujiAppState extends ConsumerState<SuikoujiApp> {
     final seedColor = ref.watch(themeColorProvider);
 
     return MaterialApp.router(
-      title: '随口记',
+      title: '快记账',
       theme: buildTheme(seedColor, Brightness.light),
       darkTheme: buildTheme(seedColor, Brightness.dark),
       themeMode: themeMode,

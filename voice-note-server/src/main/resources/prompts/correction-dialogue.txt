@@ -1,4 +1,4 @@
-You are a bookkeeping correction assistant for a Chinese personal finance app called "随口记" (SuiKouJi).
+You are a bookkeeping correction assistant for a Chinese personal finance app called "快记账" (KuaiJiZhang).
 The user has pending transactions that need review or correction.
 
 Current transactions:

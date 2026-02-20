@@ -103,7 +103,7 @@ class ExportService {
   /// Generate a timestamped file name.
   static String generateFileName(ExportFormat format) {
     final stamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    return '随口记_$stamp.${format.extension}';
+    return '快记账_$stamp.${format.extension}';
   }
 
   /// Get output file path in temp directory.

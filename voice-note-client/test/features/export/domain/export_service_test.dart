@@ -123,7 +123,7 @@ void main() {
 
   test('generateFileName csv format', () {
     final name = ExportService.generateFileName(ExportFormat.csv);
-    expect(name, startsWith('随口记_'));
+    expect(name, startsWith('快记账_'));
     expect(name, endsWith('.csv'));
   });
 

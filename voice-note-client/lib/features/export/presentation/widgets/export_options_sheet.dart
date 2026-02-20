@@ -151,7 +151,7 @@ class _ExportOptionsSheetState extends ConsumerState<ExportOptionsSheet> {
 
     Navigator.of(context).pop();
 
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => ExportProgressDialog(
