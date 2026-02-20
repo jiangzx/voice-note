@@ -10,6 +10,7 @@ import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../../budget/presentation/providers/budget_providers.dart';
 import '../../../category/presentation/providers/category_providers.dart';
 import '../../../transaction/domain/entities/transaction_entity.dart';
+import '../../../transaction/presentation/providers/transaction_form_providers.dart';
 import '../../../transaction/presentation/providers/transaction_query_providers.dart';
 import '../widgets/recent_transaction_tile.dart';
 import '../widgets/summary_card.dart';
@@ -228,6 +229,27 @@ class _TxTileWithCategory extends ConsumerWidget {
       transaction: transaction,
       categoryName: catName,
       onTap: onTap,
+      onDelete: () => _deleteTransaction(context, ref, transaction.id),
     );
+  }
+
+  Future<bool> _deleteTransaction(
+    BuildContext context,
+    WidgetRef ref,
+    String id,
+  ) async {
+    try {
+      final repo = ref.read(transactionRepositoryProvider);
+      await repo.delete(id);
+      invalidateTransactionQueries(ref);
+      return true;
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('删除失败：$e')),
+        );
+      }
+      return false;
+    }
   }
 }

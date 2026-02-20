@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
 import '../../../transaction/domain/entities/transaction_entity.dart';
 
@@ -12,12 +13,14 @@ class RecentTransactionTile extends StatelessWidget {
     this.categoryName,
     this.categoryIcon,
     this.onTap,
+    this.onDelete,
   });
 
   final TransactionEntity transaction;
   final String? categoryName;
   final Widget? categoryIcon;
   final VoidCallback? onTap;
+  final Future<bool> Function()? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +48,7 @@ class RecentTransactionTile extends StatelessWidget {
             : '+';
     }
 
-    return ListTile(
+    final tile = ListTile(
       leading:
           categoryIcon ??
           CircleAvatar(
@@ -68,5 +71,57 @@ class RecentTransactionTile extends StatelessWidget {
       ),
       onTap: onTap,
     );
+
+    if (onDelete == null) {
+      return tile;
+    }
+
+    return Dismissible(
+      key: ValueKey(transaction.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmAndDelete(context),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: AppSpacing.lg),
+        color: theme.colorScheme.error,
+        child: Icon(Icons.delete, color: theme.colorScheme.onError),
+      ),
+      child: tile,
+    );
+  }
+
+  Future<bool> _confirmAndDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认删除'),
+        content: const Text('确定要删除这条交易记录吗？此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || onDelete == null) {
+      return false;
+    }
+
+    try {
+      return await onDelete!();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('删除失败：$e')),
+        );
+      }
+      return false;
+    }
   }
 }
