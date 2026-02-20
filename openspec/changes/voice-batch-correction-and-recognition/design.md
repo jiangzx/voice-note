@@ -255,7 +255,7 @@ LISTENING → ASR finalText → NLP parse → DraftBatch 创建 → CONFIRMING
 
 **清空的唯一合法条件**:
 1. 全部确认 / 混合状态完成 → 保存后清空
-2. 全部取消 → 直接清空
+2. 取消 → 直接清空
 3. 继续记账 → 保存 confirmed → 清空
 4. 退出/超时/dispose → 清空
 
@@ -318,7 +318,7 @@ LISTENING → ASR finalText → NLP parse → DraftBatch 创建 → CONFIRMING
 ```
 User: "吃饭花了60，洗脚花了60，抢红包抢了30，工资收到90"
 TTS: "识别到4笔交易：第1笔，支出60元，餐饮；第2笔，支出60元，洗浴；第3笔，收入30元，红包；第4笔，收入90元，工资。请确认或修改。"
-UI: [4行列表，底部"全部确认""全部取消"]
+UI: [4行列表，底部"全部确认""取消"]
 User: "确认"
 TTS: "已保存4笔交易。"
 ```

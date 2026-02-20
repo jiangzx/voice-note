@@ -45,7 +45,7 @@
 LLM 返回的 `intent` SHALL 被用作二次意图验证：
 - `correction` + 非空 `corrections[]` + `confidence >= 0.7` → 逐条应用字段修正
 - `confirm` → 执行全部确认
-- `cancel` → 执行全部取消
+- `cancel` → 执行取消
 - `append` → 将返回的交易字段追加为新 DraftTransaction
 - `unclear` 或 `confidence < 0.7` → 保持原 DraftBatch，TTS 提示重新表达
 

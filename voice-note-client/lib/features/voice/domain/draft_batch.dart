@@ -46,6 +46,11 @@ class DraftBatch {
     );
   }
 
+  /// Create an empty batch (used when no amount is detected).
+  factory DraftBatch.empty() {
+    return DraftBatch(items: []);
+  }
+
   int get length => items.length;
   bool get isSingleItem => items.length == 1;
 

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'audio_session_service.dart';
+import 'native_audio_gateway.dart';
 
-final audioSessionServiceProvider = Provider<AudioSessionService>((ref) {
-  return AudioSessionService();
+final nativeAudioGatewayProvider = Provider<NativeAudioGateway>((ref) {
+  return NativeAudioGateway();
 });

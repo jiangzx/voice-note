@@ -61,13 +61,13 @@
 
 系统 SHALL 支持以下取消操作：
 
-1. **全部取消**: 将所有 item 标记为 cancelled，清空 DraftBatch
+1. **取消**: 将所有 item 标记为 cancelled，清空 DraftBatch
 2. **逐条取消**: 将指定 index 的 item 标记为 cancelled
 
 逐条取消后，若仍有 pending items，系统 SHALL 保持 CONFIRMING 状态并播报剩余笔数。
 
-#### Scenario: 全部取消
-- **WHEN** 用户说「全部取消」或「不要了」
+#### Scenario: 取消
+- **WHEN** 用户说「取消」或「不要了」
 - **THEN** 系统 SHALL 清空 DraftBatch，状态回到 LISTENING
 
 #### Scenario: 逐条取消
@@ -80,7 +80,7 @@
 
 #### Scenario: 取消最后一笔且无 confirmed
 - **WHEN** 用户取消了最后一个 pending item，且无 confirmed items
-- **THEN** 系统 SHALL 清空 DraftBatch，TTS 播报「已全部取消。」
+- **THEN** 系统 SHALL 清空 DraftBatch，TTS 播报「已取消。」
 
 ### Requirement: 定点纠正
 
@@ -152,7 +152,7 @@ DraftBatch 总笔数 SHALL NOT 超过 10。超限时 TTS 提示「已达上限�
 
 `DraftBatch` SHALL 仅在以下条件下被清空为 null：
 1. 全部确认（或自动提交）→ 保存后清空
-2. 全部取消 → 直接清空
+2. 取消 → 直接清空
 3. 混合状态完成（所有 item 非 pending）→ 保存 confirmed → 清空
 4. 退出/超时/dispose → 清空
 5. 继续记账 → 保存当前 confirmed → 清空 → LISTENING

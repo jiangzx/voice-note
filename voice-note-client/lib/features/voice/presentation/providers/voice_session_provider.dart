@@ -7,8 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/audio/audio_session_providers.dart';
+import '../../../../core/audio/native_audio_models.dart';
 import '../../../../core/di/network_providers.dart';
-import '../../../../core/tts/tts_providers.dart';
 import '../../../../core/tts/tts_templates.dart';
 import '../../../budget/domain/budget_service.dart';
 import '../../../budget/presentation/providers/budget_providers.dart';
@@ -83,7 +83,9 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   VoiceOrchestrator? _orchestrator;
   bool _sessionActive = false;
   StreamSubscription<bool>? _networkSub;
+  StreamSubscription<NativeAudioEvent>? _nativeAudioSub;
   TransactionSaveHelper? _saveHelper;
+  String? _nativeAudioSessionId;
 
   @override
   VoiceSessionState build() {
@@ -100,23 +102,11 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     _sessionActive = true;
 
     final sessionId = _uuid.v4().substring(0, 8);
+    _nativeAudioSessionId = sessionId;
     ref.read(apiClientProvider).setSessionId(sessionId);
     dev.log('Session started: $sessionId', name: 'VoiceSession');
 
-    if (kDebugMode) debugPrint('[VoiceInit] Step 1: Configuring audio session...');
-    final audioSessionService = ref.read(audioSessionServiceProvider);
-    await audioSessionService.configureForVoiceAssistant();
-
-    if (kDebugMode) debugPrint('[VoiceInit] Step 2: Initializing TTS...');
-    final tts = ref.read(ttsServiceProvider);
-    try {
-      await tts.init();
-      if (kDebugMode) debugPrint('[VoiceInit] TTS state: enabled=${tts.enabled}, available=${tts.available}');
-    } catch (e) {
-      if (kDebugMode) debugPrint('[VoiceInit] TTS init failed (non-critical): $e');
-    }
-
-    if (kDebugMode) debugPrint('[VoiceInit] Step 3: Creating VoiceOrchestrator...');
+    if (kDebugMode) debugPrint('[VoiceInit] Step 1: Creating VoiceOrchestrator...');
     final txService = ref.read(voiceTransactionServiceProvider);
     _saveHelper = TransactionSaveHelper(
       persist: (result) => txService.save(result),
@@ -132,7 +122,8 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       nlpOrchestrator: ref.read(nlpOrchestratorProvider),
       correctionHandler: ref.read(voiceCorrectionHandlerProvider),
       delegate: this,
-      ttsService: tts,
+      nativeAudioGateway: ref.read(nativeAudioGatewayProvider),
+      nativeAudioSessionId: sessionId,
     );
 
     final networkService = ref.read(networkStatusServiceProvider);
@@ -151,9 +142,17 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
 
     _networkSub?.cancel();
     _networkSub = networkService.onStatusChange.listen(_onNetworkChanged);
+    await _nativeAudioSub?.cancel();
+    _nativeAudioSub = ref
+        .read(nativeAudioGatewayProvider)
+        .events
+        .listen(_onNativeAudioEvent, onError: (Object error) {
+      if (!_sessionActive) return;
+      _addAssistantMessage('原生音频事件异常：$error', type: ChatMessageType.error);
+    });
 
     final mode = ref.read(voiceSettingsProvider).inputMode;
-    if (kDebugMode) debugPrint('[VoiceInit] Step 4: Starting listening (mode=$mode)...');
+    if (kDebugMode) debugPrint('[VoiceInit] Step 2: Starting listening (mode=$mode)...');
     try {
       await _orchestrator!.startListening(mode);
       if (kDebugMode) debugPrint('[VoiceInit] === startSession COMPLETE ===');
@@ -215,6 +214,14 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         if (!_sessionActive) return;
         _addAssistantMessage('启动麦克风失败：$e', type: ChatMessageType.error);
       }
+    } else if (wasAudioMode && isAudioMode) {
+      // Switching between auto and pushToTalk — update native mode
+      try {
+        await _orchestrator?.switchInputMode(newMode);
+      } catch (e) {
+        if (!_sessionActive) return;
+        _addAssistantMessage('切换模式失败：$e', type: ChatMessageType.error);
+      }
     }
   }
 
@@ -237,8 +244,8 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   }
 
   /// Push-to-talk: stop recording.
-  void pushEnd() {
-    _orchestrator?.pushEnd();
+  Future<void> pushEnd() async {
+    await _orchestrator?.pushEnd();
   }
 
   /// User confirmed the transaction — save to DB and continue listening.
@@ -320,6 +327,9 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     _sessionActive = false;
     _networkSub?.cancel();
     _networkSub = null;
+    _nativeAudioSub?.cancel();
+    _nativeAudioSub = null;
+    _nativeAudioSessionId = null;
     final orch = _orchestrator;
     _orchestrator = null;
     await orch?.dispose();
@@ -340,6 +350,47 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     }
   }
 
+  void _onNativeAudioEvent(NativeAudioEvent event) {
+    if (!_sessionActive) return;
+    if (_nativeAudioSessionId == null || event.sessionId != _nativeAudioSessionId) {
+      return;
+    }
+
+    if (event.event == 'audioRouteChanged') {
+      final oldRoute = event.data['oldRoute'] as String? ?? 'unknown';
+      final newRoute = event.data['newRoute'] as String? ?? event.route;
+      _addAssistantMessage(
+        '音频路由已切换：$oldRoute → $newRoute',
+        type: ChatMessageType.system,
+      );
+      return;
+    }
+
+    if (event.event == 'audioFocusChanged') {
+      final canAutoResume = event.canAutoResume;
+      if (!canAutoResume) {
+        _addAssistantMessage(
+          '音频焦点变化，当前不会自动恢复，请手动继续',
+          type: ChatMessageType.system,
+        );
+      }
+      return;
+    }
+
+    if (event.event == 'bargeInTriggered') {
+      HapticFeedback.lightImpact();
+      state = state.copyWith(voiceState: VoiceState.recognizing);
+      return;
+    }
+
+    if (event.event == 'runtimeError' && event.error != null) {
+      _addAssistantMessage(
+        '原生音频错误：${event.error!.message}',
+        type: ChatMessageType.error,
+      );
+    }
+  }
+
   // ======================== VoiceOrchestratorDelegate ========================
 
   @override
@@ -347,6 +398,12 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     if (!_sessionActive) return;
     HapticFeedback.lightImpact();
     state = state.copyWith(voiceState: VoiceState.recognizing, interimText: '');
+  }
+
+  @override
+  void onStateChanged(VoiceState newState) {
+    if (!_sessionActive) return;
+    state = state.copyWith(voiceState: newState);
   }
 
   @override
@@ -363,12 +420,23 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     final result = draftBatch.items.isNotEmpty
         ? draftBatch.items.first.result
         : null;
-    state = state.copyWith(
-      voiceState: VoiceState.confirming,
-      interimText: '',
-      parseResult: result,
-      draftBatch: draftBatch,
-    );
+    // If DraftBatch is empty, do not enter confirming state, stay in listening state
+    if (draftBatch.items.isEmpty) {
+      state = state.copyWith(
+        voiceState: VoiceState.listening,
+        interimText: '',
+        parseResult: null,
+        draftBatch: null,
+        isProcessing: false, // 立即设置 isProcessing = false，避免显示"正在解析"并block输入框
+      );
+    } else {
+      state = state.copyWith(
+        voiceState: VoiceState.confirming,
+        interimText: '',
+        parseResult: result,
+        draftBatch: draftBatch,
+      );
+    }
   }
 
   @override
@@ -485,8 +553,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     if (helper == null || !helper.hasTransactions) return;
     try {
       if (helper.totalAmount > 0) {
-        final tts = ref.read(ttsServiceProvider);
-        await tts.speak(
+        await _orchestrator?.speakAndResumeTimer(
           TtsTemplates.sessionEnd(count: helper.count, total: helper.totalAmount),
         );
       }

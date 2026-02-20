@@ -30,9 +30,7 @@ void main() {
   group('BatchConfirmationCard', () {
     testWidgets('renders all items', (tester) async {
       final batch = _sampleBatch(count: 3);
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(batch: batch),
-      ));
+      await tester.pumpWidget(_wrap(BatchConfirmationCard(batch: batch)));
       await tester.pumpAndSettle();
 
       expect(find.text('1'), findsOneWidget);
@@ -45,9 +43,7 @@ void main() {
 
     testWidgets('shows pending count badge', (tester) async {
       final batch = _sampleBatch(count: 2);
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(batch: batch),
-      ));
+      await tester.pumpWidget(_wrap(BatchConfirmationCard(batch: batch)));
       await tester.pumpAndSettle();
 
       expect(find.text('2 笔待确认'), findsOneWidget);
@@ -58,9 +54,7 @@ void main() {
       var batch = _sampleBatch(count: 2);
       batch = batch.confirmItem(0);
 
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(batch: batch),
-      ));
+      await tester.pumpWidget(_wrap(BatchConfirmationCard(batch: batch)));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
@@ -71,9 +65,7 @@ void main() {
       var batch = _sampleBatch(count: 2);
       batch = batch.cancelItem(0);
 
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(batch: batch),
-      ));
+      await tester.pumpWidget(_wrap(BatchConfirmationCard(batch: batch)));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.cancel_rounded), findsOneWidget);
@@ -81,12 +73,14 @@ void main() {
 
     testWidgets('confirm all button calls callback', (tester) async {
       var called = false;
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(
-          batch: _sampleBatch(count: 2),
-          onConfirmAll: () => called = true,
+      await tester.pumpWidget(
+        _wrap(
+          BatchConfirmationCard(
+            batch: _sampleBatch(count: 2),
+            onConfirmAll: () => called = true,
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('全部确认'));
@@ -95,15 +89,17 @@ void main() {
 
     testWidgets('cancel all button calls callback', (tester) async {
       var called = false;
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(
-          batch: _sampleBatch(count: 2),
-          onCancelAll: () => called = true,
+      await tester.pumpWidget(
+        _wrap(
+          BatchConfirmationCard(
+            batch: _sampleBatch(count: 2),
+            onCancelAll: () => called = true,
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('全部取消'));
+      await tester.tap(find.text('取消'));
       expect(called, isTrue);
     });
 
@@ -114,26 +110,26 @@ void main() {
       var confirmCalled = false;
       var cancelCalled = false;
 
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(
-          batch: batch,
-          onConfirmAll: () => confirmCalled = true,
-          onCancelAll: () => cancelCalled = true,
+      await tester.pumpWidget(
+        _wrap(
+          BatchConfirmationCard(
+            batch: batch,
+            onConfirmAll: () => confirmCalled = true,
+            onCancelAll: () => cancelCalled = true,
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('全部确认'));
-      await tester.tap(find.text('全部取消'));
+      await tester.tap(find.text('取消'));
       expect(confirmCalled, isFalse);
       expect(cancelCalled, isFalse);
     });
 
     testWidgets('summary bar shows correct total', (tester) async {
       final batch = _sampleBatch(count: 3);
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(batch: batch),
-      ));
+      await tester.pumpWidget(_wrap(BatchConfirmationCard(batch: batch)));
       await tester.pumpAndSettle();
 
       expect(find.text('¥60'), findsOneWidget);
@@ -141,9 +137,7 @@ void main() {
 
     testWidgets('single-item batch is still rendered', (tester) async {
       final batch = _sampleBatch(count: 1);
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(batch: batch),
-      ));
+      await tester.pumpWidget(_wrap(BatchConfirmationCard(batch: batch)));
       await tester.pumpAndSettle();
 
       expect(find.text('1 笔待确认'), findsOneWidget);
@@ -152,9 +146,7 @@ void main() {
 
     testWidgets('4+ items enables scroll', (tester) async {
       final batch = _sampleBatch(count: 5);
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(batch: batch),
-      ));
+      await tester.pumpWidget(_wrap(BatchConfirmationCard(batch: batch)));
       await tester.pumpAndSettle();
 
       expect(find.text('5 笔待确认'), findsOneWidget);
@@ -163,28 +155,29 @@ void main() {
 
     testWidgets('type chips show correct labels', (tester) async {
       final batch = _sampleBatch(count: 2);
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(batch: batch),
-      ));
+      await tester.pumpWidget(_wrap(BatchConfirmationCard(batch: batch)));
       await tester.pumpAndSettle();
 
       expect(find.text('收入'), findsOneWidget);
       expect(find.text('支出'), findsOneWidget);
     });
 
-    testWidgets('isLoading disables confirm/cancel buttons and swipe',
-        (tester) async {
+    testWidgets('isLoading disables confirm/cancel buttons and swipe', (
+      tester,
+    ) async {
       var confirmed = false;
       var cancelled = false;
       final batch = _sampleBatch(count: 2);
-      await tester.pumpWidget(_wrap(
-        BatchConfirmationCard(
-          batch: batch,
-          isLoading: true,
-          onConfirmAll: () => confirmed = true,
-          onCancelAll: () => cancelled = true,
+      await tester.pumpWidget(
+        _wrap(
+          BatchConfirmationCard(
+            batch: batch,
+            isLoading: true,
+            onConfirmAll: () => confirmed = true,
+            onCancelAll: () => cancelled = true,
+          ),
         ),
-      ));
+      );
       // Use pump() instead of pumpAndSettle() — shimmer animation never settles.
       await tester.pump(const Duration(milliseconds: 500));
 
@@ -194,7 +187,7 @@ void main() {
       expect(confirmButton.onPressed, isNull);
 
       final cancelButton = tester.widget<OutlinedButton>(
-        find.widgetWithText(OutlinedButton, '全部取消'),
+        find.widgetWithText(OutlinedButton, '取消'),
       );
       expect(cancelButton.onPressed, isNull);
 

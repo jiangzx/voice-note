@@ -52,9 +52,10 @@ class _BatchConfirmationCardState extends State<BatchConfirmationCard>
     _slideAnimation = Tween<double>(begin: 40, end: 0).animate(
       CurvedAnimation(parent: _entryController, curve: Curves.easeOutCubic),
     );
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _entryController, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _entryController, curve: Curves.easeOut));
     _entryController.forward();
   }
 
@@ -116,8 +117,8 @@ class _BatchConfirmationCardState extends State<BatchConfirmationCard>
           _BatchItemRow(
             item: items[i],
             displayIndex: i + 1,
-            isLoading: widget.isLoading &&
-                items[i].status == DraftStatus.pending,
+            isLoading:
+                widget.isLoading && items[i].status == DraftStatus.pending,
             onConfirm: widget.onConfirmItem != null
                 ? () => widget.onConfirmItem!(items[i].index)
                 : null,
@@ -225,8 +226,8 @@ class _BatchItemRow extends StatelessWidget {
     final bgColor = isConfirmed
         ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
         : isCancelled
-            ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
-            : Colors.transparent;
+        ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
+        : Colors.transparent;
 
     final textOpacity = isCancelled ? 0.5 : 1.0;
 
@@ -247,9 +248,14 @@ class _BatchItemRow extends StatelessWidget {
         : '¥--';
 
     return Semantics(
-      label: '第$displayIndex笔，${result.category ?? ""}$typeLabel'
+      label:
+          '第$displayIndex笔，${result.category ?? ""}$typeLabel'
           '${result.amount?.toStringAsFixed(2) ?? ""}元'
-          '${isConfirmed ? "，已确认" : isCancelled ? "，已取消" : "，待确认"}',
+          '${isConfirmed
+              ? "，已确认"
+              : isCancelled
+              ? "，已取消"
+              : "，待确认"}',
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
@@ -300,22 +306,48 @@ class _BatchItemRow extends StatelessWidget {
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: theme.colorScheme.outline,
                       ),
-                    textAlign: TextAlign.center,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
+                  const SizedBox(width: AppSpacing.xs),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: typeColor.withValues(alpha: 0.12),
+                      borderRadius: AppRadius.smAll,
+                    ),
+                    child: Text(
+                      typeLabel,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: typeColor,
+                        fontWeight: FontWeight.w600,
+                        decoration: isCancelled
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: typeColor.withValues(alpha: 0.12),
-                    borderRadius: AppRadius.smAll,
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      '${result.category ?? ""}'
+                      '${result.description != null ? " · ${result.description}" : ""}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        decoration: isCancelled
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  child: Text(
-                    typeLabel,
-                    style: theme.textTheme.labelSmall?.copyWith(
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    amountStr,
+                    style: theme.textTheme.titleSmall?.copyWith(
                       color: typeColor,
                       fontWeight: FontWeight.w600,
                       decoration: isCancelled
@@ -323,37 +355,11 @@ class _BatchItemRow extends StatelessWidget {
                           : null,
                     ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    '${result.category ?? ""}'
-                    '${result.description != null ? " · ${result.description}" : ""}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface,
-                      decoration: isCancelled
-                          ? TextDecoration.lineThrough
-                          : null,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  amountStr,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: typeColor,
-                    fontWeight: FontWeight.w600,
-                    decoration: isCancelled
-                        ? TextDecoration.lineThrough
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                _StatusIcon(status: status),
-              ],
+                  const SizedBox(width: AppSpacing.xs),
+                  _StatusIcon(status: status),
+                ],
+              ),
             ),
-          ),
           ),
         ),
       ),
@@ -381,10 +387,7 @@ class _BatchItemRow extends StatelessWidget {
     return Container(
       alignment: alignment,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: AppRadius.mdAll,
-      ),
+      decoration: BoxDecoration(color: color, borderRadius: AppRadius.mdAll),
       child: Icon(icon, color: Colors.white),
     );
   }
@@ -399,28 +402,26 @@ class _StatusIcon extends StatelessWidget {
     final theme = Theme.of(context);
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
-      transitionBuilder: (child, animation) => ScaleTransition(
-        scale: animation,
-        child: child,
-      ),
+      transitionBuilder: (child, animation) =>
+          ScaleTransition(scale: animation, child: child),
       child: switch (status) {
         DraftStatus.confirmed => Icon(
-            Icons.check_circle_rounded,
-            key: const ValueKey('confirmed'),
-            size: AppIconSize.sm,
-            color: theme.colorScheme.primary,
-          ),
+          Icons.check_circle_rounded,
+          key: const ValueKey('confirmed'),
+          size: AppIconSize.sm,
+          color: theme.colorScheme.primary,
+        ),
         DraftStatus.cancelled => Icon(
-            Icons.cancel_rounded,
-            key: const ValueKey('cancelled'),
-            size: AppIconSize.sm,
-            color: theme.colorScheme.error,
-          ),
+          Icons.cancel_rounded,
+          key: const ValueKey('cancelled'),
+          size: AppIconSize.sm,
+          color: theme.colorScheme.error,
+        ),
         DraftStatus.pending => const SizedBox(
-            key: ValueKey('pending'),
-            width: AppIconSize.sm,
-            height: AppIconSize.sm,
-          ),
+          key: ValueKey('pending'),
+          width: AppIconSize.sm,
+          height: AppIconSize.sm,
+        ),
       },
     );
   }
@@ -503,7 +504,7 @@ class _BatchActionRow extends StatelessWidget {
                     onCancelAll!();
                   }
                 : null,
-            child: const Text('全部取消'),
+            child: const Text('取消'),
           ),
         ),
         const SizedBox(width: AppSpacing.md),

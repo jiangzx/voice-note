@@ -204,7 +204,7 @@ void main() {
 
     test('updateBaseUrl changes base URL', () {
       final client = ApiClient(ApiConfig(prefs));
-      expect(client.baseUrl, 'http://10.0.2.2:8080');
+      expect(client.baseUrl, 'http://192.168.100.190:8090');
 
       client.updateBaseUrl('https://api.example.com');
       expect(client.baseUrl, 'https://api.example.com');

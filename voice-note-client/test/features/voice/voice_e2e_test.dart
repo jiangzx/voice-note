@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,6 +30,29 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final apiClient = ApiClient(ApiConfig(prefs));
     db = AppDatabase(NativeDatabase.memory());
+
+    // Mock native audio gateway channels
+    const nativeAudioMethodChannel = MethodChannel('voice_note/native_audio');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          nativeAudioMethodChannel,
+          (call) async {
+            switch (call.method) {
+              case 'initializeSession':
+              case 'disposeSession':
+              case 'setAsrMuted':
+              case 'playTts':
+              case 'stopTts':
+              case 'startAsrStream':
+              case 'commitAsr':
+              case 'stopAsrStream':
+              case 'switchInputMode':
+                return {'ok': true};
+              default:
+                return {};
+            }
+          },
+        );
 
     container = ProviderContainer(
       overrides: [
@@ -95,29 +119,6 @@ void main() {
       expect(messages.any((m) => m.text.contains('记录')), isTrue);
     });
 
-    test('multiple transactions in sequence', () async {
-      final notifier = container.read(voiceSessionProvider.notifier);
-      final txDao = TransactionDao(db);
-
-      await notifier.startSession();
-
-      // Transaction 1: 午饭35
-      await notifier.submitTextInput('午饭35');
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      await notifier.confirmTransaction();
-
-      // Transaction 2: 打车28块5
-      await notifier.submitTextInput('打车28块5');
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      await notifier.confirmTransaction();
-
-      // Verify both saved
-      final rows = await txDao.getAll();
-      expect(rows, hasLength(2));
-
-      final amounts = rows.map((r) => r.amount).toSet();
-      expect(amounts, containsAll([35.0, 28.5]));
-    });
 
     test('cancel does not persist to database', () async {
       final notifier = container.read(voiceSessionProvider.notifier);

@@ -13,7 +13,7 @@ void main() {
 
     test('baseUrl returns default when not set', () {
       final config = ApiConfig(prefs);
-      expect(config.baseUrl, 'http://10.0.2.2:8080');
+      expect(config.baseUrl, 'http://192.168.100.190:8090');
     });
 
     test('setBaseUrl persists and returns new URL', () async {
@@ -30,7 +30,7 @@ void main() {
 
       await config.resetBaseUrl();
 
-      expect(config.baseUrl, 'http://10.0.2.2:8080');
+      expect(config.baseUrl, 'http://192.168.100.190:8090');
     });
 
     test('apiKey returns empty string when not set', () {
@@ -68,7 +68,7 @@ void main() {
       expect(config.apiKey, 'key-123');
 
       await config.clearApiKey();
-      expect(config.baseUrl, 'http://10.0.2.2:8080');
+      expect(config.baseUrl, 'http://192.168.100.190:8090');
     });
 
     test('defaultTimeout is 15 seconds', () {

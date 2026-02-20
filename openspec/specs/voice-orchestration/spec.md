@@ -53,7 +53,7 @@ CONFIRMING 状态下收到用户语音输入时，编排器 SHALL 按以下混�
   - `correction` / `newInput` → 立即 TTS 播报「好的，正在修改...」→ 调用 LLM batch correction 接口（3s 超时）或本地规则（离线）
   - LLM 返回 `corrections[]` + `intent == "correction"` + `confidence >= 0.7` → 逐条应用 updatedFields 到对应 item（注意：发送时排除 cancelled/confirmed items 并重编号，收到后映射回原始 index）
   - LLM 返回 `intent == "confirm"` → 执行全部确认
-  - LLM 返回 `intent == "cancel"` → 执行全部取消
+  - LLM 返回 `intent == "cancel"` → 执行取消
   - LLM 返回 `intent == "append"` → 将返回的交易字段构造为新 DraftTransaction 追加到 DraftBatch
   - LLM 返回 `intent == "unclear"` → TTS 提示重新表达
   - LLM 超时（>3s）→ 降级到本地规则纠正
@@ -116,7 +116,7 @@ CONFIRMING 状态下收到用户语音输入时，编排器 SHALL 按以下混�
 
 编排器 SHALL 严格控制 `DraftBatch` 的生命周期。`DraftBatch` SHALL 仅在以下条件下被清空为 null：
 1. 全部确认（或自动提交后）→ 保存后清空
-2. 全部取消 → 直接清空
+2. 取消 → 直接清空
 3. 混合状态完成 → 保存 confirmed → 清空
 4. 退出/超时/dispose → 清空
 5. 继续记账 → 保存 confirmed → 清空 → LISTENING

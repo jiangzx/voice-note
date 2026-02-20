@@ -1,17 +1,16 @@
 import 'dart:async';
 import 'dart:developer' as dev;
+import 'dart:io' show Platform;
 
 import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/audio/native_audio_gateway.dart';
+import '../../../core/audio/native_audio_models.dart';
 import '../../../core/network/dto/transaction_correction_response.dart'
     as dto;
-import '../../../core/tts/tts_service.dart';
 import '../../../core/tts/tts_templates.dart';
 import '../data/asr_repository.dart';
-import '../data/asr_websocket_service.dart';
-import '../data/audio_capture_service.dart';
-import '../data/vad_service.dart';
 import '../presentation/widgets/mode_switcher.dart';
 import 'asr_connection_manager.dart';
 import 'draft_batch.dart';
@@ -41,6 +40,9 @@ abstract class VoiceOrchestratorDelegate {
 
   /// Called when VAD misfires repeatedly — suggest switching to PTT mode.
   void onSuggestPushToTalk();
+
+  /// Called when voice state changes (e.g., recognizing -> listening).
+  void onStateChanged(VoiceState newState);
 }
 
 /// Orchestrates the full voice pipeline: AudioCapture → VAD → ASR → NLP.
@@ -50,22 +52,27 @@ abstract class VoiceOrchestratorDelegate {
 /// - **pushToTalk**: Manual start/stop via button press
 /// - **keyboard**: No audio services, text-only input
 class VoiceOrchestrator {
+  final AsrRepository _asrRepository;
   final NlpOrchestrator _nlpOrchestrator;
   final VoiceCorrectionHandler _correctionHandler;
   final VoiceOrchestratorDelegate _delegate;
-  final TtsService? _ttsService;
   final AsrConnectionManager _asrConnection;
+  final NativeAudioGateway? _nativeAudioGateway;
+  final String? _nativeAudioSessionId;
 
   // Owned services — created/destroyed per session
-  AudioCaptureService? _audioCapture;
-  VadService? _vadService;
-  AsrWebSocketService? _asrService;
-
-  // Stream subscriptions for VAD (ASR subscriptions managed by AsrConnectionManager)
-  final List<StreamSubscription<dynamic>> _vadSubscriptions = [];
+  StreamSubscription<NativeAudioEvent>? _nativeAudioSub;
+  final Map<String, Completer<void>> _nativeTtsCompletions = <String, Completer<void>>{};
 
   VoiceState _currentState = VoiceState.idle;
   bool _disposed = false;
+
+  // Current input mode tracking
+  VoiceInputMode? _currentInputMode;
+
+  // Track if pushEnd is pending (waiting for asrFinalText)
+  bool _isPushEndPending = false;
+  Completer<void>? _pushEndCompleter;
 
   DraftBatch? _draftBatch;
 
@@ -81,33 +88,33 @@ class VoiceOrchestrator {
   // Correction in-flight guard — blocks confirm/cancel during LLM request
   bool _isCorrecting = false;
 
-  // PTT timing — discard recordings shorter than threshold
-  static const Duration minPttDuration = Duration(milliseconds: 600);
-  static const Duration pttAsrTimeout = Duration(seconds: 8);
-  DateTime? _pttStartTime;
-  Timer? _pttTimeoutTimer;
-
-  // VAD misfire tracking
+  // VAD misfire tracking (保留用于兼容性，但不再使用)
   static const int maxConsecutiveMisfires = 3;
   int _consecutiveMisfires = 0;
+
+  // Native audio telemetry
+  int _falseTriggerCount = 0;
+  int _focusLossCount = 0;
+  DateTime? _bargeInTriggeredAt;
+  DateTime? _resumeStartAt;
+  bool _bargeInPending = false;
+  DateTime? _ttsEndedAt;
+  static const Duration _ttsEchoDiscardWindow = Duration(milliseconds: 400);
 
   VoiceOrchestrator({
     required AsrRepository asrRepository,
     required NlpOrchestrator nlpOrchestrator,
     required VoiceCorrectionHandler correctionHandler,
     required VoiceOrchestratorDelegate delegate,
-    TtsService? ttsService,
-    AudioCaptureService? audioCapture,
-    VadService? vadService,
-    AsrWebSocketService? asrService,
+    NativeAudioGateway? nativeAudioGateway,
+    String? nativeAudioSessionId,
     AsrConnectionManager? asrConnectionManager,
   }) : _nlpOrchestrator = nlpOrchestrator,
+       _asrRepository = asrRepository,
        _correctionHandler = correctionHandler,
        _delegate = delegate,
-       _ttsService = ttsService,
-       _audioCapture = audioCapture,
-       _vadService = vadService,
-       _asrService = asrService,
+       _nativeAudioGateway = nativeAudioGateway,
+       _nativeAudioSessionId = nativeAudioSessionId,
        _asrConnection = asrConnectionManager ??
            AsrConnectionManager(asrRepository: asrRepository) {
     _asrConnection.onInterimText =
@@ -132,109 +139,176 @@ class VoiceOrchestrator {
   /// Start listening for voice input in the given [mode].
   Future<void> startListening(VoiceInputMode mode) async {
     if (kDebugMode) debugPrint('[VoiceInit] startListening(mode=$mode)');
+    _currentInputMode = mode;
     if (mode == VoiceInputMode.keyboard) {
       if (kDebugMode) debugPrint('[VoiceInit] Keyboard mode — skipping audio init');
       return;
     }
 
+    // 强制使用原生音频路径，不再支持 Flutter 插件路径
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      throw StateError('Native audio runtime is only supported on Android and iOS');
+    }
+    if (_nativeAudioGateway == null || _nativeAudioSessionId == null) {
+      throw StateError('Native audio gateway not configured');
+    }
+
     try {
-      _audioCapture ??= AudioCaptureService();
-      _vadService ??= VadService();
-      _asrService ??= AsrWebSocketService();
-      _asrConnection.configure(
-        asrService: _asrService,
-        audioCapture: _audioCapture,
-      );
-
-      if (kDebugMode) debugPrint('[VoiceInit] Step 1/4: Starting audio capture...');
-      await _audioCapture!.start(preBufferMs: 1000);
-
-      if (kDebugMode) debugPrint('[VoiceInit] Step 2/4: Subscribing to VAD events...');
-      _subscribeToVadEvents();
-
-      if (kDebugMode) debugPrint('[VoiceInit] Step 3/4: Starting VAD...');
-      await _vadService!.start(audioStream: _audioCapture!.audioStream);
-
+      await _initNativeAudioRuntime(mode);
+      await _startNativeAsrStream();
       _currentState = VoiceState.listening;
       _startInactivityTimer();
-      if (kDebugMode) debugPrint('[VoiceInit] Step 4/4: Pipeline ready, state=listening');
-
-      if (kDebugMode) debugPrint('[VoiceInit] Speaking welcome TTS...');
       await _speakWithSuppression(TtsTemplates.welcome());
-      if (kDebugMode) debugPrint('[VoiceInit] startListening() complete');
     } catch (e) {
       if (kDebugMode) debugPrint('[VoiceInit] FAILED: $e');
       _delegate.onError('Failed to start listening: $e');
     }
   }
 
+  Future<void> _startNativeAsrStream() async {
+    final native = _nativeAudioGateway;
+    final nativeSessionId = _nativeAudioSessionId;
+    if (native == null || nativeSessionId == null) {
+      throw StateError('native_audio_not_configured');
+    }
+    final token = await _asrRepository.getToken();
+    final result = await native.startAsrStream(
+      sessionId: nativeSessionId,
+      token: token.token,
+      wsUrl: token.wsUrl,
+      model: token.model,
+    );
+    final ok = result['ok'] as bool? ?? false;
+    if (!ok) {
+      throw StateError('native_asr_stream_start_failed');
+    }
+  }
+
   /// Start push-to-talk: connect ASR immediately and stream audio.
   Future<void> pushStart() async {
+    // 强制使用原生音频路径
     _cancelInactivityTimer();
-    _pttStartTime = clock.now();
-    try {
-      _audioCapture ??= AudioCaptureService();
-      _asrService ??= AsrWebSocketService();
-      _asrConnection.configure(
-        asrService: _asrService,
-        audioCapture: _audioCapture,
-      );
+    _currentState = VoiceState.recognizing;
+    _delegate.onSpeechDetected();
 
-      await _audioCapture!.start();
-      _currentState = VoiceState.recognizing;
-      _delegate.onSpeechDetected();
-      final ok = await _asrConnection.connectAndStream();
-      if (!ok) {
-        _currentState = VoiceState.listening;
-        _pttStartTime = null;
-        _startInactivityTimer();
+    // 在 pushToTalk 模式下，启动 captureRuntime 并 unmute ASR
+    if (_currentInputMode == VoiceInputMode.pushToTalk) {
+      final native = _nativeAudioGateway;
+      final nativeSessionId = _nativeAudioSessionId;
+      if (native != null && nativeSessionId != null) {
+        try {
+          if (kDebugMode) {
+            debugPrint('[VoiceMode] pushStart: Starting capture');
+          }
+          // 先启动 captureRuntime（如果未运行）
+          await native.startCapture(sessionId: nativeSessionId);
+          // 等待足够的时间确保 captureRuntime 完全启动和 ASR 连接建立
+          // 增加延迟以提高短按的可靠性
+          await Future.delayed(const Duration(milliseconds: 150), () {});
+          // 然后 unmute ASR
+          await native.setAsrMuted(
+            sessionId: nativeSessionId,
+            muted: false,
+            reason: 'push_start',
+          );
+          if (kDebugMode) {
+            debugPrint('[VoiceMode] Started capture and unmuted ASR for pushToTalk mode');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('[VoiceMode] Failed to start capture/unmute ASR: $e');
+          }
+        }
       }
-    } catch (e) {
-      _pttStartTime = null;
-      _currentState = VoiceState.listening;
-      _startInactivityTimer();
-      _delegate.onError('Push-to-talk start failed: $e');
     }
   }
 
   /// End push-to-talk: commit audio and process result.
-  /// If held too briefly, discards the recording.
-  void pushEnd() {
-    final startTime = _pttStartTime;
-    _pttStartTime = null;
-    if (startTime == null) {
-      dev.log('pushEnd without pushStart, ignoring', name: 'VoiceOrchestrator');
-      return;
-    }
-    final held = clock.now().difference(startTime);
-    if (held < minPttDuration) {
-      dev.log(
-        'PTT too short (${held.inMilliseconds}ms < ${minPttDuration.inMilliseconds}ms), discarding',
-        name: 'VoiceOrchestrator',
-      );
-      _currentState = VoiceState.listening;
-      _startInactivityTimer();
-      _delegate.onContinueRecording();
-      _delegate.onError('说话时间太短，请按住按钮说话');
-      return;
-    }
-    _asrConnection.commit();
+  Future<void> pushEnd() async {
+    // 强制使用原生音频路径
+    final native = _nativeAudioGateway;
+    final nativeSessionId = _nativeAudioSessionId;
+    if (native != null && nativeSessionId != null) {
+      // 在 pushToTalk 模式下，按正确顺序停止
+      if (_currentInputMode == VoiceInputMode.pushToTalk) {
+        try {
+          // 设置标志，表示正在等待 asrFinalText
+          _isPushEndPending = true;
+          _pushEndCompleter = Completer<void>();
 
-    _pttTimeoutTimer?.cancel();
-    _pttTimeoutTimer = Timer(pttAsrTimeout, _onPttAsrTimeout);
-  }
+          if (kDebugMode) {
+            debugPrint('[VoiceMode] pushEnd: Starting, waiting for asrFinalText');
+          }
 
-  void _onPttAsrTimeout() {
-    if (_disposed || _currentState != VoiceState.recognizing) return;
-    dev.log(
-      'PTT ASR timeout after ${pttAsrTimeout.inSeconds}s, resetting to listening',
-      name: 'VoiceOrchestrator',
-    );
+          // 步骤 1: 先 mute ASR（停止发送新的音频帧）
+          // 但保持 captureRuntime 运行，让已缓冲的帧继续发送
+          await native.setAsrMuted(
+            sessionId: nativeSessionId,
+            muted: true,
+            reason: 'push_end',
+          );
+
+          // 步骤 2: 等待一小段时间，让已发送的音频帧被 ASR 服务器处理
+          // 这确保完整的音频流被处理，避免截断
+          await Future.delayed(const Duration(milliseconds: 300), () {});
+
+          // 步骤 3: 然后 commit（告诉服务器处理已发送的音频）
+          native.commitAsr(nativeSessionId);
+
+          if (kDebugMode) {
+            debugPrint('[VoiceMode] pushEnd: Committed ASR, waiting for final text');
+          }
+
+          // 步骤 4: 停止 captureRuntime（释放麦克风资源，听筒不亮）
+          native.stopCapture(sessionId: nativeSessionId);
+
+          // 步骤 5: 等待 asrFinalText 事件（最多等待 1 秒）
+          try {
+            await _pushEndCompleter!.future.timeout(
+              const Duration(seconds: 1),
+              onTimeout: () {
+                if (kDebugMode) {
+                  debugPrint('[VoiceMode] pushEnd: Timeout waiting for asrFinalText');
+                }
+                // 如果超时且仍在等待，说明没有检测到语音，提示用户
+                if (_isPushEndPending) {
+                  _delegate.onError('未检测到语音，请重新尝试');
+                }
+              },
+            );
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint('[VoiceMode] pushEnd: Error waiting for asrFinalText: $e');
+            }
+            // 如果出错且仍在等待，也提示用户
+            if (_isPushEndPending) {
+              _delegate.onError('未检测到语音，请重新尝试');
+            }
+          } finally {
+            _isPushEndPending = false;
+            _pushEndCompleter = null;
+          }
+
+          if (kDebugMode) {
+            debugPrint('[VoiceMode] Stopped capture and muted ASR for pushToTalk mode');
+          }
+        } catch (e) {
+          _isPushEndPending = false;
+          _pushEndCompleter = null;
+          if (kDebugMode) {
+            debugPrint('[VoiceMode] Failed to stop capture/mute ASR: $e');
+          }
+        }
+      } else {
+        // 非 pushToTalk 模式，直接 commit
+        native.commitAsr(nativeSessionId);
+      }
+    }
     _currentState = VoiceState.listening;
+    _delegate.onStateChanged(VoiceState.listening);
     _startInactivityTimer();
-    _delegate.onContinueRecording();
-    _delegate.onError('识别超时，请重试');
   }
+
 
   /// Process text input directly (keyboard mode).
   Future<void> processTextInput(String text) async {
@@ -251,60 +325,398 @@ class VoiceOrchestrator {
     await _parseAndDeliver(text);
   }
 
+  /// Switch input mode at runtime (e.g., auto <-> pushToTalk).
+  Future<void> switchInputMode(VoiceInputMode mode) async {
+    _currentInputMode = mode;
+    if (mode == VoiceInputMode.keyboard) {
+      if (kDebugMode) debugPrint('[VoiceMode] Switching to keyboard mode');
+      return;
+    }
+
+    final native = _nativeAudioGateway;
+    final nativeSessionId = _nativeAudioSessionId;
+    if (native == null || nativeSessionId == null) {
+      if (kDebugMode) debugPrint('[VoiceMode] Native audio not configured, skipping mode switch');
+      return;
+    }
+
+    try {
+      await native.switchInputMode(
+        sessionId: nativeSessionId,
+        mode: mode.name,
+      );
+      if (kDebugMode) debugPrint('[VoiceMode] Switched to ${mode.name}');
+    } catch (e) {
+      if (kDebugMode) debugPrint('[VoiceMode] Failed to switch mode: $e');
+      _delegate.onError('切换模式失败：$e');
+    }
+  }
+
   /// Stop all audio services and go back to idle.
   Future<void> stopListening() async {
     _draftBatch = null;
     _asrConnection.resetReconnectAttempts();
     _consecutiveMisfires = 0;
     _isTtsSpeaking = false;
-    _pttStartTime = null;
-    _pttTimeoutTimer?.cancel();
-    _pttTimeoutTimer = null;
+    _bargeInTriggeredAt = null;
+    _resumeStartAt = null;
+    _bargeInPending = false;
+    _currentInputMode = null;
     _cancelInactivityTimer();
-    _cancelVadSubscriptions();
     _asrConnection.cancelSubscriptions();
-    try {
-      await _asrConnection.disconnect();
-    } catch (e) {
-      dev.log('ASR disconnect error during cleanup: $e', name: 'VoiceOrchestrator', level: 900);
-    }
-    try {
-      await _vadService?.stop();
-    } catch (e) {
-      dev.log('VAD stop error during cleanup: $e', name: 'VoiceOrchestrator', level: 900);
-    }
-    try {
-      await _audioCapture?.stop();
-    } catch (e) {
-      dev.log('Audio capture stop error during cleanup: $e', name: 'VoiceOrchestrator', level: 900);
+    await _nativeAudioSub?.cancel();
+    _nativeAudioSub = null;
+    final nativeSessionId = _nativeAudioSessionId;
+    final native = _nativeAudioGateway;
+    if (native != null && nativeSessionId != null) {
+      try {
+        await native.stopAsrStream(nativeSessionId);
+        await native.disposeSession(nativeSessionId);
+      } catch (_) {
+        // Keep cleanup resilient if native runtime isn't ready yet.
+      }
     }
     _currentState = VoiceState.idle;
   }
 
   /// Speak text with VAD suppression — ignore VAD events during playback.
   Future<void> _speakWithSuppression(String text) async {
-    final tts = _ttsService;
-    if (tts == null || !tts.enabled || !tts.available) {
-      if (kDebugMode) {
-        debugPrint(
-          '[TTSFlow] _speakWithSuppression SKIPPED: '
-          'tts=${tts != null ? "exists" : "null"}, '
-          'enabled=${tts?.enabled}, available=${tts?.available}',
+    final native = _nativeAudioGateway;
+    final nativeSessionId = _nativeAudioSessionId;
+    if (native == null || nativeSessionId == null || text.isEmpty) {
+      return;
+    }
+
+    final requestId = 'tts_${DateTime.now().microsecondsSinceEpoch}';
+    final completer = Completer<void>();
+    _nativeTtsCompletions[requestId] = completer;
+    _isTtsSpeaking = true;
+    if (kDebugMode) {
+      debugPrint('[TTSFlow] Native playTts request=$requestId text="$text"');
+    }
+    try {
+      final result = await native.playTts(
+        sessionId: nativeSessionId,
+        requestId: requestId,
+        text: text,
+      );
+      final ok = result['ok'] as bool? ?? false;
+      if (!ok) {
+        dev.log(
+          'Native TTS play failed: result=$result',
+          name: 'VoiceOrchestrator',
+          level: 900,
         );
+        throw StateError('native_tts_play_failed');
+      }
+      // Native TTS engine may need extra warmup time on first launch.
+      await completer.future.timeout(const Duration(seconds: 15));
+    } on TimeoutException {
+      if (kDebugMode) {
+        debugPrint('[TTSFlow] Native TTS timeout request=$requestId');
+      }
+      try {
+        await native.stopTts(
+          sessionId: nativeSessionId,
+          requestId: requestId,
+          reason: 'native_timeout',
+        );
+      } catch (_) {
+        // Keep timeout rollback best-effort.
+      }
+      // Avoid surfacing startup warmup delays as user-facing errors.
+      dev.log(
+        'Native TTS timeout request=$requestId',
+        name: 'VoiceOrchestrator',
+        level: 900,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[TTSFlow] Native TTS failed: $e');
+      }
+      _delegate.onError('原生 TTS 播放失败：$e');
+    } finally {
+      _nativeTtsCompletions.remove(requestId);
+      _isTtsSpeaking = false;
+    }
+  }
+
+  Future<void> _initNativeAudioRuntime(VoiceInputMode mode) async {
+    final native = _nativeAudioGateway;
+    final nativeSessionId = _nativeAudioSessionId;
+    if (native == null || nativeSessionId == null) {
+      throw StateError('native_audio_not_configured');
+    }
+
+    _nativeAudioSub ??= native.events.listen(_onNativeAudioEvent);
+    await native.initializeSession(
+      sessionId: nativeSessionId,
+      mode: mode.name,
+      platformConfig: <String, Object?>{
+        'enableNativeCapture': true,
+      },
+    );
+    await native.switchInputMode(
+      sessionId: nativeSessionId,
+      mode: mode.name,
+    );
+  }
+
+  void _onNativeAudioEvent(NativeAudioEvent event) {
+    if (_nativeAudioSessionId == null || event.sessionId != _nativeAudioSessionId) {
+      return;
+    }
+    if (event.event == 'ttsStarted') {
+      _isTtsSpeaking = true;
+      return;
+    }
+
+    if (event.event == 'ttsInitDiagnostics') {
+      final d = event.data;
+      final engineList = d['engineList'];
+      final engineListStr = engineList is List
+          ? (engineList.map((e) => e?.toString() ?? '')).join(',')
+          : engineList?.toString() ?? '';
+      if (kDebugMode) {
+        debugPrint('[TTSDiag] engineList=$engineListStr');
+        debugPrint('[TTSDiag] defaultEngine=${d['defaultEngine']}');
+        debugPrint('[TTSDiag] engineUsed=${d['engineUsed']}');
+        debugPrint('[TTSDiag] initStatus=${d['initStatus']} (${d['initStatusName']}) initErrorCode=${d['initErrorCode']}');
+        debugPrint('[TTSDiag] contextValid=${d['contextValid']} isActivityContext=${d['isActivityContext']} activityValid=${d['activityValid']} onMainThread=${d['onMainThread']}');
+        debugPrint('[TTSDiag] asrActive=${d['asrActive']} audioRecordActive=${d['audioRecordActive']}');
+      }
+      dev.log(
+        'native_tts_init_diagnostics engineList=$engineListStr defaultEngine=${d['defaultEngine']} engineUsed=${d['engineUsed']} initStatus=${d['initStatus']} initSuccess=${d['initSuccess']}',
+        name: 'VoiceTelemetry',
+      );
+      final initSuccess = d['initSuccess'] as bool? ?? false;
+      _emitTelemetryMetric(
+        'ttsInitSuccess',
+        initSuccess ? 1.0 : 0.0,
+        dimensions: <String, Object?>{
+          'engineList': engineListStr.isNotEmpty ? engineListStr : null,
+          'defaultEngine': d['defaultEngine']?.toString(),
+          'engineUsed': d['engineUsed']?.toString(),
+          'initStatus': d['initStatus'],
+          'initStatusName': d['initStatusName']?.toString(),
+          'initErrorCode': d['initErrorCode'],
+          'contextValid': d['contextValid'],
+          'isActivityContext': d['isActivityContext'],
+          'activityValid': d['activityValid'],
+          'onMainThread': d['onMainThread'],
+          'asrActive': d['asrActive'],
+          'audioRecordActive': d['audioRecordActive'],
+        },
+      );
+      return;
+    }
+
+    if (event.event == 'asrInterimText') {
+      // 键盘模式：忽略所有 ASR 事件
+      if (_currentInputMode == VoiceInputMode.keyboard) {
+        if (kDebugMode) {
+          debugPrint('[ASRFlow] Ignore asrInterimText (keyboard mode)');
+        }
+        return;
+      }
+      // 按住模式：只有在 recognizing 状态下才处理
+      if (_currentInputMode == VoiceInputMode.pushToTalk &&
+          _currentState != VoiceState.recognizing) {
+        if (kDebugMode) {
+          debugPrint('[ASRFlow] Ignore asrInterimText (pushToTalk mode, not recognizing)');
+        }
+        return;
+      }
+      // 自动模式：正常处理
+      final text = event.data['text'] as String?;
+      if (text != null && text.isNotEmpty) {
+        _delegate.onInterimText(text);
       }
       return;
     }
 
-    _isTtsSpeaking = true;
-    if (kDebugMode) debugPrint('[TTSFlow] Speaking with VAD suppression: "$text"');
-    try {
-      await tts.speak(text);
-      if (kDebugMode) debugPrint('[TTSFlow] Speech done, resuming VAD');
-    } catch (e) {
-      if (kDebugMode) debugPrint('[TTSFlow] Speak FAILED (degrading): $e');
-    } finally {
-      _isTtsSpeaking = false;
+    if (event.event == 'asrFinalText') {
+      // 键盘模式：忽略所有 ASR 事件
+      if (_currentInputMode == VoiceInputMode.keyboard) {
+        if (kDebugMode) {
+          debugPrint('[ASRFlow] Ignore asrFinalText (keyboard mode)');
+        }
+        return;
+      }
+      // 按住模式：只有在 recognizing 状态下才处理，或者 pushEnd 正在等待
+      if (_currentInputMode == VoiceInputMode.pushToTalk &&
+          _currentState != VoiceState.recognizing &&
+          !_isPushEndPending) {
+        if (kDebugMode) {
+          debugPrint(
+            '[ASRFlow] Ignore asrFinalText (pushToTalk mode, state: ${_currentState.name}, pushEndPending: $_isPushEndPending)',
+          );
+        }
+        return;
+      }
+
+      // 如果 pushEnd 正在等待，完成等待
+      if (_isPushEndPending && _pushEndCompleter != null) {
+        if (kDebugMode) {
+          debugPrint('[ASRFlow] Received asrFinalText during pushEnd, completing wait');
+        }
+        _pushEndCompleter!.complete();
+      }
+
+      // 自动模式：正常处理（继续现有逻辑）
+      final text = event.data['text'] as String?;
+      // Check for empty text: if pushToTalk and pushEnd is pending, this is an empty recording
+      if (text == null || text.isEmpty) {
+        if (_currentInputMode == VoiceInputMode.pushToTalk && _isPushEndPending) {
+          if (kDebugMode) {
+            debugPrint('[ASRFlow] Empty text received during pushEnd (empty recording)');
+          }
+          return; // Silent handling for empty recording
+        }
+        return;
+      }
+      if (_isTtsSpeaking) {
+        if (kDebugMode) {
+          debugPrint('[ASRFlow] Discard asrFinalText (TTS playing): "$text"');
+        }
+        dev.log(
+          'discard asrFinalText (TTS playing)',
+          name: 'VoiceOrchestrator',
+        );
+        return;
+      }
+      if (_ttsEndedAt != null &&
+          clock.now().difference(_ttsEndedAt!) < _ttsEchoDiscardWindow) {
+        if (kDebugMode) {
+          debugPrint(
+            '[ASRFlow] Discard asrFinalText (recent TTS ended): "$text"',
+          );
+        }
+        dev.log(
+          'discard asrFinalText (recent TTS ended)',
+          name: 'VoiceOrchestrator',
+        );
+        return;
+      }
+      _onAsrFinalText(text);
+      return;
     }
+
+    if (event.event == 'ttsCompleted' || event.event == 'ttsStopped') {
+      if (_bargeInPending && _bargeInTriggeredAt != null) {
+        final ttsStopCostMs =
+            clock.now().difference(_bargeInTriggeredAt!).inMilliseconds;
+        _emitTelemetryMetric('ttsStopCostMs', ttsStopCostMs.toDouble());
+        _resumeStartAt = clock.now();
+      }
+      _isTtsSpeaking = false;
+      _ttsEndedAt = clock.now();
+      final requestId = event.requestId;
+      if (requestId != null) {
+        final completer = _nativeTtsCompletions.remove(requestId);
+        if (completer != null && !completer.isCompleted) {
+          completer.complete();
+        }
+      } else if (_nativeTtsCompletions.isNotEmpty) {
+        final fallbackId = _nativeTtsCompletions.keys.first;
+        final completer = _nativeTtsCompletions.remove(fallbackId);
+        if (completer != null && !completer.isCompleted) {
+          completer.complete();
+        }
+      }
+      return;
+    }
+
+    if (event.event == 'ttsError') {
+      _isTtsSpeaking = false;
+      _ttsEndedAt = clock.now();
+      final requestId = event.requestId;
+      if (requestId != null) {
+        final completer = _nativeTtsCompletions.remove(requestId);
+        if (completer != null && !completer.isCompleted) {
+          completer.complete();
+        }
+      } else if (_nativeTtsCompletions.isNotEmpty) {
+        final fallbackId = _nativeTtsCompletions.keys.first;
+        final completer = _nativeTtsCompletions.remove(fallbackId);
+        if (completer != null && !completer.isCompleted) {
+          completer.complete();
+        }
+      }
+      if (event.error != null &&
+          event.error!.code != NativeAudioError.codeTtsUnavailable) {
+        _delegate.onError('Native TTS error: ${event.error!.message}');
+      }
+      return;
+    }
+
+    if (event.event == 'asrMuteStateChanged') {
+      final muted = event.data['asrMuted'] as bool?;
+      if (muted == false && _resumeStartAt != null) {
+        final resumeCostMs = clock.now().difference(_resumeStartAt!).inMilliseconds;
+        _emitTelemetryMetric('resumeCostMs', resumeCostMs.toDouble());
+        _resumeStartAt = null;
+      }
+      return;
+    }
+
+    if (event.event == 'bargeInTriggered') {
+      // A barge-in trigger when TTS is not speaking is treated as false trigger.
+      if (!_isTtsSpeaking) {
+        _falseTriggerCount++;
+        _emitTelemetryMetric(
+          'falseTriggerCount',
+          _falseTriggerCount.toDouble(),
+        );
+      }
+      _bargeInPending = true;
+      _bargeInTriggeredAt = clock.now();
+      return;
+    }
+
+    if (event.event == 'bargeInCompleted') {
+      if (_bargeInTriggeredAt != null) {
+        final bargeInLatencyMs =
+            clock.now().difference(_bargeInTriggeredAt!).inMilliseconds;
+        _emitTelemetryMetric('bargeInLatencyMs', bargeInLatencyMs.toDouble());
+      }
+      _bargeInTriggeredAt = null;
+      _bargeInPending = false;
+      return;
+    }
+
+    if (event.event == 'audioFocusChanged') {
+      if (event.focusState.startsWith('loss')) {
+        _focusLossCount++;
+        _emitTelemetryMetric('focusLossCount', _focusLossCount.toDouble());
+      }
+      return;
+    }
+
+    if (event.event == 'runtimeError' && event.error != null) {
+      final errorMessage = event.error!.message;
+      // Suppress empty recording errors for better UX
+      if (errorMessage.contains('error committing input audio buffer') ||
+          errorMessage.contains('maybe no invalid audio stream') ||
+          errorMessage.contains('no audio')) {
+        if (kDebugMode) {
+          debugPrint('[VoiceMode] Suppressing empty recording error: $errorMessage');
+        }
+        return; // Suppress the error
+      }
+      _delegate.onError('原生音频错误：$errorMessage');
+    }
+  }
+
+  void _emitTelemetryMetric(
+    String name,
+    double value, {
+    Map<String, Object?> dimensions = const <String, Object?>{},
+  }) {
+    dev.log(
+      'native_audio_metric name=$name value=$value dimensions=$dimensions',
+      name: 'VoiceTelemetry',
+    );
   }
 
   /// Speak text with VAD suppression, then restart the inactivity timer.
@@ -320,24 +732,6 @@ class VoiceOrchestrator {
     _disposed = true;
     _asrConnection.markDisposed();
     await stopListening();
-    try {
-      await _asrService?.dispose();
-    } catch (e) {
-      dev.log('ASR dispose error: $e', name: 'VoiceOrchestrator', level: 900);
-    }
-    try {
-      await _vadService?.dispose();
-    } catch (e) {
-      dev.log('VAD dispose error: $e', name: 'VoiceOrchestrator', level: 900);
-    }
-    try {
-      await _audioCapture?.dispose();
-    } catch (e) {
-      dev.log('AudioCapture dispose error: $e', name: 'VoiceOrchestrator', level: 900);
-    }
-    _asrService = null;
-    _vadService = null;
-    _audioCapture = null;
   }
 
   // ======================== Inactivity Timer ========================
@@ -374,98 +768,13 @@ class VoiceOrchestrator {
     _delegate.onSessionTimeout();
   }
 
-  // ======================== VAD Events ========================
-
-  void _subscribeToVadEvents() {
-    final vad = _vadService;
-    if (vad == null) {
-      dev.log('[VADFlow] Cannot subscribe — vadService is null!', name: 'VoiceOrchestrator');
-      return;
-    }
-
-    if (kDebugMode) debugPrint('[VADFlow] Subscribing to VAD events...');
-    _vadSubscriptions.add(
-      vad.onSpeechStart.listen((_) {
-        if (kDebugMode) debugPrint('[VADFlow] >>> onSpeechStart (initial, may be misfire)');
-      }),
-    );
-    _vadSubscriptions.add(
-      vad.onRealSpeechStart.listen((_) => _onRealSpeechStart()),
-    );
-    _vadSubscriptions.add(vad.onSpeechEnd.listen((_) => _onSpeechEnd()));
-    _vadSubscriptions.add(vad.onVADMisfire.listen((_) => _onVadMisfire()));
-    int frameCount = 0;
-    _vadSubscriptions.add(
-      vad.onFrameProcessed.listen((frame) {
-        frameCount++;
-        if (frameCount <= 5 || frameCount % 100 == 0) {
-          if (kDebugMode) {
-            debugPrint(
-              '[VADFlow] Frame #$frameCount: speech=${frame.isSpeech.toStringAsFixed(3)}, '
-              'notSpeech=${frame.notSpeech.toStringAsFixed(3)}',
-            );
-          }
-        }
-      }),
-    );
-    _vadSubscriptions.add(
-      vad.onError.listen((err) {
-        if (kDebugMode) debugPrint('[VADFlow] ERROR: $err');
-        _delegate.onError('VAD error: $err');
-      }),
-    );
-    if (kDebugMode) debugPrint('[VADFlow] Subscribed to all VAD events');
-  }
-
-  Future<void> _onRealSpeechStart() async {
-    if (kDebugMode) debugPrint('[VADFlow] >>> onRealSpeechStart — speech confirmed!');
-
-    // Capture ring-buffer snapshot IMMEDIATELY before any async work.
-    // The ring buffer holds only 500ms; token fetch + WebSocket connect can
-    // take 200-500ms, causing early speech audio to be evicted if we drain
-    // inside connectAndStream() instead.
-    final preBuffer = _audioCapture?.drainPreBuffer() ?? [];
-    if (kDebugMode) debugPrint('[VADFlow] Pre-buffer captured: ${preBuffer.length} chunks');
-
-    if (_isTtsSpeaking) {
-      if (kDebugMode) debugPrint('[VADFlow] Barge-in: stopping TTS');
-      try {
-        await _ttsService?.stop();
-      } catch (e) {
-        dev.log('TTS stop error during barge-in: $e', name: 'VoiceOrchestrator', level: 900);
-      }
-      _isTtsSpeaking = false;
-    }
-
-    _cancelInactivityTimer();
-    _consecutiveMisfires = 0;
-    _currentState = VoiceState.recognizing;
-    _delegate.onSpeechDetected();
-    final ok = await _asrConnection.connectAndStream(capturedPreBuffer: preBuffer);
-    if (!ok) _currentState = VoiceState.listening;
-  }
-
-  void _onSpeechEnd() {
-    if (kDebugMode) debugPrint('[VADFlow] >>> onSpeechEnd — committing audio to ASR');
-    _asrConnection.commit();
-  }
-
-  void _onVadMisfire() {
-    _consecutiveMisfires++;
-    dev.log('VAD misfire #$_consecutiveMisfires', name: 'VoiceOrchestrator');
-    if (_consecutiveMisfires >= maxConsecutiveMisfires) {
-      _consecutiveMisfires = 0;
-      _delegate.onSuggestPushToTalk();
-    }
-  }
+  // VAD 功能已移至原生层（barge-in 检测），不再需要 Flutter 层的 VAD
 
   // ======================== ASR Final Text ========================
 
   Future<void> _onAsrFinalText(String text) async {
     if (_disposed) return;
     if (kDebugMode) debugPrint('[ASRFlow] Processing final text: "$text"');
-    _pttTimeoutTimer?.cancel();
-    _pttTimeoutTimer = null;
     if (text.trim().isEmpty) {
       if (kDebugMode) debugPrint('[ASRFlow] Empty final text, resetting to listening');
       _currentState = VoiceState.listening;
@@ -474,7 +783,7 @@ class VoiceOrchestrator {
       return;
     }
 
-    await _asrConnection.disconnect();
+    // 原生 ASR 模式下，音频传输由原生层处理，不需要手动断开连接
     if (_disposed) return;
 
     if (_currentState == VoiceState.confirming) {
@@ -512,6 +821,19 @@ class VoiceOrchestrator {
         _delegate.onError('NLP parsing returned empty results');
         _currentState = VoiceState.listening;
         _startInactivityTimer();
+        return;
+      }
+
+      // Check if any result has an amount
+      final hasAnyAmount = results.any((r) => r.amount != null);
+      if (!hasAnyAmount) {
+        if (kDebugMode) {
+          debugPrint('[VoiceMode] No amount found in parse results, showing original text');
+        }
+        _currentState = VoiceState.listening;
+        _startInactivityTimer();
+        _delegate.onFinalText(text, DraftBatch.empty());
+        await _speakWithSuppression('没有输入金额，请重新输入');
         return;
       }
 
@@ -667,17 +989,20 @@ class VoiceOrchestrator {
   Future<void> _handleCorrectionOrNewInput(String text) async {
     final batch = _draftBatch;
     if (batch == null) {
+      // No existing batch, treat as new input
       await _parseAndDeliver(text);
       return;
     }
-
-    await _speakWithSuppression(TtsTemplates.correctionLoading());
 
     final pendingItems = batch.pendingItems;
     if (pendingItems.isEmpty) {
+      // All items resolved, treat as new input
       await _parseAndDeliver(text);
       return;
     }
+
+    // Has pending items, treat as correction
+    await _speakWithSuppression(TtsTemplates.correctionLoading());
 
     // Build pending-only mapping for index remapping
     final indexMap = <int, int>{};
@@ -812,12 +1137,4 @@ class VoiceOrchestrator {
     }
   }
 
-  // ======================== Subscription Management ========================
-
-  void _cancelVadSubscriptions() {
-    for (final sub in _vadSubscriptions) {
-      sub.cancel();
-    }
-    _vadSubscriptions.clear();
-  }
 }

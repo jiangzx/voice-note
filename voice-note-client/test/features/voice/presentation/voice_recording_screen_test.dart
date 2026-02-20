@@ -21,11 +21,29 @@ void main() {
     testPrefs = await SharedPreferences.getInstance();
     testApiClient = ApiClient(ApiConfig(testPrefs));
 
-    // Mock flutter_tts platform channel
+    // Mock native audio gateway channels
+    const nativeAudioMethodChannel = MethodChannel('voice_note/native_audio');
+    const nativeAudioEventChannel = EventChannel('voice_note/native_audio/events');
+    
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-          const MethodChannel('flutter_tts'),
-          (call) async => 1,
+          nativeAudioMethodChannel,
+          (call) async {
+            switch (call.method) {
+              case 'initializeSession':
+              case 'disposeSession':
+              case 'setAsrMuted':
+              case 'playTts':
+              case 'stopTts':
+              case 'startAsrStream':
+              case 'commitAsr':
+              case 'stopAsrStream':
+              case 'switchInputMode':
+                return {'ok': true};
+              default:
+                return {};
+            }
+          },
         );
   });
 

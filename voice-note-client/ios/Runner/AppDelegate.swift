@@ -12,5 +12,9 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    // Register native audio channels on implicit engine path.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NativeAudioPlugin") {
+      NativeAudioPlugin.register(with: registrar)
+    }
   }
 }

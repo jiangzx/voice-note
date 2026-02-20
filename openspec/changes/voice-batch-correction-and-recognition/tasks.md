@@ -67,7 +67,7 @@
 
 ## 11. 客户端：确认卡片 UI 升级
 
-- [x] 11.1 创建 `BatchConfirmationCard` widget 主体结构：Header（source badge + pending count badge）、可滚动 item 列表、Summary bar（合计金额）、Action bar（全部确认/全部取消）。≤3 笔不滚动，4+ 笔列表区域固定高度可滚动。目标文件：`voice-note-client/lib/features/voice/presentation/widgets/batch_confirmation_card.dart`
+- [x] 11.1 创建 `BatchConfirmationCard` widget 主体结构：Header（source badge + pending count badge）、可滚动 item 列表、Summary bar（合计金额）、Action bar（全部确认/取消）。≤3 笔不滚动，4+ 笔列表区域固定高度可滚动。目标文件：`voice-note-client/lib/features/voice/presentation/widgets/batch_confirmation_card.dart`
 - [x] 11.2 实现 `_BatchItemRow` widget：序号 + 类型 Chip + 金额 + 分类 + 描述。状态可视化：pending（透明）、confirmed（primaryContainer + ✓）、cancelled（errorContainer + 删除线 + 半透明）。状态变化动画（背景渐变 + 图标 scale-in，250ms）。目标文件：同上
 - [x] 11.3 实现 Swipe 手势：左滑取消（errorContainer 背景 + 垃圾桶图标）、右滑确认（primaryContainer + ✓）。触发阈值 25% 行宽。已处理行禁用滑动。HapticFeedback 反馈。目标文件：同上
 - [x] 11.4 实现纠正更新动画：变化字段黄色 highlight 闪烁（200ms → 消退 300ms）+ AnimatedSwitcher。实现新笔追加动画：底部 slide-in 250ms。实现全部确认动画：stagger 50ms 逐行确认 → 卡片 fade-out。目标文件：同上

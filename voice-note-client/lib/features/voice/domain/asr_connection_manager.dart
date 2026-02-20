@@ -6,15 +6,16 @@ import 'package:flutter/foundation.dart';
 
 import '../data/asr_repository.dart';
 import '../data/asr_websocket_service.dart';
-import '../data/audio_capture_service.dart';
 
-/// Manages ASR WebSocket connection lifecycle, audio streaming, and
-/// automatic reconnection with exponential backoff.
+/// Manages ASR WebSocket connection lifecycle and automatic reconnection
+/// with exponential backoff.
+///
+/// Note: Audio streaming is now handled by native layer. This manager
+/// only handles WebSocket connection and text events.
 class AsrConnectionManager {
   final AsrRepository _asrRepository;
 
   AsrWebSocketService? _asrService;
-  AudioCaptureService? _audioCapture;
 
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   bool _isConnecting = false;
@@ -41,18 +42,15 @@ class AsrConnectionManager {
   /// Inject shared services (lazily created, not owned by this manager).
   void configure({
     AsrWebSocketService? asrService,
-    AudioCaptureService? audioCapture,
   }) {
     _asrService = asrService;
-    _audioCapture = audioCapture;
   }
 
-  /// Connect ASR WebSocket, send pre-buffer, and stream live audio.
+  /// Connect ASR WebSocket and subscribe to text events.
   /// Returns true on success, false on failure or guard conditions.
   ///
-  /// [capturedPreBuffer] — audio chunks captured before this call (e.g.,
-  /// captured immediately on speech detection to avoid ring-buffer eviction
-  /// during async connection setup). If null, drains ring buffer at call time.
+  /// Note: Audio streaming is handled by native layer, so this method
+  /// only establishes the WebSocket connection for receiving text results.
   Future<bool> connectAndStream({List<Uint8List>? capturedPreBuffer}) async {
     if (_isConnecting) {
       if (kDebugMode) debugPrint('[ASRFlow] Already connecting, skipping');
@@ -98,32 +96,10 @@ class AsrConnectionManager {
       _subscribeToEvents();
       _reconnectAttempts = 0;
 
-      // Use caller-captured pre-buffer (preferred: captured immediately at
-      // speech detection to prevent ring-buffer eviction during async setup).
-      // Fall back to draining now if no pre-buffer was provided.
-      final preBuffer =
-          capturedPreBuffer ?? _audioCapture?.drainPreBuffer() ?? [];
+      // Audio streaming is now handled by native layer, so we only need
+      // to establish the WebSocket connection for receiving text results.
       if (kDebugMode) {
-        debugPrint(
-          '[ASRFlow] Step 5: Sending ${preBuffer.length} pre-buffer chunks'
-          '${capturedPreBuffer != null ? " (pre-captured)" : ""}',
-        );
-      }
-      for (final chunk in preBuffer) {
-        asr.sendAudio(chunk);
-      }
-
-      final audioStream = _audioCapture?.audioStream;
-      if (audioStream != null) {
-        if (kDebugMode) {
-          debugPrint('[ASRFlow] Step 6: Streaming live audio to ASR');
-        }
-        _subscriptions.add(audioStream.listen((data) => asr.sendAudio(data)));
-      } else {
-        if (kDebugMode) debugPrint('[ASRFlow] WARNING: audioStream is null!');
-      }
-      if (kDebugMode) {
-        debugPrint('[ASRFlow] ASR connection complete, waiting for events...');
+        debugPrint('[ASRFlow] ASR connection complete, waiting for text events...');
       }
       return true;
     } catch (e) {
