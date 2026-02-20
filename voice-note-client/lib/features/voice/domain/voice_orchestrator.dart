@@ -512,17 +512,44 @@ class VoiceOrchestrator {
     }
 
     _nativeAudioSub ??= native.events.listen(_onNativeAudioEvent);
-    await native.initializeSession(
+    final initResult = await native.initializeSession(
       sessionId: nativeSessionId,
       mode: mode.name,
       platformConfig: <String, Object?>{
         'enableNativeCapture': true,
       },
     );
+    final ok = initResult['ok'] as bool? ?? false;
+    if (!ok) {
+      final error = initResult['error'] as String? ?? 'unknown_error';
+      final message = initResult['message'] as String? ?? error;
+      if (kDebugMode) {
+        debugPrint(
+          '[VoiceInit] initializeSession failed: error=$error message=$message',
+        );
+      }
+      throw StateError('native_audio_init_failed: $error - $message');
+    }
+    if (kDebugMode) {
+      debugPrint('[VoiceInit] initializeSession ok');
+    }
+
     await native.switchInputMode(
       sessionId: nativeSessionId,
       mode: mode.name,
     );
+
+    final status = await native.getDuplexStatus(nativeSessionId);
+    final captureActive = status['captureActive'] as bool? ?? false;
+    if (!captureActive) {
+      if (kDebugMode) {
+        debugPrint('[VoiceInit] getDuplexStatus: captureActive=false');
+      }
+      throw StateError('capture_not_active_after_init');
+    }
+    if (kDebugMode) {
+      debugPrint('[VoiceInit] Capture verified active: $captureActive');
+    }
   }
 
   void _onNativeAudioEvent(NativeAudioEvent event) {

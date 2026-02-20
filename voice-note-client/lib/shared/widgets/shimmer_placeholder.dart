@@ -81,7 +81,11 @@ class ShimmerPlaceholder extends StatelessWidget {
 
   /// Multiple list items as a loading list placeholder.
   static Widget listPlaceholder({int itemCount = 5}) {
-    return Column(children: List.generate(itemCount, (_) => listItem()));
+    return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: List.generate(itemCount, (_) => listItem()),
+    );
   }
 
   /// Card + list combo for home screen loading.

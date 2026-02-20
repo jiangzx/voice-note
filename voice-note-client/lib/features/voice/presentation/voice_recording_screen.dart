@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -59,15 +61,25 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
 
     final status = await _permissionService.checkMicrophonePermission();
     if (!status.isGranted) {
-      // Permission not granted, show dialog and exit
       if (mounted) {
         _showPermissionRequiredDialog();
       }
       return;
     }
 
-    // Permission granted, start session
-    ref.read(voiceSessionProvider.notifier).startSession();
+    // iOS: brief delay and recheck so permission state is stable before native capture
+    if (Platform.isIOS) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      final recheck =
+          await _permissionService.checkMicrophonePermission();
+      if (!recheck.isGranted && mounted) {
+        _showPermissionRequiredDialog();
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    await ref.read(voiceSessionProvider.notifier).startSession();
   }
 
   void _showPermissionRequiredDialog() {
@@ -234,6 +246,20 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
             icon: const Icon(Icons.arrow_back),
             onPressed: _exitScreen,
           ),
+          actions: [
+            if (voiceState == VoiceState.listening ||
+                voiceState == VoiceState.recognizing)
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.md),
+                child: Center(
+                  child: Icon(
+                    Icons.mic_rounded,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+          ],
         ),
         body: Stack(
           children: [

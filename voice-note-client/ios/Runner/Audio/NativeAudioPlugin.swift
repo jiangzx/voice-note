@@ -20,7 +20,12 @@ final class NativeAudioPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     // Keep envelope shape identical to Android.
     if envelope["requestId"] == nil { envelope["requestId"] = NSNull() }
     if envelope["error"] == nil { envelope["error"] = NSNull() }
-    sink(envelope)
+    // Flutter requires platform channel messages on the platform (main) thread.
+    if Thread.isMainThread {
+      sink(envelope)
+    } else {
+      DispatchQueue.main.async { sink(envelope) }
+    }
   }
 
   static func register(with registrar: FlutterPluginRegistrar) {

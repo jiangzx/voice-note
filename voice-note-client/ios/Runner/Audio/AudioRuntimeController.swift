@@ -84,29 +84,54 @@ final class AudioRuntimeController {
     sessionId = sid
     mode = args["mode"] as? String ?? mode
 
-    // Configure once; activate when session enters runtime.
-    do {
-      try configureAudioSession()
-      try AVAudioSession.sharedInstance().setActive(true)
-      try captureRuntime.start()
-      focusRouteManager.startObserving()
-      initialized = true
-      focusState = "gain"
-      route = currentRoute()
-      emit(
-        "runtimeInitialized",
-        requestId: nil,
-        data: ["focusState": focusState, "route": route]
-      )
-      return [
-        "ok": true,
-        "runtimeState": "ready",
-        "capabilities": ["asr_gate", "tts_lifecycle", "lifecycle_snapshot"]
-      ]
-    } catch {
-      emitRuntimeError(code: "ios_init_failed", message: "\(error)")
-      return ["ok": false, "error": "ios_init_failed"]
+    // Apple: AVAudioSession setActive/category must run on main thread so the system
+    // correctly shows the recording indicator and grants mic access.
+    func doInit() -> [String: Any] {
+      let onMain = Thread.isMainThread
+      print("[iOS Audio] initializeSession doInit onMainThread=\(onMain)")
+      do {
+        print("[iOS Audio] configureAudioSession()...")
+        try configureAudioSession()
+        print("[iOS Audio] configureAudioSession() OK")
+        print("[iOS Audio] setActive(true)...")
+        try AVAudioSession.sharedInstance().setActive(true)
+        print("[iOS Audio] setActive(true) OK")
+        print("[iOS Audio] captureRuntime.start()...")
+        try captureRuntime.start()
+        print("[iOS Audio] captureRuntime.start() OK")
+        focusRouteManager.startObserving()
+        initialized = true
+        focusState = "gain"
+        route = currentRoute()
+        emit(
+          "runtimeInitialized",
+          requestId: nil,
+          data: ["focusState": focusState, "route": route]
+        )
+        return [
+          "ok": true,
+          "runtimeState": "ready",
+          "capabilities": ["asr_gate", "tts_lifecycle", "lifecycle_snapshot"]
+        ]
+      } catch {
+        let errorMsg = "\(error)"
+        print("[iOS Audio] initializeSession FAILED: \(errorMsg)")
+        let errorCode: String
+        if errorMsg.contains("category") || errorMsg.contains("AVAudioSession") {
+          errorCode = "audio_session_config_failed"
+        } else if errorMsg.contains("capture") || errorMsg.contains("engine") {
+          errorCode = "capture_start_failed"
+        } else {
+          errorCode = "ios_init_failed"
+        }
+        emitRuntimeError(code: errorCode, message: errorMsg)
+        return ["ok": false, "error": errorCode, "message": errorMsg]
+      }
     }
+    if Thread.isMainThread {
+      return doInit()
+    }
+    return DispatchQueue.main.sync(execute: doInit)
   }
 
   func disposeSession(args: [String: Any]) -> [String: Any] {
@@ -262,12 +287,17 @@ final class AudioRuntimeController {
       )
     case "auto":
       // 如果之前是 keyboard 或 pushToTalk 模式，captureRuntime 可能已停止
-      // 需要确保 captureRuntime 运行（auto 模式需要持续监听）
-      if !captureRuntime.isRunning() {
+      let captureWasRunning = captureRuntime.isRunning()
+      print("[iOS Audio] switchInputMode(auto) captureRuntime.isRunning()=\(captureWasRunning)")
+      if !captureWasRunning {
         do {
           try captureRuntime.start()
+          print("[iOS Audio] switchInputMode(auto) captureRuntime.start() OK")
         } catch {
-          // 如果启动失败，记录错误但不阻止模式切换
+          let errMsg = "\(error)"
+          print("[iOS Audio] switchInputMode(auto) captureRuntime.start() FAILED: \(errMsg)")
+          emitRuntimeError(code: "capture_start_failed_in_switch_mode", message: errMsg)
+          return ["ok": false, "error": "capture_start_failed", "message": errMsg, "mode": mode]
         }
       }
       // 启用自动 VAD
@@ -294,10 +324,14 @@ final class AudioRuntimeController {
   }
 
   func startCapture(args: [String: Any]) -> [String: Any] {
-    if !captureRuntime.isRunning() {
+    let wasRunning = captureRuntime.isRunning()
+    print("[iOS Audio] startCapture() isRunning=\(wasRunning)")
+    if !wasRunning {
       do {
         try captureRuntime.start()
+        print("[iOS Audio] startCapture() start() OK")
       } catch {
+        print("[iOS Audio] startCapture() start() FAILED: \(error)")
         return ["ok": false, "error": "capture_start_failed"]
       }
     }
@@ -380,11 +414,14 @@ final class AudioRuntimeController {
       }
     }
 
-    captureRuntime.onAudioFrame = { [weak self] frame, _ in
+    captureRuntime.onAudioFrame = { [weak self] frame, muted in
       // Runtime tap feeds detector continuously; detector only fires during TTS.
       guard let self = self else { return }
       self.bargeInDetector.onFrame(frame, ttsPlaying: self.ttsPlaying)
-      self.asrTransport.sendAudioFrame(frame)
+      // When muted (e.g. TTS playing), do not send to ASR to avoid recording speaker output.
+      if !muted {
+        self.asrTransport.sendAudioFrame(frame)
+      }
     }
   }
 

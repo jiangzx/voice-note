@@ -129,56 +129,59 @@ class _StepPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: theme.colorScheme.primaryContainer,
-          ),
-          child: Icon(
-            step.icon,
-            size: 36,
-            color: theme.colorScheme.onPrimaryContainer,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Text(
-          step.title,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          step.description,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            height: 1.6,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs,
-          ),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.5),
-            borderRadius: AppRadius.xlAll,
-          ),
-          child: Text(
-            step.hint,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onTertiaryContainer,
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.colorScheme.primaryContainer,
+            ),
+            child: Icon(
+              step.icon,
+              size: 36,
+              color: theme.colorScheme.onPrimaryContainer,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            step.title,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            step.description,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.6,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.5),
+              borderRadius: AppRadius.xlAll,
+            ),
+            child: Text(
+              step.hint,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onTertiaryContainer,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
