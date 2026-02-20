@@ -11,12 +11,12 @@
 		2A5A10013B20AA1100AB0101 /* NativeAudioPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5A10003B20AA1100AB0101 /* NativeAudioPlugin.swift */; };
 		2A5A10033B20AA2200AB0101 /* AudioRuntimeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5A10023B20AA2200AB0101 /* AudioRuntimeController.swift */; };
 		2A5A10053B20AA3300AB0101 /* AsrCaptureRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5A10043B20AA3300AB0101 /* AsrCaptureRuntime.swift */; };
-		2A5A10123B20AAB100AB0101 /* AsrNativeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5A10113B20AAB100AB0101 /* AsrNativeTransport.swift */; };
 		2A5A10073B20AA4400AB0101 /* NativeTtsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5A10063B20AA4400AB0101 /* NativeTtsController.swift */; };
 		2A5A10093B20AA5500AB0101 /* BargeInDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5A10083B20AA5500AB0101 /* BargeInDetector.swift */; };
 		2A5A100B3B20AA6600AB0101 /* FocusRouteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5A100A3B20AA6600AB0101 /* FocusRouteManager.swift */; };
 		2A5A100D3B20AA7700AB0101 /* AudioRuntimeControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5A100C3B20AA7700AB0101 /* AudioRuntimeControllerTests.swift */; };
 		2A5A100F3B20AA9900AB0101 /* ErrorMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5A10103B20AA9900AB0101 /* ErrorMapper.swift */; };
+		2A5A10123B20AAB100AB0101 /* AsrNativeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5A10113B20AAB100AB0101 /* AsrNativeTransport.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
@@ -58,12 +58,12 @@
 		2A5A10003B20AA1100AB0101 /* NativeAudioPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAudioPlugin.swift; sourceTree = "<group>"; };
 		2A5A10023B20AA2200AB0101 /* AudioRuntimeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRuntimeController.swift; sourceTree = "<group>"; };
 		2A5A10043B20AA3300AB0101 /* AsrCaptureRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsrCaptureRuntime.swift; sourceTree = "<group>"; };
-		2A5A10113B20AAB100AB0101 /* AsrNativeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsrNativeTransport.swift; sourceTree = "<group>"; };
 		2A5A10063B20AA4400AB0101 /* NativeTtsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTtsController.swift; sourceTree = "<group>"; };
 		2A5A10083B20AA5500AB0101 /* BargeInDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BargeInDetector.swift; sourceTree = "<group>"; };
 		2A5A100A3B20AA6600AB0101 /* FocusRouteManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusRouteManager.swift; sourceTree = "<group>"; };
 		2A5A100C3B20AA7700AB0101 /* AudioRuntimeControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRuntimeControllerTests.swift; sourceTree = "<group>"; };
 		2A5A10103B20AA9900AB0101 /* ErrorMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorMapper.swift; sourceTree = "<group>"; };
+		2A5A10113B20AAB100AB0101 /* AsrNativeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsrNativeTransport.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
@@ -236,6 +236,7 @@
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				8AFCE4B343F763096F4473A3 /* [CP] Embed Pods Frameworks */,
+				0C422C82749C4AFAF589CB05 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -307,6 +308,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		0C422C82749C4AFAF589CB05 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		2ED515F6B9083C2656358661 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
