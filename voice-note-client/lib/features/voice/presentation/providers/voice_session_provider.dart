@@ -460,6 +460,22 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   void onBatchSaved(List<DraftTransaction> confirmedItems) {
     if (!_sessionActive) return;
     _saveBatch(confirmedItems);
+    // 显示成功提示
+    if (confirmedItems.length == 1) {
+      final result = confirmedItems.first.result;
+      HapticFeedback.heavyImpact();
+      _addAssistantMessage(
+        '已记录 ¥${result.amount?.toStringAsFixed(2) ?? "--"}'
+        '${result.category != null ? " · ${result.category}" : ""}',
+        type: ChatMessageType.success,
+      );
+    } else if (confirmedItems.length > 1) {
+      HapticFeedback.heavyImpact();
+      _addAssistantMessage(
+        '已记录 ${confirmedItems.length} 笔交易',
+        type: ChatMessageType.success,
+      );
+    }
   }
 
   Future<void> _saveBatch(List<DraftTransaction> items) async {
@@ -480,7 +496,17 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   @override
   void onConfirmTransaction() {
     if (!_sessionActive) return;
+    // 如果是单笔确认且还没有显示消息，显示成功提示
     // Batch saving is handled by onBatchSaved; this is a UI-only notification.
+    final result = state.parseResult;
+    if (result != null && state.draftBatch == null) {
+      HapticFeedback.heavyImpact();
+      _addAssistantMessage(
+        '已记录 ¥${result.amount?.toStringAsFixed(2) ?? "--"}'
+        '${result.category != null ? " · ${result.category}" : ""}',
+        type: ChatMessageType.success,
+      );
+    }
     state = state.copyWith(
       voiceState: VoiceState.listening,
       clearParseResult: true,

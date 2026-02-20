@@ -129,7 +129,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
           Expanded(child: _buildList(groupsAsync)),
         ],
       ),
-      bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar() : null,
+      bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar(groupsAsync) : null,
     );
   }
 
@@ -187,8 +187,24 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     );
   }
 
-  Widget? _buildSelectionBottomBar() {
+  Widget? _buildSelectionBottomBar(AsyncValue<List<DailyTransactionGroup>> groupsAsync) {
     final count = _selectedIds.length;
+    
+    // 计算总数量以判断是否全选
+    int totalCount = groupsAsync.maybeWhen(
+      data: (groups) {
+        final filtered = _applyClientFilters(groups);
+        var total = 0;
+        for (final group in filtered) {
+          total += group.transactions.length;
+        }
+        return total;
+      },
+      orElse: () => 0,
+    );
+    
+    final allSelected = totalCount > 0 && count == totalCount;
+    
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
@@ -207,18 +223,49 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       child: SafeArea(
         child: Row(
           children: [
+            // 全选复选框
+            InkWell(
+              onTap: _toggleSelectAll,
+              borderRadius: AppRadius.mdAll,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xs,
+                  vertical: AppSpacing.xs,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(
+                      value: allSelected,
+                      onChanged: (_) => _toggleSelectAll(),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      '全选',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            // 已选择数量
             Text(
               '已选择 $count 项',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const Spacer(),
-            FilledButton.icon(
-              onPressed: count > 0 ? _handleBatchDelete : null,
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('删除'),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
-                foregroundColor: Theme.of(context).colorScheme.onError,
+            // 删除按钮，添加右侧padding避免FAB遮挡
+            Padding(
+              padding: const EdgeInsets.only(right: 88), // FAB宽度56 + 间距32
+              child: FilledButton.icon(
+                onPressed: count > 0 ? _handleBatchDelete : null,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('删除'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
               ),
             ),
           ],

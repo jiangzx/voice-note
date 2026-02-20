@@ -1012,7 +1012,30 @@ class VoiceOrchestrator {
       return;
     }
 
-    final pendingItems = batch.pendingItems;
+    // Check if all items are resolved but user wants to correct confirmed items
+    final allResolved = batch.allResolved;
+    final hasConfirmed = batch.confirmedItems.isNotEmpty;
+    final intent = _correctionHandler.classify(text);
+
+    if (allResolved && hasConfirmed && intent == CorrectionIntent.correction) {
+      // User wants to correct confirmed items, reset them to pending
+      final resetBatch = DraftBatch(
+        items: batch.items.map((item) {
+          if (item.status == DraftStatus.confirmed) {
+            return item.copyWith(status: DraftStatus.pending);
+          }
+          return item;
+        }).toList(),
+        createdAt: batch.createdAt,
+      );
+      _draftBatch = resetBatch;
+      // Ensure state remains confirming to show card
+      _currentState = VoiceState.confirming;
+      _delegate.onDraftBatchUpdated(_draftBatch!);
+      // Continue with correction logic below
+    }
+
+    final pendingItems = _draftBatch!.pendingItems;
     if (pendingItems.isEmpty) {
       // All items resolved, treat as new input
       await _parseAndDeliver(text);
@@ -1046,6 +1069,11 @@ class VoiceOrchestrator {
       switch (response.intent) {
         case dto.CorrectionIntent.correction:
           _applyCorrectionsToBatch(response, indexMap);
+          // Ensure state remains confirming after correction to show card
+          if (_currentState != VoiceState.confirming) {
+            _currentState = VoiceState.confirming;
+            _delegate.onStateChanged(VoiceState.confirming);
+          }
           await _speakWithSuppression(TtsTemplates.correctionConfirm());
 
         case dto.CorrectionIntent.confirm:
