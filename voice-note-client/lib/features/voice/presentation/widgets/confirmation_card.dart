@@ -403,16 +403,26 @@ class _FieldRow extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: Text(
-                  value,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  style: isMissing
-                      ? theme.textTheme.bodyMedium?.copyWith(
-                          color: valueColor,
-                          fontStyle: FontStyle.italic,
-                        )
-                      : theme.textTheme.bodyMedium?.copyWith(color: valueColor),
+                child: Row(
+                  children: [
+                    const Spacer(),
+                    Flexible(
+                      child: Text(
+                        value,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        textAlign: TextAlign.end,
+                        style: isMissing
+                            ? theme.textTheme.bodyMedium?.copyWith(
+                                color: valueColor,
+                                fontStyle: FontStyle.italic,
+                              )
+                            : theme.textTheme.bodyMedium?.copyWith(
+                                color: valueColor,
+                              ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
