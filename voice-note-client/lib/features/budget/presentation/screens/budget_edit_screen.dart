@@ -80,31 +80,16 @@ class _BudgetEditScreenState extends ConsumerState<BudgetEditScreen> {
     final categoriesAsync = ref.watch(visibleCategoriesProvider('expense'));
     final amountsAsync = ref.watch(currentMonthBudgetAmountsProvider);
 
+    final canSave = categoriesAsync.hasValue && amountsAsync.hasValue;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('编辑预算'),
-        actions: [
-          TextButton(
-            onPressed: (categoriesAsync.hasValue && amountsAsync.hasValue)
-                ? () async {
-                    final cats = categoriesAsync.value;
-                    final amounts = amountsAsync.value;
-                    if (cats == null || amounts == null) return;
-                    if (!_controllersInitialized) {
-                      _initControllers(cats, amounts);
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) _save();
-                      });
-                      return;
-                    }
-                    await _save();
-                  }
-                : null,
-            child: const Text('保存'),
-          ),
-        ],
       ),
-      body: categoriesAsync.when(
+      body: Column(
+        children: [
+          Expanded(
+            child: categoriesAsync.when(
         data: (categories) {
           if (categories.isEmpty) {
             return const Center(
@@ -150,6 +135,59 @@ class _BudgetEditScreenState extends ConsumerState<BudgetEditScreen> {
         error: (e, st) => ErrorStateWidget(
           message: '加载分类失败: $e',
           onRetry: () => ref.invalidate(visibleCategoriesProvider('expense')),
+        ),
+            ),
+          ),
+          _buildBottomSaveBar(canSave),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomSaveBar(bool canSave) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: canSave
+                ? () async {
+                    final cats = await ref.read(
+                      visibleCategoriesProvider('expense').future,
+                    );
+                    final amounts = await ref.read(
+                      currentMonthBudgetAmountsProvider.future,
+                    );
+                    if (!_controllersInitialized) {
+                      _initControllers(cats, amounts);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) _save();
+                      });
+                      return;
+                    }
+                    await _save();
+                  }
+                : null,
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            ),
+            child: const Text('保存'),
+          ),
         ),
       ),
     );

@@ -4,6 +4,60 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/design_tokens.dart';
 import '../../features/transaction/presentation/screens/transaction_form_screen.dart';
+import 'animated_voice_fab.dart';
+
+/// Custom FAB location for transaction page to avoid overlapping with bottom action bar.
+/// 
+/// Positions the FAB column so that the bottom edge of the "+" FAB aligns with
+/// the top border line of the bottom action bar (delete button bar).
+class _TransactionPageFabLocation extends FloatingActionButtonLocation {
+  const _TransactionPageFabLocation();
+
+  // FAB尺寸和间距常量
+  static const double _fabHeight = 56.0;
+  static const double _fabWidth = 56.0;
+  static const double _fabSpacing = 8.0; // AppSpacing.sm
+  
+  // 底部导航栏和操作栏高度常量
+  static const double _bottomNavBarHeight = 80.0; // NavigationBar高度（约80px，包含SafeArea）
+  static const double _actionBarHeight = 100.0; // 操作栏高度（padding 24px + SafeArea 20-30px + 内容48px）
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    // X坐标：右侧对齐，考虑SafeArea和边距
+    final double endX = scaffoldGeometry.scaffoldSize.width -
+        scaffoldGeometry.minInsets.right -
+        kFloatingActionButtonMargin -
+        _fabWidth;
+
+    // Y坐标计算：
+    // contentBottom是AppShell底部导航栏的顶部位置
+    // 操作栏显示在TransactionListScreen的Scaffold中，位于底部导航栏上方
+    // 需要减去底部导航栏高度和操作栏高度，得到操作栏顶部位置（border线位置）
+    final double borderLineY = scaffoldGeometry.contentBottom - 
+        _bottomNavBarHeight - 
+        _actionBarHeight;
+
+    // FAB Column结构：语音FAB + 间距 + +号FAB
+    // 目标：+号FAB底部对齐到border线
+    // 
+    // 计算步骤：
+    // 1. +号FAB底部Y = borderLineY
+    // 2. +号FAB顶部Y = borderLineY - _fabHeight
+    // 3. 语音FAB底部Y = +号FAB顶部Y - _fabSpacing
+    // 4. Column顶部Y = 语音FAB底部Y - _fabHeight
+    final double plusFabBottomY = borderLineY;
+    final double plusFabTopY = plusFabBottomY - _fabHeight;
+    final double voiceFabBottomY = plusFabTopY - _fabSpacing;
+    final double columnTopY = voiceFabBottomY - _fabHeight;
+    final double endY = columnTopY;
+
+    return Offset(endX, endY);
+  }
+
+  @override
+  String toString() => 'FloatingActionButtonLocation.transactionPage';
+}
 
 /// Shell widget providing bottom navigation and FAB with container transform.
 class AppShell extends StatelessWidget {
@@ -26,6 +80,8 @@ class AppShell extends StatelessWidget {
     final index = _currentIndex(context);
     final showFab = index < 3;
     final theme = Theme.of(context);
+    final location = GoRouterState.of(context).uri.path;
+    final isTransactionPage = location.startsWith('/transactions');
 
     return Scaffold(
       body: child,
@@ -33,16 +89,8 @@ class AppShell extends StatelessWidget {
           ? Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Voice recording FAB
-                FloatingActionButton.small(
-                  heroTag: 'voice_fab',
-                  onPressed: () => context.push('/voice-recording'),
-                  backgroundColor: theme.colorScheme.tertiaryContainer,
-                  child: Icon(
-                    Icons.mic_rounded,
-                    color: theme.colorScheme.onTertiaryContainer,
-                  ),
-                ),
+                // Voice recording FAB with animation
+                const AnimatedVoiceFab(),
                 const SizedBox(height: AppSpacing.sm),
                 // Manual entry FAB
                 OpenContainer<void>(
@@ -69,6 +117,9 @@ class AppShell extends StatelessWidget {
               ],
             )
           : null,
+      floatingActionButtonLocation: isTransactionPage
+          ? const _TransactionPageFabLocation()
+          : FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
         onDestinationSelected: (i) => context.go(_tabs[i]),

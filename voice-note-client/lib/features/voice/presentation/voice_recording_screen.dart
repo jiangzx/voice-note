@@ -141,7 +141,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
         appBar: AppBar(
           title: const Text('语音记账'),
           leading: IconButton(
-            icon: const Icon(Icons.close_rounded),
+            icon: const Icon(Icons.arrow_back),
             onPressed: _exitScreen,
           ),
         ),

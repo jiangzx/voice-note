@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/design_tokens.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
@@ -50,6 +51,9 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   // Selection mode state
   bool _isSelectionMode = false;
   final Set<String> _selectedIds = <String>{};
+  bool _deleteHintShown = false;
+
+  static const _keyDeleteHintShown = 'transaction_list_delete_hint_shown';
 
   @override
   void initState() {
@@ -62,6 +66,48 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
         _datePreset = DateRangePreset.custom;
       }
     }
+    _checkAndShowDeleteHint();
+  }
+
+  Future<void> _checkAndShowDeleteHint() async {
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool(_keyDeleteHintShown) ?? false;
+    if (!shown && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_deleteHintShown) {
+          _showDeleteHint();
+        }
+      });
+    }
+  }
+
+  void _showDeleteHint() {
+    if (_deleteHintShown) return;
+    _deleteHintShown = true;
+
+    final theme = Theme.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              Icons.info_outline,
+              color: theme.colorScheme.onSurface,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            const Expanded(
+              child: Text('长按项目可进入批量操作模式'),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setBool(_keyDeleteHintShown, true);
+    });
   }
 
   void _showExportSheet(
@@ -95,6 +141,14 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
 
     return Scaffold(
       appBar: _isSelectionMode ? _buildSelectionAppBar() : _buildNormalAppBar(hasRouteFilter, range),
+      floatingActionButton: _isSelectionMode
+          ? FloatingActionButton(
+              onPressed: null,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: const SizedBox.shrink(),
+            )
+          : null, // 多选模式下使用透明FAB覆盖AppShell的FAB，非多选模式下使用AppShell的FAB
       body: Column(
         children: [
           if (hasRouteFilter)
@@ -204,6 +258,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     );
     
     final allSelected = totalCount > 0 && count == totalCount;
+    final theme = Theme.of(context);
     
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -211,10 +266,10 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
         vertical: AppSpacing.md,
       ),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: theme.colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
+            color: theme.colorScheme.shadow.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, -2),
           ),
@@ -223,7 +278,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       child: SafeArea(
         child: Row(
           children: [
-            // 全选复选框
+            // 左侧：全选复选框
             InkWell(
               onTap: _toggleSelectAll,
               borderRadius: AppRadius.mdAll,
@@ -242,36 +297,39 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                     const SizedBox(width: AppSpacing.xs),
                     Text(
                       '全选',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: theme.textTheme.titleMedium,
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(width: AppSpacing.md),
-            // 已选择数量
-            Text(
-              '已选择 $count 项',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
             const Spacer(),
-            // 删除按钮，添加右侧padding避免FAB遮挡
-            Padding(
-              padding: const EdgeInsets.only(right: 88), // FAB宽度56 + 间距32
-              child: FilledButton.icon(
-                onPressed: count > 0 ? _handleBatchDelete : null,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('删除'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  foregroundColor: Theme.of(context).colorScheme.onError,
-                ),
+            // 右侧：操作按钮组
+            TextButton(
+              onPressed: _exitSelectionMode,
+              child: const Text('取消'),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            FilledButton.icon(
+              onPressed: count > 0 ? _handleBatchDelete : null,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('删除'),
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.error,
+                foregroundColor: theme.colorScheme.onError,
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedIds.clear();
+    });
   }
 
   void _toggleSelectAll() {

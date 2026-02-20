@@ -81,15 +81,12 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         ? 'income'
         : 'expense';
 
+    final canSave = _amountController.toDouble() > 0 &&
+        (isTransfer || formState.categoryId != null);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? '编辑交易' : '记一笔'),
-        actions: [
-          TextButton(
-            onPressed: () => _save(formState),
-            child: const Text('保存'),
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -187,6 +184,8 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
               setState(() {});
             },
           ),
+          // Bottom save button bar
+          _buildBottomSaveBar(canSave, formState),
         ],
       ),
     );
@@ -366,6 +365,38 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
 
     if (!mounted) return;
     context.pop();
+  }
+
+  Widget _buildBottomSaveBar(bool canSave, TransactionFormState formState) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: canSave ? () => _save(formState) : null,
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            ),
+            child: const Text('保存'),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showError(String message) {

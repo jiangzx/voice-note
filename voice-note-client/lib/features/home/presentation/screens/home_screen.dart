@@ -13,6 +13,8 @@ import '../../../transaction/domain/entities/transaction_entity.dart';
 import '../../../transaction/presentation/providers/transaction_query_providers.dart';
 import '../widgets/recent_transaction_tile.dart';
 import '../widgets/summary_card.dart';
+import '../widgets/voice_feature_card.dart';
+import '../widgets/voice_onboarding_tooltip.dart';
 
 /// Home screen showing monthly summary and recent transactions.
 class HomeScreen extends ConsumerWidget {
@@ -28,8 +30,13 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('随口记')),
-      body: ListView(
+      body: Stack(
         children: [
+          ListView(
+        children: [
+          // Voice feature promotion card
+          const VoiceFeatureCard(),
+
           // Monthly summary card
           summaryAsync.when(
             data: (summary) => SummaryCard(
@@ -86,6 +93,9 @@ class HomeScreen extends ConsumerWidget {
               onRetry: () => ref.invalidate(recentTransactionsProvider),
             ),
           ),
+        ],
+      ),
+          const VoiceOnboardingTooltip(),
         ],
       ),
     );
