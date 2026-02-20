@@ -147,7 +147,7 @@ class VoiceOrchestrator {
       );
 
       if (kDebugMode) debugPrint('[VoiceInit] Step 1/4: Starting audio capture...');
-      await _audioCapture!.start();
+      await _audioCapture!.start(preBufferMs: 1000);
 
       if (kDebugMode) debugPrint('[VoiceInit] Step 2/4: Subscribing to VAD events...');
       _subscribeToVadEvents();
@@ -420,6 +420,13 @@ class VoiceOrchestrator {
   Future<void> _onRealSpeechStart() async {
     if (kDebugMode) debugPrint('[VADFlow] >>> onRealSpeechStart — speech confirmed!');
 
+    // Capture ring-buffer snapshot IMMEDIATELY before any async work.
+    // The ring buffer holds only 500ms; token fetch + WebSocket connect can
+    // take 200-500ms, causing early speech audio to be evicted if we drain
+    // inside connectAndStream() instead.
+    final preBuffer = _audioCapture?.drainPreBuffer() ?? [];
+    if (kDebugMode) debugPrint('[VADFlow] Pre-buffer captured: ${preBuffer.length} chunks');
+
     if (_isTtsSpeaking) {
       if (kDebugMode) debugPrint('[VADFlow] Barge-in: stopping TTS');
       try {
@@ -434,7 +441,7 @@ class VoiceOrchestrator {
     _consecutiveMisfires = 0;
     _currentState = VoiceState.recognizing;
     _delegate.onSpeechDetected();
-    final ok = await _asrConnection.connectAndStream();
+    final ok = await _asrConnection.connectAndStream(capturedPreBuffer: preBuffer);
     if (!ok) _currentState = VoiceState.listening;
   }
 

@@ -34,7 +34,7 @@ class AsrConnectionManager {
   bool Function()? shouldReconnect;
 
   AsrConnectionManager({required AsrRepository asrRepository})
-      : _asrRepository = asrRepository;
+    : _asrRepository = asrRepository;
 
   bool get isConnecting => _isConnecting;
 
@@ -47,9 +47,13 @@ class AsrConnectionManager {
     _audioCapture = audioCapture;
   }
 
-  /// Connect ASR WebSocket, drain pre-buffer, and stream live audio.
+  /// Connect ASR WebSocket, send pre-buffer, and stream live audio.
   /// Returns true on success, false on failure or guard conditions.
-  Future<bool> connectAndStream() async {
+  ///
+  /// [capturedPreBuffer] — audio chunks captured before this call (e.g.,
+  /// captured immediately on speech detection to avoid ring-buffer eviction
+  /// during async connection setup). If null, drains ring buffer at call time.
+  Future<bool> connectAndStream({List<Uint8List>? capturedPreBuffer}) async {
     if (_isConnecting) {
       if (kDebugMode) debugPrint('[ASRFlow] Already connecting, skipping');
       return false;
@@ -94,10 +98,15 @@ class AsrConnectionManager {
       _subscribeToEvents();
       _reconnectAttempts = 0;
 
-      final preBuffer = _audioCapture?.drainPreBuffer() ?? [];
+      // Use caller-captured pre-buffer (preferred: captured immediately at
+      // speech detection to prevent ring-buffer eviction during async setup).
+      // Fall back to draining now if no pre-buffer was provided.
+      final preBuffer =
+          capturedPreBuffer ?? _audioCapture?.drainPreBuffer() ?? [];
       if (kDebugMode) {
         debugPrint(
-          '[ASRFlow] Step 5: Sending ${preBuffer.length} pre-buffer chunks',
+          '[ASRFlow] Step 5: Sending ${preBuffer.length} pre-buffer chunks'
+          '${capturedPreBuffer != null ? " (pre-captured)" : ""}',
         );
       }
       for (final chunk in preBuffer) {
@@ -109,9 +118,7 @@ class AsrConnectionManager {
         if (kDebugMode) {
           debugPrint('[ASRFlow] Step 6: Streaming live audio to ASR');
         }
-        _subscriptions.add(
-          audioStream.listen((data) => asr.sendAudio(data)),
-        );
+        _subscriptions.add(audioStream.listen((data) => asr.sendAudio(data)));
       } else {
         if (kDebugMode) debugPrint('[ASRFlow] WARNING: audioStream is null!');
       }
