@@ -14,6 +14,7 @@ import 'voice_correction_handler.dart' hide CorrectionIntent;
 /// fallback. When offline, LLM is skipped entirely.
 class NlpOrchestrator {
   static const _llmCorrectionTimeout = Duration(seconds: 3);
+  static const _llmParseTimeout = Duration(seconds: 120);
   static const _confidenceThreshold = 0.7;
 
   final LocalNlpEngine _localEngine;
@@ -58,7 +59,7 @@ class NlpOrchestrator {
         recentCategories: recentCategories,
         customCategories: customCategories,
         accounts: accounts,
-      );
+      ).timeout(_llmParseTimeout);
 
       if (llmResults.isEmpty) return [_localFallback(localResult)];
 

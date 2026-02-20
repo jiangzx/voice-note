@@ -220,7 +220,8 @@ final class AudioRuntimeController {
     guard let model = args["model"] as? String else {
       return ["ok": false, "error": "missing_model"]
     }
-    asrTransport.connect(token: token, wsUrl: wsUrl, model: model)
+    let useServerVad = (mode != "pushToTalk")
+    asrTransport.connect(token: token, wsUrl: wsUrl, model: model, useServerVad: useServerVad)
     do {
       try captureRuntime.start()
     } catch {
@@ -285,6 +286,9 @@ final class AudioRuntimeController {
           cooldownMs: bargeInConfig["cooldownMs"] as? Int ?? 300
         )
       )
+      if asrTransport.isConnected {
+        asrTransport.sendSessionUpdate(useServerVad: false)
+      }
     case "auto":
       // 如果之前是 keyboard 或 pushToTalk 模式，captureRuntime 可能已停止
       let captureWasRunning = captureRuntime.isRunning()
@@ -316,6 +320,9 @@ final class AudioRuntimeController {
           cooldownMs: bargeInConfig["cooldownMs"] as? Int ?? 300
         )
       )
+      if asrTransport.isConnected {
+        asrTransport.sendSessionUpdate(useServerVad: true)
+      }
     default:
       break
     }

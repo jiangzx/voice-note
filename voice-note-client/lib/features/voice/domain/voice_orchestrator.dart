@@ -89,6 +89,8 @@ class VoiceOrchestrator {
   static const Duration _pushStartDelay = Duration(milliseconds: 150);
   static const Duration _pushEndCommitDelay = Duration(milliseconds: 300);
   static const Duration _pushEndTimeout = Duration(seconds: 1);
+  static const Duration pushToTalkMaxHoldDuration = Duration(seconds: 60);
+  Timer? _pushToTalkAutoReleaseTimer;
 
   // Correction in-flight guard — blocks confirm/cancel during LLM request
   bool _isCorrecting = false;
@@ -244,6 +246,11 @@ class VoiceOrchestrator {
           if (kDebugMode) {
             debugPrint('[VoiceMode] Started capture and unmuted ASR for pushToTalk mode');
           }
+          _pushToTalkAutoReleaseTimer?.cancel();
+          _pushToTalkAutoReleaseTimer = Timer(pushToTalkMaxHoldDuration, () {
+            _pushToTalkAutoReleaseTimer = null;
+            pushEnd();
+          });
         } catch (e) {
           if (kDebugMode) {
             debugPrint('[VoiceMode] Failed to start capture/unmute ASR: $e');
@@ -255,6 +262,8 @@ class VoiceOrchestrator {
 
   /// End push-to-talk: commit audio and process result.
   Future<void> pushEnd() async {
+    _pushToTalkAutoReleaseTimer?.cancel();
+    _pushToTalkAutoReleaseTimer = null;
     // 强制使用原生音频路径
     final native = _nativeAudioGateway;
     final nativeSessionId = _nativeAudioSessionId;
@@ -426,6 +435,8 @@ class VoiceOrchestrator {
     _bargeInPending = false;
     _currentInputMode = null;
     _cancelInactivityTimer();
+    _pushToTalkAutoReleaseTimer?.cancel();
+    _pushToTalkAutoReleaseTimer = null;
     _asrConnection.cancelSubscriptions();
     await _nativeAudioSub?.cancel();
     _nativeAudioSub = null;
@@ -633,13 +644,12 @@ class VoiceOrchestrator {
         }
         return;
       }
-      // 按住模式：只有在 recognizing 状态下才处理，或者 pushEnd 正在等待
+      // 按住模式：仅当用户已松开（pushEnd 已调用）时才处理；中间停顿由 server_vad 触发的 final 忽略
       if (_currentInputMode == VoiceInputMode.pushToTalk &&
-          _currentState != VoiceState.recognizing &&
           !_isPushEndPending) {
         if (kDebugMode) {
           debugPrint(
-            '[ASRFlow] Ignore asrFinalText (pushToTalk mode, state: ${_currentState.name}, pushEndPending: $_isPushEndPending)',
+            '[ASRFlow] Ignore asrFinalText (pushToTalk mode, still holding, pushEndPending: $_isPushEndPending)',
           );
         }
         return;
@@ -825,6 +835,8 @@ class VoiceOrchestrator {
     _isPushEndPending = false;
     _pushEndCompleter?.completeError(StateError('Orchestrator disposed'));
     _pushEndCompleter = null;
+    _pushToTalkAutoReleaseTimer?.cancel();
+    _pushToTalkAutoReleaseTimer = null;
     await stopListening();
   }
 

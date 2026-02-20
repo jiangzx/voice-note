@@ -19,7 +19,7 @@ class AsrNativeTransport(
     private var socket: WebSocket? = null
     private val connected = AtomicBoolean(false)
 
-    fun connect(token: String, wsUrl: String, model: String) {
+    fun connect(token: String, wsUrl: String, model: String, useServerVad: Boolean = true) {
         disconnect()
         val url = "$wsUrl?model=$model"
         val request = Request.Builder()
@@ -30,7 +30,7 @@ class AsrNativeTransport(
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 connected.set(true)
-                webSocket.send(buildSessionUpdate().toString())
+                webSocket.send(buildSessionUpdate(useServerVad).toString())
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -77,14 +77,24 @@ class AsrNativeTransport(
 
     fun isConnected(): Boolean = connected.get()
 
-    private fun buildSessionUpdate(): JSONObject {
+    /** Send session.update (e.g. after mode switch). No-op if not connected. */
+    fun sendSessionUpdate(useServerVad: Boolean) {
+        if (!connected.get()) return
+        socket?.send(buildSessionUpdate(useServerVad).toString())
+    }
+
+    private fun buildSessionUpdate(useServerVad: Boolean): JSONObject {
         val session = JSONObject()
             .put("modalities", JSONArray().put("text"))
             .put("input_audio_format", "pcm")
             .put("sample_rate", 16000)
             .put("input_audio_transcription", JSONObject().put("language", "zh"))
-            // Server VAD lets native runtime stream continuously without Flutter VAD.
-            .put("turn_detection", JSONObject().put("type", "server_vad"))
+        if (useServerVad) {
+            session.put("turn_detection", JSONObject().put("type", "server_vad"))
+        } else {
+            // pushToTalk: only commit triggers final; no mid-speech VAD.
+            session.put("turn_detection", JSONObject.NULL)
+        }
         return JSONObject()
             .put("event_id", "evt_session_update_${System.currentTimeMillis()}")
             .put("type", "session.update")

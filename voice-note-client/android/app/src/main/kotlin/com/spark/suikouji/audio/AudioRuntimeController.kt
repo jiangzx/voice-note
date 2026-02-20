@@ -95,7 +95,8 @@ class AudioRuntimeController(
             ?: return mapOf("ok" to false, "error" to "missing_ws_url")
         val model = args["model"] as? String
             ?: return mapOf("ok" to false, "error" to "missing_model")
-        asrTransport?.connect(token = token, wsUrl = wsUrl, model = model)
+        val useServerVad = mode != "pushToTalk"
+        asrTransport?.connect(token = token, wsUrl = wsUrl, model = model, useServerVad = useServerVad)
         try {
             captureRuntime?.start()
         } catch (e: IllegalStateException) {
@@ -227,6 +228,10 @@ class AudioRuntimeController(
                 // 禁用 barge-in（pushToTalk 模式下不需要自动 VAD）
                 bargeInConfig = bargeInConfig.copy(enabled = false)
                 bargeInDetector?.updateConfig(bargeInConfig)
+                // pushToTalk: 仅由 commit 触发 final，不因静音分段
+                if (asrTransport?.isConnected() == true) {
+                    asrTransport?.sendSessionUpdate(useServerVad = false)
+                }
             }
             "auto" -> {
                 // 如果之前是 keyboard 或 pushToTalk 模式，captureRuntime 可能已停止
@@ -244,6 +249,9 @@ class AudioRuntimeController(
                 setAsrMuted(mapOf("muted" to false))
                 bargeInConfig = bargeInConfig.copy(enabled = true)
                 bargeInDetector?.updateConfig(bargeInConfig)
+                if (asrTransport?.isConnected() == true) {
+                    asrTransport?.sendSessionUpdate(useServerVad = true)
+                }
             }
         }
 

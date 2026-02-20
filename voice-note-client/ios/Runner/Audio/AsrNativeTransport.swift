@@ -19,7 +19,7 @@ final class AsrNativeTransport {
     self.onError = onError
   }
 
-  func connect(token: String, wsUrl: String, model: String) {
+  func connect(token: String, wsUrl: String, model: String, useServerVad: Bool = true) {
     disconnect()
     guard var components = URLComponents(string: wsUrl) else {
       onError("asr_invalid_ws_url")
@@ -40,7 +40,7 @@ final class AsrNativeTransport {
     socketTask = task
     task.resume()
     connected = true
-    sendSessionUpdate()
+    sendSessionUpdate(useServerVad: useServerVad)
     receiveLoop()
   }
 
@@ -69,17 +69,23 @@ final class AsrNativeTransport {
     socketTask = nil
   }
 
-  private func sendSessionUpdate() {
+  var isConnected: Bool { connected }
+
+  /// Send session.update (e.g. after mode switch). No-op if not connected.
+  func sendSessionUpdate(useServerVad: Bool) {
+    guard connected else { return }
+    let turnDetection: Any = useServerVad ? ["type": "server_vad"] : NSNull()
+    let sessionDict: [String: Any] = [
+      "modalities": ["text"],
+      "input_audio_format": "pcm",
+      "sample_rate": 16000,
+      "input_audio_transcription": ["language": "zh"],
+      "turn_detection": turnDetection
+    ]
     let payload: [String: Any] = [
       "event_id": "evt_session_update_\(Int(Date().timeIntervalSince1970 * 1000))",
       "type": "session.update",
-      "session": [
-        "modalities": ["text"],
-        "input_audio_format": "pcm",
-        "sample_rate": 16000,
-        "input_audio_transcription": ["language": "zh"],
-        "turn_detection": ["type": "server_vad"]
-      ]
+      "session": sessionDict
     ]
     sendJSON(payload)
   }
