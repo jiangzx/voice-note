@@ -13,15 +13,23 @@ class RecentTransactionTile extends StatelessWidget {
     required this.transaction,
     this.categoryName,
     this.categoryIcon,
+    this.isSelectionMode = false,
+    this.isSelected = false,
     this.onTap,
     this.onDelete,
+    this.onSelectionChanged,
+    this.onLongPress,
   });
 
   final TransactionEntity transaction;
   final String? categoryName;
   final Widget? categoryIcon;
+  final bool isSelectionMode;
+  final bool isSelected;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final ValueChanged<bool>? onSelectionChanged;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -50,17 +58,23 @@ class RecentTransactionTile extends StatelessWidget {
     }
 
     final tile = ListTile(
-      leading:
-          categoryIcon ??
-          CircleAvatar(
-            backgroundColor: theme.colorScheme.surfaceContainerHighest,
-            child: Icon(
-              transaction.type == TransactionType.transfer
-                  ? Icons.swap_horiz
-                  : Icons.receipt,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
+      leading: isSelectionMode
+          ? Checkbox(
+              value: isSelected,
+              onChanged: onSelectionChanged != null
+                  ? (value) => onSelectionChanged!(value ?? false)
+                  : null,
+            )
+          : (categoryIcon ??
+              CircleAvatar(
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                child: Icon(
+                  transaction.type == TransactionType.transfer
+                      ? Icons.swap_horiz
+                      : Icons.receipt,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              )),
       title: Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(dateText),
       trailing: Text(
@@ -70,8 +84,22 @@ class RecentTransactionTile extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
-      onTap: onTap,
+      onTap: isSelectionMode
+          ? () {
+              if (onSelectionChanged != null) {
+                onSelectionChanged!(!isSelected);
+              }
+            }
+          : onTap,
+      onLongPress: isSelectionMode ? null : onLongPress,
+      tileColor: isSelectionMode && isSelected
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+          : null,
     );
+
+    if (isSelectionMode) {
+      return tile;
+    }
 
     if (onDelete == null) {
       return tile;

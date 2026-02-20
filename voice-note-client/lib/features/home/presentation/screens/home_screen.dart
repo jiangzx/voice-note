@@ -31,6 +31,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _swipeDeleteHintShown = false;
   static const _keySwipeDeleteHintDismissed = 'home_swipe_delete_hint_dismissed';
 
+  // Selection mode state
+  bool _isSelectionMode = false;
+  final Set<String> _selectedIds = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -58,7 +62,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return PopScope(
       canPop: false,
       child: Scaffold(
-        appBar: AppBar(title: const Text('随口记')),
+        appBar: _isSelectionMode ? _buildSelectionAppBar() : AppBar(title: const Text('随口记')),
+        floatingActionButton: _isSelectionMode
+            ? const FloatingActionButton(
+                onPressed: null,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                child: SizedBox.shrink(),
+              )
+            : null,
         body: Stack(
           children: [
             SlidableAutoCloseBehavior(
@@ -90,7 +102,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Text('最近交易', style: Theme.of(context).textTheme.titleMedium),
             ),
-            if (_swipeDeleteHintShown)
+            if (_swipeDeleteHintShown && !_isSelectionMode)
               Container(
                 width: double.infinity,
                 margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
@@ -159,7 +171,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       return _TxTileWithCategory(
                         key: ValueKey(tx.id),
                         transaction: tx,
+                        isSelectionMode: _isSelectionMode,
+                        isSelected: _selectedIds.contains(tx.id),
                         onTap: () => context.push('/record/${tx.id}'),
+                        onSelectionChanged: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedIds.add(tx.id);
+                            } else {
+                              _selectedIds.remove(tx.id);
+                            }
+                          });
+                        },
+                        onLongPress: () {
+                          if (!_isSelectionMode) {
+                            setState(() {
+                              _isSelectionMode = true;
+                              _selectedIds.add(tx.id);
+                            });
+                          }
+                        },
                       );
                     }).toList(),
                   ),
@@ -177,8 +208,184 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const VoiceOnboardingTooltip(),
           ],
         ),
+        bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar(recentAsync) : null,
       ),
     );
+  }
+
+  PreferredSizeWidget _buildSelectionAppBar() {
+    final count = _selectedIds.length;
+    return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.close),
+        onPressed: () => setState(() {
+          _isSelectionMode = false;
+          _selectedIds.clear();
+        }),
+      ),
+      title: Text(count > 0 ? '已选择 $count 项' : '选择项目'),
+      actions: [
+        if (count > 0)
+          IconButton(
+            icon: const Icon(Icons.select_all),
+            tooltip: '全选/反选',
+            onPressed: _toggleSelectAll,
+          ),
+      ],
+    );
+  }
+
+  Widget? _buildSelectionBottomBar(AsyncValue<List<TransactionEntity>> recentAsync) {
+    final count = _selectedIds.length;
+    
+    // 计算总数量以判断是否全选
+    final int totalCount = recentAsync.maybeWhen(
+      data: (transactions) => transactions.length,
+      orElse: () => 0,
+    );
+    
+    final allSelected = totalCount > 0 && count == totalCount;
+    final theme = Theme.of(context);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            // 左侧：全选复选框
+            InkWell(
+              onTap: _toggleSelectAll,
+              borderRadius: AppRadius.mdAll,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xs,
+                  vertical: AppSpacing.xs,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(
+                      value: allSelected,
+                      onChanged: (_) => _toggleSelectAll(),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      '全选',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Spacer(),
+            // 右侧：操作按钮组
+            TextButton(
+              onPressed: _exitSelectionMode,
+              child: const Text('取消'),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            FilledButton.icon(
+              onPressed: count > 0 ? _handleBatchDelete : null,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('删除'),
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.error,
+                foregroundColor: theme.colorScheme.onError,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedIds.clear();
+    });
+  }
+
+  void _toggleSelectAll() {
+    final recentAsync = ref.read(recentTransactionsProvider);
+    
+    recentAsync.whenData((transactions) {
+      final allIds = transactions.map((tx) => tx.id).toSet();
+      
+      setState(() {
+        if (_selectedIds.length == allIds.length) {
+          _selectedIds.clear();
+        } else {
+          _selectedIds.addAll(allIds);
+        }
+      });
+    });
+  }
+
+  Future<void> _handleBatchDelete() async {
+    if (_selectedIds.isEmpty) return;
+
+    final count = _selectedIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除选中的 $count 条交易记录吗？此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final repo = ref.read(transactionRepositoryProvider);
+      final idsToDelete = _selectedIds.toList();
+      await repo.deleteBatch(idsToDelete);
+      invalidateTransactionQueries(ref);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('已删除 $count 条记录'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      setState(() {
+        _isSelectionMode = false;
+        _selectedIds.clear();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除失败：$e')),
+      );
+    }
   }
 }
 
@@ -278,10 +485,22 @@ class _BudgetSummaryCard extends ConsumerWidget {
 
 /// Wraps a transaction tile with category lookup.
 class _TxTileWithCategory extends ConsumerWidget {
-  const _TxTileWithCategory({super.key, required this.transaction, this.onTap});
+  const _TxTileWithCategory({
+    super.key,
+    required this.transaction,
+    this.isSelectionMode = false,
+    this.isSelected = false,
+    this.onTap,
+    this.onSelectionChanged,
+    this.onLongPress,
+  });
 
   final TransactionEntity transaction;
+  final bool isSelectionMode;
+  final bool isSelected;
   final VoidCallback? onTap;
+  final ValueChanged<bool>? onSelectionChanged;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -304,8 +523,12 @@ class _TxTileWithCategory extends ConsumerWidget {
     return RecentTransactionTile(
       transaction: transaction,
       categoryName: catName,
+      isSelectionMode: isSelectionMode,
+      isSelected: isSelected,
       onTap: onTap,
       onDelete: () => _deleteTransaction(context, ref, transaction.id),
+      onSelectionChanged: onSelectionChanged,
+      onLongPress: onLongPress,
     );
   }
 
