@@ -94,8 +94,8 @@ management:
 | 位置 | 开发默认值 | 生产修改 | 说明 |
 |------|-----------|---------|------|
 | `api_config.dart` `_defaultBaseUrl` | `http://localhost:8080` | `https://api.suikouji.com` | 生产服务器地址 |
-| `android/app/build.gradle.kts` `applicationId` | `com.example.suikouji` | `com.suikouji.app`（你的包名） | Android 应用 ID |
-| iOS `Bundle Identifier` | `com.example.suikouji` | `com.suikouji.app` | iOS 包标识 |
+| `android/app/build.gradle.kts` `applicationId` | `com.spark.suikouji` | `com.suikouji.app`（你的包名） | Android 应用 ID |
+| iOS `Bundle Identifier` | `com.spark.suikouji` | `com.suikouji.app` | iOS 包标识 |
 | iOS `Info.plist` | — | 需添加 `NSMicrophoneUsageDescription` | 麦克风权限描述（语音功能必须） |
 | App 内设置 → API Key | 空 | 与 Server `API_AUTH_KEY` 一致 | 客户端认证密钥 |
 
