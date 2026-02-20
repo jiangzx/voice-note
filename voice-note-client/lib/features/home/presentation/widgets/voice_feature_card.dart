@@ -279,10 +279,10 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
       // Permission denied (but not permanently), show message
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('需要麦克风权限才能使用语音记账功能'),
+          const SnackBar(
+            content: Text('需要麦克风权限才能使用语音记账功能'),
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
+            duration: Duration(seconds: 2),
           ),
         );
       }
