@@ -168,7 +168,25 @@ class VoiceOrchestrator {
       await _speakWithSuppression(TtsTemplates.welcome());
     } catch (e) {
       if (kDebugMode) debugPrint('[VoiceInit] FAILED: $e');
-      _delegate.onError('Failed to start listening: $e');
+      // 提取用户友好的错误消息
+      final errorStr = e.toString();
+      String userMessage;
+      if (errorStr.contains('RECORD_AUDIO permission not granted') ||
+          errorStr.contains('permission may be denied')) {
+        userMessage = '无法启动录音：麦克风权限未授予。请在系统设置中授予麦克风权限';
+      } else if (errorStr.contains('audio_record_start_failed') ||
+          errorStr.contains('AudioRecord initialization failed')) {
+        if (errorStr.contains('state=0') || 
+            errorStr.contains('STATE_UNINITIALIZED') ||
+            errorStr.contains('permission may be denied')) {
+          userMessage = '无法启动录音：请检查麦克风权限是否已授予，或音频资源是否被其他应用占用';
+        } else {
+          userMessage = '无法启动录音，可能是权限问题或音频资源被占用';
+        }
+      } else {
+        userMessage = '启动语音识别失败：$errorStr';
+      }
+      _delegate.onError(userMessage);
     }
   }
 
@@ -187,7 +205,12 @@ class VoiceOrchestrator {
     );
     final ok = result['ok'] as bool? ?? false;
     if (!ok) {
-      throw StateError('native_asr_stream_start_failed');
+      final error = result['error'] as String? ?? 'unknown_error';
+      final message = result['message'] as String?;
+      final errorMsg = message != null 
+          ? 'native_asr_stream_start_failed: $error ($message)'
+          : 'native_asr_stream_start_failed: $error';
+      throw StateError(errorMsg);
     }
   }
 

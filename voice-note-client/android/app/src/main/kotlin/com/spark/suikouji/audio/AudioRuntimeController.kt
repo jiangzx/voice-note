@@ -37,7 +37,12 @@ class AudioRuntimeController(
         // Current Flutter orchestrator still owns ASR capture path. Keep native capture
         // opt-in to avoid double AudioRecord sessions and mic contention.
         if (enableNativeCapture) {
-            captureRuntime?.start()
+            try {
+                captureRuntime?.start()
+            } catch (e: IllegalStateException) {
+                emitRuntimeError("audio_record_init_failed", "Failed to initialize AudioRecord: ${e.message}")
+                return mapOf("ok" to false, "error" to "audio_record_init_failed", "message" to (e.message ?: "Unknown error"))
+            }
         }
         initialized.set(true)
         route = focusRouteManager?.getRoute() ?: route
@@ -91,7 +96,12 @@ class AudioRuntimeController(
         val model = args["model"] as? String
             ?: return mapOf("ok" to false, "error" to "missing_model")
         asrTransport?.connect(token = token, wsUrl = wsUrl, model = model)
-        captureRuntime?.start()
+        try {
+            captureRuntime?.start()
+        } catch (e: IllegalStateException) {
+            emitRuntimeError("audio_record_start_failed", "Failed to start AudioRecord: ${e.message}")
+            return mapOf("ok" to false, "error" to "audio_record_start_failed", "message" to (e.message ?: "Unknown error"))
+        }
         return mapOf("ok" to true)
     }
 
@@ -223,7 +233,12 @@ class AudioRuntimeController(
                 // 需要确保 captureRuntime 运行（auto 模式需要持续监听）
                 ensureComponents()
                 if (captureRuntime?.isRunning() != true) {
-                    captureRuntime?.start()
+                    try {
+                        captureRuntime?.start()
+                    } catch (e: IllegalStateException) {
+                        emitRuntimeError("audio_record_start_failed", "Failed to start AudioRecord in auto mode: ${e.message}")
+                        // Continue with mode switch even if capture fails
+                    }
                 }
                 // 启用自动 VAD
                 setAsrMuted(mapOf("muted" to false))
@@ -238,7 +253,12 @@ class AudioRuntimeController(
     fun startCapture(args: Map<String, Any?>): Map<String, Any?> {
         ensureComponents()
         if (captureRuntime?.isRunning() != true) {
-            captureRuntime?.start()
+            try {
+                captureRuntime?.start()
+            } catch (e: IllegalStateException) {
+                emitRuntimeError("audio_record_start_failed", "Failed to start AudioRecord: ${e.message}")
+                return mapOf("ok" to false, "error" to "audio_record_start_failed", "message" to (e.message ?: "Unknown error"))
+            }
         }
         return mapOf("ok" to true)
     }
@@ -311,10 +331,13 @@ class AudioRuntimeController(
             it.updateConfig(bargeInConfig)
         }
 
-        captureRuntime = AsrCaptureRuntime { frame ->
-            bargeInDetector?.onFrame(frame, ttsPlaying)
-            if (!asrMuted) asrTransport?.sendAudioFrame(frame)
-        }.also { it.setAsrMuted(asrMuted) }
+        captureRuntime = AsrCaptureRuntime(
+            context = context,
+            onAudioFrame = { frame ->
+                bargeInDetector?.onFrame(frame, ttsPlaying)
+                if (!asrMuted) asrTransport?.sendAudioFrame(frame)
+            }
+        ).also { it.setAsrMuted(asrMuted) }
 
         asrTransport = AsrNativeTransport(
             onInterimText = { text ->

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/design_tokens.dart';
 import '../../../../core/extensions/date_extensions.dart';
@@ -19,11 +20,35 @@ import '../widgets/voice_feature_card.dart';
 import '../widgets/voice_onboarding_tooltip.dart';
 
 /// Home screen showing monthly summary and recent transactions.
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _swipeDeleteHintShown = false;
+  static const _keySwipeDeleteHintDismissed = 'home_swipe_delete_hint_dismissed';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAndShowSwipeDeleteHint();
+  }
+
+  Future<void> _checkAndShowSwipeDeleteHint() async {
+    final prefs = await SharedPreferences.getInstance();
+    final dismissed = prefs.getBool(_keySwipeDeleteHintDismissed) ?? false;
+    if (!dismissed && mounted) {
+      setState(() {
+        _swipeDeleteHintShown = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final monthRange = DateRanges.thisMonth();
     final summaryAsync = ref.watch(
       summaryProvider(monthRange.from, monthRange.to),
@@ -65,6 +90,54 @@ class HomeScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Text('最近交易', style: Theme.of(context).textTheme.titleMedium),
             ),
+            if (_swipeDeleteHintShown)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.5),
+                  borderRadius: AppRadius.smAll,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.swipe_left,
+                      size: AppIconSize.sm,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        '左滑可删除',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: AppIconSize.sm),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        setState(() {
+                          _swipeDeleteHintShown = false;
+                        });
+                        SharedPreferences.getInstance().then((prefs) {
+                          prefs.setBool(_keySwipeDeleteHintDismissed, true);
+                        });
+                      },
+                      tooltip: '关闭',
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: AppSpacing.sm),
 
             // Recent transactions list
