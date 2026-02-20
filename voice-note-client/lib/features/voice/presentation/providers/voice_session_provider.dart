@@ -384,8 +384,16 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     }
 
     if (event.event == 'runtimeError' && event.error != null) {
+      final errorMessage = event.error!.message;
+      // Suppress empty recording errors for better UX (same logic as VoiceOrchestrator)
+      if (errorMessage.contains('error committing input audio buffer') ||
+          errorMessage.contains('maybe no invalid audio stream') ||
+          errorMessage.contains('no audio')) {
+        // Suppress the error - VoiceOrchestrator will handle user-friendly message
+        return;
+      }
       _addAssistantMessage(
-        '原生音频错误：${event.error!.message}',
+        '原生音频错误：$errorMessage',
         type: ChatMessageType.error,
       );
     }

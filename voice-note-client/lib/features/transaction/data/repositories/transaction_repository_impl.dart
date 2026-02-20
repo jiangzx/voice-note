@@ -48,6 +48,17 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  Future<void> deleteBatch(List<String> ids) async {
+    if (ids.isEmpty) return;
+    // Clear linked_transaction_id on any partners referencing these records
+    await _dao.unlinkPartners(ids);
+    // Delete all transactions in a transaction for atomicity
+    await _dao.attachedDatabase.transaction(() async {
+      await _dao.deleteByIds(ids);
+    });
+  }
+
+  @override
   Future<TransactionEntity?> getById(String id) async {
     final row = await _dao.getById(id);
     return row != null ? _toEntity(row) : null;

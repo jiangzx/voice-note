@@ -47,6 +47,10 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   DateTime? _customDateFrom;
   DateTime? _customDateTo;
 
+  // Selection mode state
+  bool _isSelectionMode = false;
+  final Set<String> _selectedIds = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -90,27 +94,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
         _customDateTo != null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('交易明细'),
-        actions: [
-          if (hasRouteFilter)
-            IconButton(
-              icon: const Icon(Icons.filter_alt_off),
-              tooltip: '清除筛选',
-              onPressed: () => setState(() {
-                _categoryFilter = null;
-                _customDateFrom = null;
-                _customDateTo = null;
-                _datePreset = DateRangePreset.thisMonth;
-              }),
-            ),
-          IconButton(
-            icon: const Icon(Icons.file_download_outlined),
-            tooltip: '导出',
-            onPressed: () => _showExportSheet(context, range),
-          ),
-        ],
-      ),
+      appBar: _isSelectionMode ? _buildSelectionAppBar() : _buildNormalAppBar(hasRouteFilter, range),
       body: Column(
         children: [
           if (hasRouteFilter)
@@ -145,7 +129,130 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
           Expanded(child: _buildList(groupsAsync)),
         ],
       ),
+      bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar() : null,
     );
+  }
+
+  PreferredSizeWidget _buildNormalAppBar(bool hasRouteFilter, ({DateTime from, DateTime to}) range) {
+    return AppBar(
+      title: const Text('交易明细'),
+      actions: [
+        if (hasRouteFilter)
+          IconButton(
+            icon: const Icon(Icons.filter_alt_off),
+            tooltip: '清除筛选',
+            onPressed: () => setState(() {
+              _categoryFilter = null;
+              _customDateFrom = null;
+              _customDateTo = null;
+              _datePreset = DateRangePreset.thisMonth;
+            }),
+          ),
+        IconButton(
+          icon: const Icon(Icons.file_download_outlined),
+          tooltip: '导出',
+          onPressed: () => _showExportSheet(context, range),
+        ),
+        IconButton(
+          icon: const Icon(Icons.checklist),
+          tooltip: '批量操作',
+          onPressed: () => setState(() {
+            _isSelectionMode = true;
+            _selectedIds.clear();
+          }),
+        ),
+      ],
+    );
+  }
+
+  PreferredSizeWidget _buildSelectionAppBar() {
+    final count = _selectedIds.length;
+    return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.close),
+        onPressed: () => setState(() {
+          _isSelectionMode = false;
+          _selectedIds.clear();
+        }),
+      ),
+      title: Text(count > 0 ? '已选择 $count 项' : '选择项目'),
+      actions: [
+        if (count > 0)
+          IconButton(
+            icon: const Icon(Icons.select_all),
+            tooltip: '全选/反选',
+            onPressed: _toggleSelectAll,
+          ),
+      ],
+    );
+  }
+
+  Widget? _buildSelectionBottomBar() {
+    final count = _selectedIds.length;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Text(
+              '已选择 $count 项',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const Spacer(),
+            FilledButton.icon(
+              onPressed: count > 0 ? _handleBatchDelete : null,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('删除'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _toggleSelectAll() {
+    final range = _datePreset == DateRangePreset.custom
+        ? (
+            from: _customDateFrom ?? DateTime(2000),
+            to: _customDateTo ?? DateTime(2099),
+          )
+        : resolveDateRange(_datePreset);
+    final groupsAsync = ref.read(dailyGroupedProvider(range.from, range.to));
+    
+    groupsAsync.whenData((groups) {
+      final filtered = _applyClientFilters(groups);
+      final allIds = <String>{};
+      for (final group in filtered) {
+        for (final tx in group.transactions.cast<TransactionEntity>()) {
+          allIds.add(tx.id);
+        }
+      }
+      
+      setState(() {
+        if (_selectedIds.length == allIds.length) {
+          _selectedIds.clear();
+        } else {
+          _selectedIds.addAll(allIds);
+        }
+      });
+    });
   }
 
   Widget _buildList(AsyncValue<List<DailyTransactionGroup>> groupsAsync) {
@@ -250,8 +357,27 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
         final tx = group.transactions[index - offset] as TransactionEntity;
         return _TransactionTileWithCategory(
           transaction: tx,
+          isSelectionMode: _isSelectionMode,
+          isSelected: _selectedIds.contains(tx.id),
           onEdit: () => context.push('/record/${tx.id}'),
           onDelete: () => _deleteTransaction(tx.id),
+          onSelectionChanged: (selected) {
+            setState(() {
+              if (selected) {
+                _selectedIds.add(tx.id);
+              } else {
+                _selectedIds.remove(tx.id);
+              }
+            });
+          },
+          onLongPress: () {
+            if (!_isSelectionMode) {
+              setState(() {
+                _isSelectionMode = true;
+                _selectedIds.add(tx.id);
+              });
+            }
+          },
         );
       }
       offset += group.transactions.length;
@@ -264,6 +390,59 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       final repo = ref.read(transactionRepositoryProvider);
       await repo.delete(id);
       invalidateTransactionQueries(ref);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除失败：$e')),
+      );
+    }
+  }
+
+  Future<void> _handleBatchDelete() async {
+    if (_selectedIds.isEmpty) return;
+
+    final count = _selectedIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除选中的 $count 条交易记录吗？此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final repo = ref.read(transactionRepositoryProvider);
+      final idsToDelete = _selectedIds.toList();
+      await repo.deleteBatch(idsToDelete);
+      invalidateTransactionQueries(ref);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('已删除 $count 条记录'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      setState(() {
+        _isSelectionMode = false;
+        _selectedIds.clear();
+      });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -303,13 +482,21 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
 class _TransactionTileWithCategory extends ConsumerWidget {
   const _TransactionTileWithCategory({
     required this.transaction,
+    this.isSelectionMode = false,
+    this.isSelected = false,
     required this.onEdit,
     required this.onDelete,
+    this.onSelectionChanged,
+    this.onLongPress,
   });
 
   final TransactionEntity transaction;
+  final bool isSelectionMode;
+  final bool isSelected;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final ValueChanged<bool>? onSelectionChanged;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -330,8 +517,12 @@ class _TransactionTileWithCategory extends ConsumerWidget {
     return TransactionTile(
       transaction: transaction,
       categoryName: catName,
+      isSelectionMode: isSelectionMode,
+      isSelected: isSelected,
       onEdit: onEdit,
       onDelete: onDelete,
+      onSelectionChanged: onSelectionChanged,
+      onLongPress: onLongPress,
     );
   }
 }

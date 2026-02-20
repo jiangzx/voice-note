@@ -10,6 +10,10 @@ abstract class TransactionRepository {
 
   /// Deletes the transaction and clears linked_transaction_id on any partner.
   Future<void> delete(String id);
+
+  /// Deletes multiple transactions and clears linked_transaction_id on any partners.
+  Future<void> deleteBatch(List<String> ids);
+
   Future<TransactionEntity?> getById(String id);
 
   // ── Query ──

@@ -169,6 +169,9 @@ void main() {
 class _FailingTransactionRepository implements TransactionRepository {
   @override
   Future<void> delete(String id) => throw Exception('DB constraint error');
+  @override
+  Future<void> deleteBatch(List<String> ids) =>
+      throw Exception('DB constraint error');
 
   @override
   Future<List<DailyTransactionGroup>> getDailyGrouped(

@@ -35,11 +35,25 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   Future<int> deleteById(String id) =>
       (delete(transactions)..where((t) => t.id.equals(id))).go();
 
+  /// Delete multiple transactions by IDs.
+  Future<int> deleteByIds(List<String> ids) {
+    if (ids.isEmpty) return Future.value(0);
+    return (delete(transactions)..where((t) => t.id.isIn(ids))).go();
+  }
+
   /// Clear linked_transaction_id on the partner record when deleting one side.
   Future<void> unlinkPartner(String transactionId) =>
       (update(transactions)
             ..where((t) => t.linkedTransactionId.equals(transactionId)))
           .write(const TransactionsCompanion(linkedTransactionId: Value(null)));
+
+  /// Clear linked_transaction_id on partner records when deleting multiple transactions.
+  Future<void> unlinkPartners(List<String> transactionIds) {
+    if (transactionIds.isEmpty) return Future.value();
+    return (update(transactions)
+          ..where((t) => t.linkedTransactionId.isIn(transactionIds)))
+        .write(const TransactionsCompanion(linkedTransactionId: Value(null)));
+  }
 
   /// Get filtered transactions with optional criteria.
   Future<List<Transaction>> getFiltered({

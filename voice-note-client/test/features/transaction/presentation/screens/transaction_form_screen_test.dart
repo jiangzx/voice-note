@@ -175,6 +175,8 @@ class _FailingSaveTransactionRepository implements TransactionRepository {
   @override
   Future<void> delete(String id) async {}
   @override
+  Future<void> deleteBatch(List<String> ids) async {}
+  @override
   Future<TransactionEntity?> getById(String id) async => null;
   @override
   Future<List<TransactionEntity>> getFiltered(

@@ -272,7 +272,7 @@ class VoiceOrchestrator {
                 }
                 // 如果超时且仍在等待，说明没有检测到语音，提示用户
                 if (_isPushEndPending) {
-                  _delegate.onError('未检测到语音，请重新尝试');
+                  _delegate.onError('哎呀，没听到声音呢～再试一次吧！');
                 }
               },
             );
@@ -282,7 +282,7 @@ class VoiceOrchestrator {
             }
             // 如果出错且仍在等待，也提示用户
             if (_isPushEndPending) {
-              _delegate.onError('未检测到语音，请重新尝试');
+              _delegate.onError('哎呀，没听到声音呢～再试一次吧！');
             }
           } finally {
             _isPushEndPending = false;
@@ -327,6 +327,24 @@ class VoiceOrchestrator {
 
   /// Switch input mode at runtime (e.g., auto <-> pushToTalk).
   Future<void> switchInputMode(VoiceInputMode mode) async {
+    // Clear any pending draft batch when switching modes to prevent
+    // misinterpreting new input as correction
+    if (_currentState == VoiceState.confirming && _draftBatch != null) {
+      final batch = _draftBatch!;
+      // Save any confirmed items before clearing
+      if (batch.confirmedItems.isNotEmpty) {
+        _delegate.onBatchSaved(batch.confirmedItems);
+      }
+      // Clear the batch and reset to listening state
+      _draftBatch = null;
+      _currentState = VoiceState.listening;
+      _startInactivityTimer();
+      _delegate.onContinueRecording();
+      if (kDebugMode) {
+        debugPrint('[VoiceMode] Cleared draft batch on mode switch');
+      }
+    }
+
     _currentInputMode = mode;
     if (mode == VoiceInputMode.keyboard) {
       if (kDebugMode) debugPrint('[VoiceMode] Switching to keyboard mode');
