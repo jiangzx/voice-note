@@ -402,15 +402,18 @@ class _FieldRow extends StatelessWidget {
                       : theme.colorScheme.outline,
                 ),
               ),
-              const Spacer(),
-              Text(
-                value,
-                style: isMissing
-                    ? theme.textTheme.bodyMedium?.copyWith(
-                        color: valueColor,
-                        fontStyle: FontStyle.italic,
-                      )
-                    : theme.textTheme.bodyMedium?.copyWith(color: valueColor),
+              Expanded(
+                child: Text(
+                  value,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: isMissing
+                      ? theme.textTheme.bodyMedium?.copyWith(
+                          color: valueColor,
+                          fontStyle: FontStyle.italic,
+                        )
+                      : theme.textTheme.bodyMedium?.copyWith(color: valueColor),
+                ),
               ),
               const SizedBox(width: AppSpacing.xs),
               Icon(
