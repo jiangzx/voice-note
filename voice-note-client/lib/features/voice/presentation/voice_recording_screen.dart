@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/design_tokens.dart';
+import '../../../core/permissions/permission_service.dart';
 import '../../../shared/widgets/home_fab.dart';
 import '../../../shared/widgets/voice_exit_fab_toggle_button.dart';
 import '../domain/draft_batch.dart';
@@ -35,12 +37,14 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
   ProviderSubscription<VoiceSessionState>? _sessionSubscription;
   static const _tutorialSeenKey = 'voice_tutorial_seen';
   bool _hasNavigatedOnTimeout = false;
+  final _permissionService = PermissionService();
+  bool _hasCheckedPermission = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(voiceSessionProvider.notifier).startSession();
+      _checkPermissionAndStart();
       _showTutorialIfNeeded();
       _sessionSubscription = ref.listenManual(
         voiceSessionProvider,
@@ -49,7 +53,53 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     });
   }
 
-  void _onSessionChanged(VoiceSessionState? prev, VoiceSessionState next) {
+  Future<void> _checkPermissionAndStart() async {
+    if (_hasCheckedPermission) return;
+    _hasCheckedPermission = true;
+
+    final status = await _permissionService.checkMicrophonePermission();
+    if (!status.isGranted) {
+      // Permission not granted, show dialog and exit
+      if (mounted) {
+        _showPermissionRequiredDialog();
+      }
+      return;
+    }
+
+    // Permission granted, start session
+    ref.read(voiceSessionProvider.notifier).startSession();
+  }
+
+  void _showPermissionRequiredDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('需要麦克风权限'),
+        content: const Text('语音记账功能需要麦克风权限才能使用。请在系统设置中授予麦克风权限。'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _exitScreen();
+            },
+            child: const Text('返回'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _permissionService.openAppSettings();
+              _exitScreen();
+            },
+            child: const Text('前往设置'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _onSessionChanged(
+      VoiceSessionState? prev, VoiceSessionState next) async {
     if (prev == null) return;
 
     // Check for session timeout message in auto mode
@@ -69,6 +119,20 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
               context.go('/home');
             }
           });
+          return;
+        }
+      }
+
+      // Handle permission error: auto-exit if permission is missing
+      if (latest.type == ChatMessageType.error &&
+          (latest.text.contains('RECORD_AUDIO permission not granted') ||
+              latest.text.contains('麦克风权限未授予'))) {
+        if (!mounted) return;
+        // Check permission status again
+        final status = await _permissionService.checkMicrophonePermission();
+        if (!status.isGranted) {
+          // Permission still not granted, show dialog and exit
+          _showPermissionRequiredDialog();
           return;
         }
       }
@@ -96,6 +160,11 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                 ? Theme.of(context).colorScheme.primary
                 : Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).size.height * 0.15,
+              left: AppSpacing.lg,
+              right: AppSpacing.lg,
+            ),
             duration: Duration(milliseconds: isSuccess ? 1500 : 3000),
             shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
           ),
@@ -559,8 +628,8 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           (100 - 40) /
               2, // Center toggle button horizontally with FAB (FAB width - toggle width) / 2
       top: top,
-      child: RepaintBoundary(
-        child: const VoiceExitFabToggleButton(),
+      child: const RepaintBoundary(
+        child: VoiceExitFabToggleButton(),
       ),
     );
   }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+import '../../core/permissions/permission_service.dart';
 
 /// Floating action button for voice recording with pulsing animation.
 class AnimatedVoiceFab extends StatefulWidget {
@@ -13,6 +16,7 @@ class _AnimatedVoiceFabState extends State<AnimatedVoiceFab>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnimation;
+  final _permissionService = PermissionService();
 
   @override
   void initState() {
@@ -52,7 +56,7 @@ class _AnimatedVoiceFabState extends State<AnimatedVoiceFab>
             scale: _pulseAnimation.value,
             child: FloatingActionButton(
               heroTag: 'voice_fab',
-              onPressed: () => context.push('/voice-recording'),
+              onPressed: () => _handleTap(context),
               backgroundColor: colorScheme.tertiaryContainer,
               child: Icon(
                 Icons.mic_rounded,
@@ -61,6 +65,69 @@ class _AnimatedVoiceFabState extends State<AnimatedVoiceFab>
             ),
           );
         },
+      ),
+    );
+  }
+
+  Future<void> _handleTap(BuildContext context) async {
+    // Check current permission status
+    final status = await _permissionService.checkMicrophonePermission();
+
+    if (status.isGranted) {
+      // Permission already granted, navigate directly
+      if (context.mounted) {
+        context.push('/voice-recording');
+      }
+      return;
+    }
+
+    // Permission not granted, request it
+    final requestStatus = await _permissionService.requestMicrophonePermission();
+
+    if (requestStatus.isGranted) {
+      // Permission granted, navigate
+      if (context.mounted) {
+        context.push('/voice-recording');
+      }
+    } else if (requestStatus.isPermanentlyDenied ||
+        await _permissionService.isPermanentlyDenied()) {
+      // Permission permanently denied, show dialog to open settings
+      if (context.mounted) {
+        _showPermissionDeniedDialog(context);
+      }
+    } else {
+      // Permission denied (but not permanently), show message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('需要麦克风权限才能使用语音记账功能'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showPermissionDeniedDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('需要麦克风权限'),
+        content: const Text('请在系统设置中授予麦克风权限'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _permissionService.openAppSettings();
+            },
+            child: const Text('前往设置'),
+          ),
+        ],
       ),
     );
   }
