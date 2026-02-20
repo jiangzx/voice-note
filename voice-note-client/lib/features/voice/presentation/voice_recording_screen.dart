@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/design_tokens.dart';
+import '../../../shared/widgets/home_fab.dart';
+import '../../../shared/widgets/voice_exit_fab_toggle_button.dart';
 import '../domain/draft_batch.dart';
 import '../domain/parse_result.dart';
 import '../domain/voice_state.dart';
@@ -145,34 +147,59 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
             onPressed: _exitScreen,
           ),
         ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              if (isOffline) _buildOfflineBanner(),
-              Expanded(child: ChatHistory(messages: messages)),
+        body: Stack(
+          children: [
+            SafeArea(
+              child: Column(
+                children: [
+                  if (isOffline) _buildOfflineBanner(),
+                  Expanded(child: ChatHistory(messages: messages)),
 
-              if (voiceState == VoiceState.recognizing &&
-                  interimText.isNotEmpty)
-                _buildInterimText(interimText),
+                  if (voiceState == VoiceState.recognizing &&
+                      interimText.isNotEmpty)
+                    _buildInterimText(interimText),
 
-              if (isProcessing)
-                _buildProcessingIndicator(),
+                  if (isProcessing)
+                    _buildProcessingIndicator(),
 
-              if (voiceState == VoiceState.confirming) ...[
-                if (draftBatch != null && !draftBatch.isSingleItem)
-                  _buildBatchConfirmationCard(draftBatch, isProcessing)
-                else if (parseResult != null)
-                  _buildConfirmationCard(voiceState, parseResult),
-              ],
+                  if (voiceState == VoiceState.confirming) ...[
+                    if (draftBatch != null && !draftBatch.isSingleItem)
+                      _buildBatchConfirmationCard(draftBatch, isProcessing)
+                    else if (parseResult != null)
+                      _buildConfirmationCard(voiceState, parseResult),
+                  ],
 
-              if (inputMode == VoiceInputMode.keyboard)
-                _buildKeyboardInput(voiceState, isProcessing)
-              else
-                _buildVoiceControls(voiceState, inputMode),
-              _buildModeSwitcher(inputMode),
-            ],
-          ),
+                  if (inputMode == VoiceInputMode.keyboard)
+                    _buildKeyboardInput(voiceState, isProcessing)
+                  else
+                    _buildVoiceControls(voiceState, inputMode),
+                  _buildModeSwitcher(inputMode),
+                ],
+              ),
+            ),
+            // Exit FAB toggle button positioned below the exit FAB
+            // Position: right edge, directly below FAB center
+            if (voiceState != VoiceState.confirming)
+              Positioned(
+                right: MediaQuery.of(context).padding.right + 
+                       16 + // kFloatingActionButtonMargin
+                       (100 - 40) / 2, // Center toggle button horizontally with FAB (FAB width - toggle width) / 2
+                top: MediaQuery.of(context).padding.top + 
+                     kToolbarHeight + // AppBar height
+                     (MediaQuery.of(context).size.height - 
+                      MediaQuery.of(context).padding.top - 
+                      MediaQuery.of(context).padding.bottom - 
+                      kToolbarHeight) / 2 + 
+                     28 + // Half of FAB height (56/2) to get FAB bottom
+                     AppSpacing.sm, // Spacing between FAB and toggle button
+                child: const VoiceExitFabToggleButton(),
+              ),
+          ],
         ),
+        floatingActionButton: voiceState == VoiceState.confirming
+            ? null
+            : const HomeFab(),
+        floatingActionButtonLocation: voiceScreenFabLocation,
       ),
     );
   }

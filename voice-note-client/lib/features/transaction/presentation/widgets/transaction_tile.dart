@@ -78,15 +78,13 @@ class TransactionTile extends StatelessWidget {
               transaction.counterparty != null
           ? Text(transaction.counterparty!)
           : null,
-      trailing: isSelectionMode
-          ? null
-          : Text(
-              amountText,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: amountColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+      trailing: Text(
+          amountText,
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: amountColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       onTap: isSelectionMode
           ? () {
               if (onSelectionChanged != null) {

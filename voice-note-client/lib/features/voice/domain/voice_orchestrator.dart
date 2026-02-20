@@ -94,7 +94,9 @@ class VoiceOrchestrator {
   bool _isCorrecting = false;
 
   // VAD misfire tracking (保留用于兼容性，但不再使用)
+  // Note: VAD功能已移至原生层，此字段保留用于未来可能的用途
   static const int maxConsecutiveMisfires = 3;
+  // ignore: unused_field
   int _consecutiveMisfires = 0;
 
   // Native audio telemetry
@@ -393,6 +395,7 @@ class VoiceOrchestrator {
   Future<void> stopListening() async {
     _draftBatch = null;
     _asrConnection.resetReconnectAttempts();
+    // Reset misfire counter (保留用于未来可能的用途)
     _consecutiveMisfires = 0;
     _isTtsSpeaking = false;
     _bargeInTriggeredAt = null;
@@ -840,6 +843,7 @@ class VoiceOrchestrator {
   static const _fillerWords = {
     '嗯', '啊', '哦', '唔', '呃', '噢', '额', '嗯嗯', '呢',
     '哈', '嘿', '哎', '诶', '喂', '嘛', '吧',
+    '咳咳', '咳咳咳', '哼', '哼哈',
   };
 
   bool _isFillerText(String text) {
@@ -868,6 +872,27 @@ class VoiceOrchestrator {
       // Check if any result has an amount
       final hasAnyAmount = results.any((r) => r.amount != null);
       if (!hasAnyAmount) {
+        // Check if result has any meaningful content (category or description)
+        // If not, silently skip to avoid prompting user for meaningless input
+        final hasAnyMeaningfulContent = results.any(
+          (r) => (r.category != null && r.category!.isNotEmpty) ||
+              (r.description != null && r.description!.isNotEmpty),
+        );
+        
+        if (!hasAnyMeaningfulContent) {
+          // No amount, category, or description - likely meaningless input
+          // Silently skip similar to filler text handling
+          if (kDebugMode) {
+            debugPrint('[VoiceMode] No meaningful content found, silently skipping');
+          }
+          dev.log('Skipping meaningless input: "$text"', name: 'VoiceOrchestrator');
+          _currentState = VoiceState.listening;
+          _startInactivityTimer();
+          _delegate.onContinueRecording();
+          return;
+        }
+        
+        // Has category or description but no amount - prompt user
         if (kDebugMode) {
           debugPrint('[VoiceMode] No amount found in parse results, showing original text');
         }

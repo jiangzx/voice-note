@@ -1,10 +1,12 @@
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/design_tokens.dart';
 import '../../features/transaction/presentation/screens/transaction_form_screen.dart';
 import 'animated_voice_fab.dart';
+import 'fab_visibility_provider.dart';
 
 /// Custom FAB location for transaction page to avoid overlapping with bottom action bar.
 /// 
@@ -60,7 +62,7 @@ class _TransactionPageFabLocation extends FloatingActionButtonLocation {
 }
 
 /// Shell widget providing bottom navigation and FAB with container transform.
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
 
   final Widget child;
@@ -76,45 +78,57 @@ class AppShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final index = _currentIndex(context);
     final showFab = index < 3;
     final theme = Theme.of(context);
     final location = GoRouterState.of(context).uri.path;
     final isTransactionPage = location.startsWith('/transactions');
+    
+    // Only enable visibility control on transaction page
+    final fabVisible = isTransactionPage
+        ? ref.watch(fabVisibilityProvider)
+        : true;
 
     return Scaffold(
       body: child,
       floatingActionButton: showFab
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Voice recording FAB with animation
-                const AnimatedVoiceFab(),
-                const SizedBox(height: AppSpacing.sm),
-                // Manual entry FAB
-                OpenContainer<void>(
-                  transitionDuration: AppDuration.pageTransition,
-                  openBuilder: (context, _) => const TransactionFormScreen(),
-                  closedElevation: 6,
-                  closedShape: const RoundedRectangleBorder(
-                    borderRadius: AppRadius.xlAll,
-                  ),
-                  closedColor: theme.colorScheme.primaryContainer,
-                  closedBuilder: (context, openContainer) {
-                    return SizedBox(
-                      height: 56,
-                      width: 56,
-                      child: Center(
-                        child: Icon(
-                          Icons.add,
-                          color: theme.colorScheme.onPrimaryContainer,
-                        ),
+          ? AnimatedOpacity(
+              opacity: fabVisible ? 1.0 : 0.0,
+              duration: AppDuration.normal,
+              child: IgnorePointer(
+                ignoring: !fabVisible,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Voice recording FAB with animation
+                    const AnimatedVoiceFab(),
+                    const SizedBox(height: AppSpacing.sm),
+                    // Manual entry FAB
+                    OpenContainer<void>(
+                      transitionDuration: AppDuration.pageTransition,
+                      openBuilder: (context, _) => const TransactionFormScreen(),
+                      closedElevation: 6,
+                      closedShape: const RoundedRectangleBorder(
+                        borderRadius: AppRadius.xlAll,
                       ),
-                    );
-                  },
+                      closedColor: theme.colorScheme.primaryContainer,
+                      closedBuilder: (context, openContainer) {
+                        return SizedBox(
+                          height: 56,
+                          width: 56,
+                          child: Center(
+                            child: Icon(
+                              Icons.add,
+                              color: theme.colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-              ],
+              ),
             )
           : null,
       floatingActionButtonLocation: isTransactionPage

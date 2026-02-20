@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/design_tokens.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
+import '../../../../shared/widgets/fab_toggle_button.dart';
 import '../../../export/presentation/widgets/export_options_sheet.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
@@ -142,45 +143,66 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     return Scaffold(
       appBar: _isSelectionMode ? _buildSelectionAppBar() : _buildNormalAppBar(hasRouteFilter, range),
       floatingActionButton: _isSelectionMode
-          ? FloatingActionButton(
+          ? const FloatingActionButton(
               onPressed: null,
               backgroundColor: Colors.transparent,
               elevation: 0,
-              child: const SizedBox.shrink(),
+              child: SizedBox.shrink(),
             )
           : null, // 多选模式下使用透明FAB覆盖AppShell的FAB，非多选模式下使用AppShell的FAB
-      body: Column(
+      body: Stack(
         children: [
-          if (hasRouteFilter)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.xs,
+          Column(
+            children: [
+              if (hasRouteFilter)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.xs,
+                  ),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primaryContainer
+                      .withValues(alpha: 0.3),
+                  child: Text(
+                    '已应用筛选条件',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                  ),
+                ),
+              FilterBar(
+                selectedDatePreset: _datePreset,
+                selectedType: _typeFilter,
+                searchQuery: _searchQuery,
+                onDatePresetChanged: (preset) =>
+                    setState(() => _datePreset = preset),
+                onTypeChanged: (type) => setState(() => _typeFilter = type),
+                onSearchChanged: (query) => setState(() => _searchQuery = query),
+                onAdvancedFilter: () => _showAdvancedFilter(context),
               ),
-              color: Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withValues(alpha: 0.3),
-              child: Text(
-                '已应用筛选条件',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-              ),
-            ),
-          FilterBar(
-            selectedDatePreset: _datePreset,
-            selectedType: _typeFilter,
-            searchQuery: _searchQuery,
-            onDatePresetChanged: (preset) =>
-                setState(() => _datePreset = preset),
-            onTypeChanged: (type) => setState(() => _typeFilter = type),
-            onSearchChanged: (query) => setState(() => _searchQuery = query),
-            onAdvancedFilter: () => _showAdvancedFilter(context),
+              const Divider(height: 1),
+              Expanded(child: _buildList(groupsAsync)),
+            ],
           ),
-          const Divider(height: 1),
-          Expanded(child: _buildList(groupsAsync)),
+          // FAB toggle button positioned near FAB area (bottom right)
+          // Position: right of FAB column, vertically centered with FAB column
+          // FAB location: right edge with margin, bottom aligned with action bar top
+          if (!_isSelectionMode)
+            Positioned(
+              right: MediaQuery.of(context).padding.right + 
+                     16 + // kFloatingActionButtonMargin
+                     56 + // FAB width
+                     AppSpacing.md, // Spacing between FAB and toggle button
+              bottom: MediaQuery.of(context).padding.bottom + 
+                      80 + // Bottom navigation bar height
+                      100 + // Action bar height
+                      56 + // Plus FAB height
+                      AppSpacing.sm + // Spacing between FABs
+                      28, // Half of toggle button height (40/2) to center it with FAB column
+              child: const FabToggleButton(),
+            ),
         ],
       ),
       bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar(groupsAsync) : null,
@@ -245,7 +267,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     final count = _selectedIds.length;
     
     // 计算总数量以判断是否全选
-    int totalCount = groupsAsync.maybeWhen(
+    final int totalCount = groupsAsync.maybeWhen(
       data: (groups) {
         final filtered = _applyClientFilters(groups);
         var total = 0;
