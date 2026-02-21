@@ -17,7 +17,8 @@ class TtsTemplates {
 
   static String saved() => '记好了，还有吗？';
 
-  static String timeout() => '还在吗？30秒后我就先走啦';
+  static String timeout() =>
+      '还在吗？暂时不用的话我会先休息哦，30秒后自动退出';
 
   static String sessionEnd({required int count, required double total}) {
     return '本次记了$count笔，共${_formatAmount(total)}元，拜拜';

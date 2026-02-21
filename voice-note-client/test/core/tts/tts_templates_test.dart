@@ -57,7 +57,8 @@ void main() {
     });
 
     test('timeout returns warning', () {
-      expect(TtsTemplates.timeout(), '还在吗？30秒后我就先走啦');
+      expect(TtsTemplates.timeout(),
+          '还在吗？暂时不用的话我会先休息哦，30秒后自动退出');
     });
 
     test('sessionEnd formats integer total', () {

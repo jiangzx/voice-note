@@ -16,6 +16,7 @@ import '../domain/voice_state.dart';
 import 'providers/quick_suggestions_provider.dart';
 import 'providers/voice_session_provider.dart';
 import 'providers/voice_settings_provider.dart';
+import 'voice_copy.dart';
 import 'widgets/batch_confirmation_card.dart';
 import 'widgets/chat_bubble.dart';
 import 'widgets/confirmation_card.dart';
@@ -252,7 +253,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                   if (inputMode == VoiceInputMode.keyboard)
                     _buildKeyboardInput(voiceState, isProcessing)
                   else
-                    _buildVoiceControls(voiceState, inputMode),
+                    _buildVoiceControls(voiceState, inputMode, isProcessing),
                   _buildModeSwitcher(inputMode),
                 ],
               ),
@@ -503,7 +504,11 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     _textController.clear();
   }
 
-  Widget _buildVoiceControls(VoiceState voiceState, VoiceInputMode inputMode) {
+  Widget _buildVoiceControls(
+    VoiceState voiceState,
+    VoiceInputMode inputMode,
+    bool isProcessing,
+  ) {
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -512,7 +517,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
         else
           VoiceAnimationWidget(state: voiceState),
         const SizedBox(height: AppSpacing.lg),
-        _buildStatusText(voiceState, inputMode),
+        _buildStatusContent(voiceState, inputMode, isProcessing),
       ],
     );
     return Padding(
@@ -533,6 +538,116 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
         child: content,
       ),
     );
+  }
+
+  Widget _buildStatusContent(
+    VoiceState voiceState,
+    VoiceInputMode inputMode,
+    bool isProcessing,
+  ) {
+    final theme = Theme.of(context);
+
+    if (voiceState == VoiceState.idle) {
+      return Text(
+        VoiceCopy.idleHint,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: AppColors.textPlaceholder,
+        ),
+        textAlign: TextAlign.center,
+      );
+    }
+
+    if (voiceState == VoiceState.recognizing) {
+      return Text(
+        VoiceCopy.mainListening,
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontSize: 18,
+          color: AppColors.brandPrimary,
+          fontWeight: FontWeight.w500,
+        ),
+        textAlign: TextAlign.center,
+      );
+    }
+
+    if (voiceState == VoiceState.confirming) {
+      final batch = ref.read(voiceSessionProvider).draftBatch;
+      final isBatch = batch != null && !batch.isSingleItem;
+      final text = isBatch
+          ? VoiceCopy.mainConfirmBatch
+          : VoiceCopy.mainConfirmSingle;
+      return Text(
+        text,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: AppColors.textPlaceholder,
+        ),
+        textAlign: TextAlign.center,
+      );
+    }
+
+    if (voiceState == VoiceState.listening) {
+      if (inputMode == VoiceInputMode.pushToTalk) {
+        return Text(
+          VoiceCopy.pushToTalkHint,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: AppColors.textPlaceholder,
+          ),
+          textAlign: TextAlign.center,
+        );
+      }
+      if (isProcessing) {
+        return Text(
+          VoiceCopy.mainProcessing,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontSize: 16,
+            color: AppColors.textPrimary,
+          ),
+          textAlign: TextAlign.center,
+        );
+      }
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            VoiceCopy.mainReadyTitle,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontSize: 18,
+              color: AppColors.brandPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            VoiceCopy.mainReadySubtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildExampleChips(),
+        ],
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildExampleChips() {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: [
+        _ExampleChip(phrase: VoiceCopy.examplePhrase1, onTap: _onExampleTap),
+        _ExampleChip(phrase: VoiceCopy.examplePhrase2, onTap: _onExampleTap),
+      ],
+    );
+  }
+
+  void _onExampleTap(String phrase) {
+    ref.read(voiceSessionProvider.notifier).submitTextInput(phrase);
   }
 
   Widget _buildModeSwitcher(VoiceInputMode inputMode) {
@@ -593,22 +708,36 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     );
   }
 
-  Widget _buildStatusText(VoiceState voiceState, VoiceInputMode inputMode) {
-    final batch = ref.read(voiceSessionProvider).draftBatch;
-    final isBatch = batch != null && !batch.isSingleItem;
-    final text = switch (voiceState) {
-      VoiceState.idle => '点击开始',
-      VoiceState.listening => inputMode == VoiceInputMode.pushToTalk
-          ? '按住 说话'
-          : '正在聆听...',
-      VoiceState.recognizing => '正在识别...',
-      VoiceState.confirming => isBatch ? '请确认或说出要修改的内容' : '请确认以下信息',
-    };
+}
 
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: AppColors.textPlaceholder,
+/// Clickable chip that submits the phrase as text input (same path as keyboard).
+class _ExampleChip extends StatelessWidget {
+  final String phrase;
+  final void Function(String phrase) onTap;
+
+  const _ExampleChip({required this.phrase, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: AppColors.backgroundTertiary,
+      borderRadius: AppRadius.cardAll,
+      child: InkWell(
+        onTap: () => onTap(phrase),
+        borderRadius: AppRadius.cardAll,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: Text(
+            phrase,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
       ),
     );
   }

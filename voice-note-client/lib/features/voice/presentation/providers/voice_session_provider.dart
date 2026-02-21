@@ -19,6 +19,7 @@ import '../../domain/parse_result.dart';
 import '../../domain/voice_orchestrator.dart';
 import '../../domain/voice_state.dart';
 import '../helpers/transaction_save_helper.dart';
+import '../voice_copy.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/mode_switcher.dart';
 import 'quick_suggestions_provider.dart';
@@ -140,7 +141,6 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     if (isOffline) {
       _addAssistantMessage('当前处于离线模式，仅使用本地识别', type: ChatMessageType.system);
     }
-    _addAssistantMessage('我在听，请说...');
 
     _networkSub?.cancel();
     _networkSub = networkService.onStatusChange.listen(_onNetworkChanged);
@@ -207,11 +207,23 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       // Switching to keyboard — release mic and VAD
       await _orchestrator?.stopListening();
       state = state.copyWith(voiceState: VoiceState.listening);
+      if (_sessionActive) {
+        _addAssistantMessage(
+          _inputModeSwitchMessage(newMode),
+          type: ChatMessageType.system,
+        );
+      }
     } else if (!wasAudioMode && isAudioMode) {
       // Switching from keyboard to audio mode — restart audio
       try {
         await _orchestrator?.startListening(newMode);
         state = state.copyWith(voiceState: VoiceState.listening);
+        if (_sessionActive) {
+          _addAssistantMessage(
+            _inputModeSwitchMessage(newMode),
+            type: ChatMessageType.system,
+          );
+        }
       } catch (e) {
         if (!_sessionActive) return;
         _addAssistantMessage('启动麦克风失败：$e', type: ChatMessageType.error);
@@ -223,6 +235,12 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       _modeSwitchInFlight = completer.future;
       try {
         await _orchestrator?.switchInputMode(newMode);
+        if (_sessionActive) {
+          _addAssistantMessage(
+            _inputModeSwitchMessage(newMode),
+            type: ChatMessageType.system,
+          );
+        }
       } catch (e) {
         if (!_sessionActive) return;
         _addAssistantMessage('切换模式失败：$e', type: ChatMessageType.error);
@@ -264,9 +282,17 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     try {
       await _saveHelper?.saveOne(result);
       HapticFeedback.heavyImpact();
+      final amountStr = result.amount != null
+          ? result.amount! == result.amount!.roundToDouble()
+              ? result.amount!.toInt().toString()
+              : result.amount!.toStringAsFixed(2)
+          : '--';
       _addAssistantMessage(
-        '已记录 ¥${result.amount?.toStringAsFixed(2) ?? "--"}'
-        '${result.category != null ? " · ${result.category}" : ""}',
+        VoiceCopy.successFeedback(
+          category: result.category,
+          typeLabel: _typeLabel(result.type),
+          amountStr: amountStr,
+        ),
         type: ChatMessageType.success,
       );
     } catch (e) {
@@ -331,7 +357,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
 
   /// User cancelled the current transaction.
   void cancelTransaction() {
-    _addAssistantMessage('好的，已取消。请继续');
+    _addAssistantMessage(VoiceCopy.feedbackCancel);
     state = state.copyWith(
       voiceState: VoiceState.listening,
       clearParseResult: true,
@@ -366,6 +392,22 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     }
   }
 
+  static String _inputModeSwitchMessage(VoiceInputMode mode) {
+    final label = switch (mode) {
+      VoiceInputMode.auto => '自动',
+      VoiceInputMode.pushToTalk => '手动',
+      VoiceInputMode.keyboard => '键盘',
+    };
+    return '已切换至$label模式';
+  }
+
+  static String _typeLabel(String type) => switch (type.toUpperCase()) {
+        'EXPENSE' => '支出',
+        'INCOME' => '收入',
+        'TRANSFER' => '转账',
+        _ => '支出',
+      };
+
   void _onNativeAudioEvent(NativeAudioEvent event) {
     if (!_sessionActive) return;
     if (_nativeAudioSessionId == null || event.sessionId != _nativeAudioSessionId) {
@@ -373,23 +415,10 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     }
 
     if (event.event == 'audioRouteChanged') {
-      final oldRoute = event.data['oldRoute'] as String? ?? 'unknown';
-      final newRoute = event.data['newRoute'] as String? ?? event.route;
-      _addAssistantMessage(
-        '音频路由已切换：$oldRoute → $newRoute',
-        type: ChatMessageType.system,
-      );
       return;
     }
 
     if (event.event == 'audioFocusChanged') {
-      final canAutoResume = event.canAutoResume;
-      if (!canAutoResume) {
-        _addAssistantMessage(
-          '音频焦点变化，当前不会自动恢复，请手动继续',
-          type: ChatMessageType.system,
-        );
-      }
       return;
     }
 
@@ -557,7 +586,10 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   @override
   void onTimeoutWarning() {
     if (!_sessionActive) return;
-    _addAssistantMessage('还在吗？30秒后我就先走啦', type: ChatMessageType.system);
+    _addAssistantMessage(
+      '${VoiceCopy.timeoutWarningMain}\n${VoiceCopy.timeoutWarningSub}',
+      type: ChatMessageType.system,
+    );
   }
 
   @override
@@ -585,9 +617,13 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     state = state.copyWith(
       errorMessage: message,
       voiceState: VoiceState.listening,
-      isProcessing: false, // 错误发生时，确保重置 isProcessing 状态
+      isProcessing: false,
     );
-    _addAssistantMessage('出了点问题：$message', type: ChatMessageType.error);
+    final isNoVoice = message.contains('未检测到语音');
+    _addAssistantMessage(
+      isNoVoice ? VoiceCopy.feedbackNoBill : '出了点问题：$message',
+      type: isNoVoice ? ChatMessageType.normal : ChatMessageType.error,
+    );
   }
 
   // ======================== Session Summary ========================

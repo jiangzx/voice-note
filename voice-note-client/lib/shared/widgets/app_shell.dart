@@ -7,7 +7,6 @@ import '../../app/design_tokens.dart';
 import '../../app/theme.dart';
 import '../../features/transaction/presentation/screens/transaction_form_screen.dart';
 import 'animated_voice_fab.dart';
-import 'fab_visibility_provider.dart';
 
 /// Custom FAB location for transaction page to avoid overlapping with bottom action bar.
 /// 
@@ -81,24 +80,14 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final index = _currentIndex(context);
-    final showFab = index < 3;
     final location = GoRouterState.of(context).uri.path;
     final isTransactionPage = location.startsWith('/transactions');
-    
-    // Only enable visibility control on transaction page
-    final fabVisible = isTransactionPage
-        ? ref.watch(fabVisibilityProvider)
-        : true;
+    final showFab = index < 3 && !isTransactionPage;
 
     return Scaffold(
       body: child,
       floatingActionButton: showFab
-          ? AnimatedOpacity(
-              opacity: fabVisible ? 1.0 : 0.0,
-              duration: AppDuration.normal,
-              child: IgnorePointer(
-                ignoring: !fabVisible,
-                child: Column(
+          ? Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Voice recording FAB with animation
@@ -127,9 +116,7 @@ class AppShell extends ConsumerWidget {
                       },
                     ),
                   ],
-                ),
-              ),
-            )
+                )
           : null,
       floatingActionButtonLocation: isTransactionPage
           ? const _TransactionPageFabLocation()

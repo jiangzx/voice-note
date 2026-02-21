@@ -85,8 +85,9 @@ void main() {
 
       final hasStatusText =
           find.text('点击开始').evaluate().isNotEmpty ||
-          find.text('正在聆听...').evaluate().isNotEmpty ||
-          find.text('正在识别...').evaluate().isNotEmpty ||
+          find.text('对着我说话，就能一键记账').evaluate().isNotEmpty ||
+          find.text('我在听，你慢慢说～').evaluate().isNotEmpty ||
+          find.text('正在帮你记录账单...').evaluate().isNotEmpty ||
           find.text('请确认以下信息').evaluate().isNotEmpty ||
           find.text('请确认或说出要修改的内容').evaluate().isNotEmpty;
       expect(hasStatusText, isTrue);
@@ -99,8 +100,9 @@ void main() {
 
       final hasStatusHint =
           find.text('点击开始').evaluate().isNotEmpty ||
-          find.text('正在聆听...').evaluate().isNotEmpty ||
-          find.text('正在识别...').evaluate().isNotEmpty ||
+          find.text('对着我说话，就能一键记账').evaluate().isNotEmpty ||
+          find.text('我在听，你慢慢说～').evaluate().isNotEmpty ||
+          find.text('正在帮你记录账单...').evaluate().isNotEmpty ||
           find.text('请确认以下信息').evaluate().isNotEmpty ||
           find.text('请确认或说出要修改的内容').evaluate().isNotEmpty;
       expect(hasStatusHint, isTrue);

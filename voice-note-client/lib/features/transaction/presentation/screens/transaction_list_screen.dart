@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
-import '../../../../shared/widgets/fab_toggle_button.dart';
 import '../../../export/presentation/widgets/export_options_sheet.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
@@ -178,14 +177,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
 
     return Scaffold(
       appBar: _isSelectionMode ? _buildSelectionAppBar() : _buildNormalAppBar(hasRouteFilter, range),
-      floatingActionButton: _isSelectionMode
-          ? const FloatingActionButton(
-              onPressed: null,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              child: SizedBox.shrink(),
-            )
-          : null, // 多选模式下使用透明FAB覆盖AppShell的FAB，非多选模式下使用AppShell的FAB
+      floatingActionButton: null,
       body: Stack(
         children: [
           Column(
@@ -260,11 +252,6 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
               Expanded(child: _buildList(groupsAsync, categoryNameMap)),
             ],
           ),
-          // FAB toggle button positioned near FAB area (bottom right)
-          // Position: right of FAB column, vertically centered with FAB column
-          // FAB location: right edge with margin, bottom aligned with action bar top
-          if (!_isSelectionMode)
-            _buildFabTogglePosition(),
         ],
       ),
       bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar(groupsAsync) : null,
@@ -672,26 +659,6 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     );
   }
 
-  /// Builds the FAB toggle button positioned near the FAB area.
-  /// Extracts MediaQuery calculation to avoid repeated calculations in build method.
-  Widget _buildFabTogglePosition() {
-    final mediaQuery = MediaQuery.of(context);
-    return Positioned(
-      right: mediaQuery.padding.right +
-          16 + // kFloatingActionButtonMargin
-          56 + // FAB width
-          AppSpacing.md, // Spacing between FAB and toggle button
-      bottom: mediaQuery.padding.bottom +
-          80 + // Bottom navigation bar height
-          100 + // Action bar height
-          56 + // Plus FAB height
-          AppSpacing.sm + // Spacing between FABs
-          28, // Half of toggle button height (40/2) to center it with FAB column
-      child: const RepaintBoundary(
-        child: FabToggleButton(),
-      ),
-    );
-  }
 }
 
 /// Transaction tile with category name resolved at parent level.
