@@ -2,11 +2,103 @@ import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/design_tokens.dart';
 import '../../app/theme.dart';
 import '../../features/transaction/presentation/screens/transaction_form_screen.dart';
 import 'animated_voice_fab.dart';
+import 'draggable_fab_group.dart';
+
+/// FAB group size: width 56, height 56+8+56=120.
+const Size kFabGroupSize = Size(56, 120);
+
+const String _keyFabGroupDx = 'fab_group_offset_dx';
+const String _keyFabGroupDy = 'fab_group_offset_dy';
+
+/// Holds FAB offset in local state so drag/snap only rebuild this subtree, not [child].
+class _DraggableFabOverlay extends StatefulWidget {
+  const _DraggableFabOverlay({
+    required this.initialOffset,
+    required this.onSnapEnd,
+    required this.fabChild,
+  });
+
+  final Offset? initialOffset;
+  final void Function(Offset) onSnapEnd;
+  final Widget fabChild;
+
+  @override
+  State<_DraggableFabOverlay> createState() => _DraggableFabOverlayState();
+}
+
+class _DraggableFabOverlayState extends State<_DraggableFabOverlay> {
+  Offset? _offset;
+
+  @override
+  void initState() {
+    super.initState();
+    _offset = widget.initialOffset;
+  }
+
+  @override
+  void didUpdateWidget(_DraggableFabOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialOffset != widget.initialOffset) {
+      _offset = widget.initialOffset;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final minX = 0.0;
+        final maxX = (w - kFabGroupSize.width).clamp(0.0, double.infinity);
+        final minY = 0.0;
+        final maxY = (h - kFabGroupSize.height).clamp(0.0, double.infinity);
+        final defaultOffset = Offset(
+          w - kFloatingActionButtonMargin - kFabGroupSize.width,
+          h - kFloatingActionButtonMargin - kFabGroupSize.height,
+        );
+        final raw = _offset ?? defaultOffset;
+        final clamped = Offset(
+          raw.dx.clamp(minX, maxX),
+          raw.dy.clamp(minY, maxY),
+        );
+        void onOffsetChanged(Offset value) {
+          setState(() => _offset = Offset(
+                value.dx.clamp(minX, maxX),
+                value.dy.clamp(minY, maxY),
+              ));
+        }
+        return SizedBox(
+          width: w,
+          height: h,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: clamped.dx,
+                top: clamped.dy,
+                child: DraggableFabGroup(
+                  offset: clamped,
+                  onOffsetChanged: onOffsetChanged,
+                  snapLeftX: minX,
+                  snapRightX: maxX,
+                  onSnapEnd: widget.onSnapEnd,
+                  child: widget.fabChild,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
 
 /// Custom FAB location for transaction page to avoid overlapping with bottom action bar.
 /// 
@@ -62,11 +154,16 @@ class _TransactionPageFabLocation extends FloatingActionButtonLocation {
 }
 
 /// Shell widget providing bottom navigation and FAB with container transform.
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.child});
 
   final Widget child;
 
+  @override
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
   static const _tabs = ['/home', '/transactions', '/statistics', '/settings'];
 
   int _currentIndex(BuildContext context) {
@@ -77,26 +174,62 @@ class AppShell extends ConsumerWidget {
     return 0;
   }
 
+  Offset? _fabOffset;
+
+  bool get _isHomeOrStatistics {
+    final index = _currentIndex(context);
+    return index == 0 || index == 2;
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    _loadFabOffset();
+  }
+
+  Future<void> _loadFabOffset() async {
+    final prefs = await SharedPreferences.getInstance();
+    final dx = prefs.getDouble(_keyFabGroupDx);
+    final dy = prefs.getDouble(_keyFabGroupDy);
+    if (mounted && dx != null && dy != null) {
+      setState(() => _fabOffset = Offset(dx, dy));
+    }
+  }
+
+  void _onFabSnapEnd(Offset finalOffset) {
+    setState(() => _fabOffset = finalOffset);
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setDouble(_keyFabGroupDx, finalOffset.dx);
+      prefs.setDouble(_keyFabGroupDy, finalOffset.dy);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final index = _currentIndex(context);
     final location = GoRouterState.of(context).uri.path;
     final isTransactionPage = location.startsWith('/transactions');
     final showFab = index < 3 && !isTransactionPage;
+    final useDraggableFab = showFab && _isHomeOrStatistics;
 
-    return Scaffold(
-      body: child,
-      floatingActionButton: showFab
-          ? Column(
+    // Draggable FAB: overlay holds offset so setState during drag only rebuilds overlay, not page.
+    final body = useDraggableFab
+        ? Stack(
+            clipBehavior: Clip.none,
+            children: [
+              widget.child,
+              _DraggableFabOverlay(
+                initialOffset: _fabOffset,
+                onSnapEnd: _onFabSnapEnd,
+                fabChild: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Voice recording FAB with animation
                     const AnimatedVoiceFab(),
                     const SizedBox(height: AppSpacing.sm),
-                    // Manual entry FAB
                     OpenContainer<void>(
                       transitionDuration: AppDuration.pageTransition,
-                      openBuilder: (context, _) => const TransactionFormScreen(),
+                      openBuilder: (context, _) =>
+                          const TransactionFormScreen(),
                       closedElevation: 2,
                       closedShape: const RoundedRectangleBorder(
                         borderRadius: AppRadius.cardAll,
@@ -116,7 +249,44 @@ class AppShell extends ConsumerWidget {
                       },
                     ),
                   ],
-                )
+                ),
+              ),
+            ],
+          )
+        : widget.child;
+
+    return Scaffold(
+      body: body,
+      floatingActionButton: showFab && !useDraggableFab
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const AnimatedVoiceFab(),
+                const SizedBox(height: AppSpacing.sm),
+                OpenContainer<void>(
+                  transitionDuration: AppDuration.pageTransition,
+                  openBuilder: (context, _) =>
+                      const TransactionFormScreen(),
+                  closedElevation: 2,
+                  closedShape: const RoundedRectangleBorder(
+                    borderRadius: AppRadius.cardAll,
+                  ),
+                  closedColor: AppColors.brandPrimary,
+                  closedBuilder: (context, openContainer) {
+                    return const SizedBox(
+                      height: 56,
+                      width: 56,
+                      child: Center(
+                        child: Icon(
+                          Icons.add,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            )
           : null,
       floatingActionButtonLocation: isTransactionPage
           ? const _TransactionPageFabLocation()
