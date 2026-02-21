@@ -11,6 +11,7 @@ import '../../../core/network/dto/transaction_correction_response.dart'
     as dto;
 import '../../../core/tts/tts_templates.dart';
 import '../data/asr_repository.dart';
+import '../data/llm_repository.dart';
 import '../presentation/widgets/mode_switcher.dart';
 import 'asr_connection_manager.dart';
 import 'draft_batch.dart';
@@ -349,9 +350,11 @@ class VoiceOrchestrator {
                 if (kDebugMode) {
                   debugPrint('[VoiceMode] pushEnd: Timeout waiting for asrFinalText');
                 }
-                // 如果超时且仍在等待，说明没有检测到语音，提示用户
+                // 超时多为 ASR/网络不可用，提示检查网络或改用键盘，避免误用「没听清」
                 if (_isPushEndPending) {
-                  _delegate.onError('未检测到语音');
+                  _delegate.onError(
+                    '语音识别未返回结果，请检查网络或尝试键盘输入',
+                  );
                 }
               },
             );
@@ -359,9 +362,10 @@ class VoiceOrchestrator {
             if (kDebugMode) {
               debugPrint('[VoiceMode] pushEnd: Error waiting for asrFinalText: $e');
             }
-            // 如果出错且仍在等待，也提示用户
             if (_isPushEndPending) {
-              _delegate.onError('未检测到语音');
+              _delegate.onError(
+                '语音识别未返回结果，请检查网络或尝试键盘输入',
+              );
             }
           }
 
@@ -1133,6 +1137,26 @@ class VoiceOrchestrator {
     return stripped.isEmpty || _fillerWords.contains(stripped);
   }
 
+  /// Maps LlmParseException message to user-friendly string with E-LLM-xxx code.
+  String _userMessageForLlmError(String errorStr) {
+    if (errorStr.contains('TimeoutException') ||
+        errorStr.contains('Request timed out')) {
+      return '语义解析请求超时，请检查网络后重试 [E-LLM-001]';
+    }
+    if (errorStr.contains('NetworkUnavailableException') ||
+        errorStr.contains('Network unavailable')) {
+      return '无法连接网络，请检查网络后重试 [E-LLM-002]';
+    }
+    if (errorStr.contains('RateLimitException') ||
+        errorStr.contains('Rate limit')) {
+      return '请求过于频繁，请稍后再试 [E-LLM-003]';
+    }
+    if (errorStr.contains('LLM parse failed') || errorStr.contains('422')) {
+      return '语义解析暂时不可用，请稍后重试 [E-LLM-004]';
+    }
+    return '语义解析失败，请稍后重试 [E-LLM-005]';
+  }
+
   Future<void> _parseAndDeliver(String text) async {
     if (_isFillerText(text)) {
       dev.log('Skipping filler text: "$text"', name: 'VoiceOrchestrator');
@@ -1216,7 +1240,10 @@ class VoiceOrchestrator {
         );
       }
     } catch (e) {
-      _delegate.onError('NLP parsing failed: $e');
+      final message = e is LlmParseException
+          ? _userMessageForLlmError(e.toString())
+          : 'NLP parsing failed: $e';
+      _delegate.onError(message);
       _currentState = VoiceState.listening;
       _startInactivityTimer();
     }
@@ -1419,7 +1446,10 @@ class VoiceOrchestrator {
           await _speakWithSuppression(TtsTemplates.correctionFailed());
       }
     } catch (e) {
-      _delegate.onError('NLP correction failed: $e');
+      final message = e is LlmParseException
+          ? _userMessageForLlmError(e.toString())
+          : 'NLP correction failed: $e';
+      _delegate.onError(message);
       _currentState = VoiceState.listening;
       _startInactivityTimer();
     } finally {

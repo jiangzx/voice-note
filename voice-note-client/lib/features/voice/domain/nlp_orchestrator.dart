@@ -149,9 +149,20 @@ class NlpOrchestrator {
         level: 900,
       );
       return _localCorrection(text, draftBatch);
+    } on LlmParseException catch (e) {
+      final msg = e.message;
+      if (msg.contains('TimeoutException') || msg.contains('Request timed out')) {
+        dev.log(
+          'LLM correction timed out (batchSize=$batchSize) — falling back to local',
+          name: 'NLP',
+          level: 900,
+        );
+        return _localCorrection(text, draftBatch);
+      }
+      rethrow;
     } catch (e, st) {
       dev.log('LLM correction failed (batchSize=$batchSize)', error: e, stackTrace: st, name: 'NLP');
-      return _localCorrection(text, draftBatch);
+      rethrow;
     }
   }
 
