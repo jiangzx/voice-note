@@ -362,7 +362,9 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   }
 
   /// User cancelled the current transaction.
-  void cancelTransaction() {
+  /// Stops TTS first so cancel does not leave playback running.
+  Future<void> cancelTransaction() async {
+    await _orchestrator?.stopTtsIfPlaying();
     _addAssistantMessage(VoiceCopy.feedbackCancel);
     // Clear orchestrator state so next ASR is treated as new input, not correction.
     _orchestrator?.clearDraftBatch();

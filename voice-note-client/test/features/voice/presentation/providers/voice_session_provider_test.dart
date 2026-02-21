@@ -136,7 +136,7 @@ void main() {
           ParseResult(amount: 28.0, category: '餐饮', source: ParseSource.local),
         ]),
       );
-      notifier.cancelTransaction();
+      await notifier.cancelTransaction();
 
       final state = container.read(voiceSessionProvider);
       expect(state.voiceState, VoiceState.listening);

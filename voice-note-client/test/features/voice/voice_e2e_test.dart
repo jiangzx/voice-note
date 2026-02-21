@@ -134,7 +134,7 @@ void main() {
       );
 
       // Cancel instead of confirm
-      notifier.cancelTransaction();
+      await notifier.cancelTransaction();
 
       expect(
         container.read(voiceSessionProvider).voiceState,
