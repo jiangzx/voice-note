@@ -911,7 +911,10 @@ class VoiceOrchestrator {
         }
       }
       if (_currentInputMode == VoiceInputMode.auto) {
-        _delegate.onRecognizingStarted();
+        // Confirming: user said 确认/取消 — handle in _onAsrFinalText without showing "正在识别" or starting timeout.
+        if (_currentState != VoiceState.confirming) {
+          _delegate.onRecognizingStarted();
+        }
       }
       if (_currentInputMode == VoiceInputMode.pushToTalk &&
           _pushToTalkFinalTextBuffer.isNotEmpty) {
