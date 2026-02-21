@@ -367,7 +367,7 @@ class _ChatHistoryState extends State<ChatHistory> {
         child: Text(
           '说点什么或输入来记一笔吧',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
         ),
       );

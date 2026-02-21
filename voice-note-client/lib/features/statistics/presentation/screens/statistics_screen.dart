@@ -190,16 +190,28 @@ class _SummaryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final amountStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+      color: color,
+      fontWeight: FontWeight.w600,
+    );
     return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(height: AppSpacing.xs),
         Text(
-          '¥${amount.toStringAsFixed(2)}',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
+          label,
+          style: Theme.of(context).textTheme.bodySmall,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '¥${amount.toStringAsFixed(2)}',
+            style: amountStyle,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+          ),
         ),
       ],
     );
