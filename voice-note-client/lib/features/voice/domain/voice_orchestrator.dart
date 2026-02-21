@@ -988,6 +988,14 @@ class VoiceOrchestrator {
         }
         return;
       }
+      // Suppress asr_send_error from disconnect/teardown (e.g. mode switch stops stream → send cancelled).
+      if (errorMessage.startsWith('asr_send_error:') &&
+          (errorMessage.contains('cancelled') || errorMessage.contains('canceled'))) {
+        if (kDebugMode) {
+          debugPrint('[VoiceMode] Suppressing benign asr_send_error (teardown): $errorMessage');
+        }
+        return;
+      }
       _delegate.onError('原生音频错误：$errorMessage');
     }
   }

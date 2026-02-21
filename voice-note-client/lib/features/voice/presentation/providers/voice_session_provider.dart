@@ -449,6 +449,14 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         }
         return;
       }
+      // Same as orchestrator: suppress teardown send errors (arrive after mode switch clears flag).
+      if (errorMessage.startsWith('asr_send_error:') &&
+          (errorMessage.contains('cancelled') || errorMessage.contains('canceled'))) {
+        if (kDebugMode) {
+          debugPrint('[VoiceSession] Suppressing benign asr_send_error (teardown): $errorMessage');
+        }
+        return;
+      }
       _addAssistantMessage(
         '原生音频错误：$errorMessage',
         type: ChatMessageType.error,
