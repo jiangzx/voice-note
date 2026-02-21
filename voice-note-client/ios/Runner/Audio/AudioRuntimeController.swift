@@ -83,12 +83,14 @@ final class AudioRuntimeController {
     }
     sessionId = sid
     mode = args["mode"] as? String ?? mode
+    let platformConfig = args["platformConfig"] as? [String: Any]
+    let enableNativeCapture = (platformConfig?["enableNativeCapture"] as? Bool) ?? (mode != "keyboard")
 
     // Apple: AVAudioSession setActive/category must run on main thread so the system
     // correctly shows the recording indicator and grants mic access.
     func doInit() -> [String: Any] {
       let onMain = Thread.isMainThread
-      print("[iOS Audio] initializeSession doInit onMainThread=\(onMain)")
+      print("[iOS Audio] initializeSession doInit onMainThread=\(onMain) enableNativeCapture=\(enableNativeCapture)")
       do {
         print("[iOS Audio] configureAudioSession()...")
         try configureAudioSession()
@@ -96,9 +98,13 @@ final class AudioRuntimeController {
         print("[iOS Audio] setActive(true)...")
         try AVAudioSession.sharedInstance().setActive(true)
         print("[iOS Audio] setActive(true) OK")
-        print("[iOS Audio] captureRuntime.start()...")
-        try captureRuntime.start()
-        print("[iOS Audio] captureRuntime.start() OK")
+        if enableNativeCapture {
+          print("[iOS Audio] captureRuntime.start()...")
+          try captureRuntime.start()
+          print("[iOS Audio] captureRuntime.start() OK")
+        } else {
+          print("[iOS Audio] TTS-only init — skipping captureRuntime.start()")
+        }
         focusRouteManager.startObserving()
         initialized = true
         focusState = "gain"

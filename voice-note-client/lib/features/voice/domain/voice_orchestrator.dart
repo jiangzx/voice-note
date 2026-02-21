@@ -146,15 +146,11 @@ class VoiceOrchestrator {
   // ======================== Public API ========================
 
   /// Start listening for voice input in the given [mode].
+  /// Keyboard mode initializes native session for TTS only (no ASR/capture).
   Future<void> startListening(VoiceInputMode mode) async {
     if (kDebugMode) debugPrint('[VoiceInit] startListening(mode=$mode)');
     _currentInputMode = mode;
-    if (mode == VoiceInputMode.keyboard) {
-      if (kDebugMode) debugPrint('[VoiceInit] Keyboard mode — skipping audio init');
-      return;
-    }
 
-    // 强制使用原生音频路径，不再支持 Flutter 插件路径
     if (!Platform.isAndroid && !Platform.isIOS) {
       throw StateError('Native audio runtime is only supported on Android and iOS');
     }
@@ -164,7 +160,11 @@ class VoiceOrchestrator {
 
     try {
       await _initNativeAudioRuntime(mode);
-      await _startNativeAsrStream();
+      if (mode != VoiceInputMode.keyboard) {
+        await _startNativeAsrStream();
+      } else if (kDebugMode) {
+        debugPrint('[VoiceInit] Keyboard mode — TTS-only init, ASR skipped');
+      }
       _currentState = VoiceState.listening;
       _startInactivityTimer();
     } catch (e) {
@@ -536,11 +536,12 @@ class VoiceOrchestrator {
     }
 
     _nativeAudioSub ??= native.events.listen(_onNativeAudioEvent);
+    final enableCapture = mode != VoiceInputMode.keyboard;
     final initResult = await native.initializeSession(
       sessionId: nativeSessionId,
       mode: mode.name,
       platformConfig: <String, Object?>{
-        'enableNativeCapture': true,
+        'enableNativeCapture': enableCapture,
       },
     );
     final ok = initResult['ok'] as bool? ?? false;
@@ -563,9 +564,13 @@ class VoiceOrchestrator {
       mode: mode.name,
     );
 
+    // Keyboard mode uses TTS only; skip capture-active check.
+    if (mode == VoiceInputMode.keyboard) {
+      if (kDebugMode) debugPrint('[VoiceInit] Keyboard mode — skip capture check');
+      return;
+    }
     final status = await native.getDuplexStatus(nativeSessionId);
     final captureActive = status['captureActive'] as bool? ?? false;
-    // pushToTalk: capture is stopped until pushStart; do not require active here.
     if (mode != VoiceInputMode.pushToTalk && !captureActive) {
       if (kDebugMode) {
         debugPrint('[VoiceInit] getDuplexStatus: captureActive=false');
@@ -823,6 +828,16 @@ class VoiceOrchestrator {
           debugPrint('[VoiceMode] Suppressing empty recording error: $errorMessage');
         }
         return; // Suppress the error
+      }
+      // Suppress benign ASR reconnect errors (intentional disconnect when switching to auto).
+      if (errorMessage.startsWith('asr_ws_failure:') &&
+          (errorMessage.contains('Socket is not connected') ||
+              errorMessage.contains('closed') ||
+              errorMessage.contains('cancel'))) {
+        if (kDebugMode) {
+          debugPrint('[VoiceMode] Suppressing benign ASR disconnect: $errorMessage');
+        }
+        return;
       }
       _delegate.onError('原生音频错误：$errorMessage');
     }
