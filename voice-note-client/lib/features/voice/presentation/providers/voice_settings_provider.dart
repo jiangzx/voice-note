@@ -49,6 +49,12 @@ class VoiceSettingsNotifier extends Notifier<VoiceSettings> {
             modeIndex < VoiceInputMode.values.length
         ? VoiceInputMode.values[modeIndex]
         : VoiceInputMode.pushToTalk;
+    // Persist default so fresh install / cleared data always starts as manual (pushToTalk).
+    if (modeIndex == null ||
+        modeIndex < 0 ||
+        modeIndex >= VoiceInputMode.values.length) {
+      prefs.setInt(_keyInputMode, VoiceInputMode.pushToTalk.index);
+    }
     final hideAutoVoiceMode = prefs.getBool(_keyHideAutoVoiceMode) ?? false;
     final rawMs = prefs.getInt(_keyVadSilenceDurationMs);
     final vadSilenceDurationMs = rawMs != null

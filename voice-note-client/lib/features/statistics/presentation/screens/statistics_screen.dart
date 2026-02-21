@@ -305,9 +305,13 @@ class _ChangeIndicator extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(width: AppSpacing.xs),
-        Text(
-          '$label $sign${change!.toStringAsFixed(1)}%',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
+        Expanded(
+          child: Text(
+            '$label $sign${change!.toStringAsFixed(1)}%',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
         ),
       ],
     );

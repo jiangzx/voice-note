@@ -179,8 +179,14 @@ ThemeData buildLightTheme() {
       ),
       shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
       tileColor: Colors.transparent,
-      titleTextStyle: textTheme.bodyLarge?.copyWith(color: AppColors.textPrimary),
-      subtitleTextStyle: textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+      titleTextStyle: textTheme.bodyLarge?.copyWith(
+        color: AppColors.textPrimary,
+        textBaseline: TextBaseline.alphabetic,
+      ),
+      subtitleTextStyle: textTheme.bodySmall?.copyWith(
+        color: AppColors.textSecondary,
+        textBaseline: TextBaseline.alphabetic,
+      ),
       iconColor: AppColors.textSecondary,
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
@@ -242,23 +248,52 @@ ThemeData buildLightTheme() {
   );
 }
 
+/// Base for all theme TextStyles so ThemeData.lerp and ListTile defaults get non-null inherit/textBaseline.
+const TextStyle _textThemeBase = TextStyle(
+  inherit: false,
+  textBaseline: TextBaseline.alphabetic,
+);
+
 TextTheme _buildTextTheme(ColorScheme colorScheme) {
-  return const TextTheme(
-    displayLarge: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-    displayMedium: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-    displaySmall: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-    headlineLarge: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-    headlineMedium: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-    headlineSmall: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-    titleLarge: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-    titleMedium: TextStyle(color: AppColors.textPrimary),
-    titleSmall: TextStyle(color: AppColors.textPrimary),
-    bodyLarge: TextStyle(color: AppColors.textPrimary),
-    bodyMedium: TextStyle(color: AppColors.textSecondary),
-    bodySmall: TextStyle(color: AppColors.textSecondary),
-    labelLarge: TextStyle(color: AppColors.textPrimary),
-    labelMedium: TextStyle(color: AppColors.textSecondary),
-    labelSmall: TextStyle(color: AppColors.textPlaceholder),
+  return TextTheme(
+    displayLarge: _textThemeBase.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+    displayMedium: _textThemeBase.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+    displaySmall: _textThemeBase.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+    headlineLarge: _textThemeBase.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+    headlineMedium: _textThemeBase.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+    headlineSmall: _textThemeBase.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+    titleLarge: _textThemeBase.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+    titleMedium: _textThemeBase.copyWith(color: AppColors.textPrimary),
+    titleSmall: _textThemeBase.copyWith(color: AppColors.textPrimary),
+    bodyLarge: _textThemeBase.copyWith(color: AppColors.textPrimary),
+    bodyMedium: _textThemeBase.copyWith(color: AppColors.textSecondary),
+    bodySmall: _textThemeBase.copyWith(color: AppColors.textSecondary),
+    labelLarge: _textThemeBase.copyWith(color: AppColors.textPrimary),
+    labelMedium: _textThemeBase.copyWith(color: AppColors.textSecondary),
+    labelSmall: _textThemeBase.copyWith(color: AppColors.textPlaceholder),
+  );
+}
+
+/// TextTheme with inherit: false and textBaseline for a ColorScheme (enables ThemeData.lerp when switching theme).
+TextTheme _buildTextThemeFromScheme(ColorScheme scheme) {
+  final Color onSurface = scheme.onSurface;
+  final Color onVariant = scheme.onSurfaceVariant;
+  return TextTheme(
+    displayLarge: _textThemeBase.copyWith(color: onSurface, fontWeight: FontWeight.w600),
+    displayMedium: _textThemeBase.copyWith(color: onSurface, fontWeight: FontWeight.w600),
+    displaySmall: _textThemeBase.copyWith(color: onSurface, fontWeight: FontWeight.w600),
+    headlineLarge: _textThemeBase.copyWith(color: onSurface, fontWeight: FontWeight.w600),
+    headlineMedium: _textThemeBase.copyWith(color: onSurface, fontWeight: FontWeight.w600),
+    headlineSmall: _textThemeBase.copyWith(color: onSurface, fontWeight: FontWeight.w600),
+    titleLarge: _textThemeBase.copyWith(color: onSurface, fontWeight: FontWeight.w600),
+    titleMedium: _textThemeBase.copyWith(color: onSurface),
+    titleSmall: _textThemeBase.copyWith(color: onSurface),
+    bodyLarge: _textThemeBase.copyWith(color: onSurface),
+    bodyMedium: _textThemeBase.copyWith(color: onVariant),
+    bodySmall: _textThemeBase.copyWith(color: onVariant),
+    labelLarge: _textThemeBase.copyWith(color: onSurface),
+    labelMedium: _textThemeBase.copyWith(color: onVariant),
+    labelSmall: _textThemeBase.copyWith(color: onVariant),
   );
 }
 
@@ -266,10 +301,27 @@ TextTheme _buildTextTheme(ColorScheme colorScheme) {
 ThemeData buildTheme(Color seedColor, Brightness brightness) {
   final bool isDark = brightness == Brightness.dark;
   if (!isDark) return buildLightTheme();
+  final colorScheme = ColorScheme.fromSeed(
+    seedColor: seedColor,
+    brightness: Brightness.dark,
+  );
+  final textTheme = _buildTextThemeFromScheme(colorScheme);
   return ThemeData(
     useMaterial3: true,
-    colorSchemeSeed: seedColor,
-    brightness: brightness,
+    colorScheme: colorScheme,
+    brightness: Brightness.dark,
+    textTheme: textTheme,
+    primaryTextTheme: textTheme,
+    listTileTheme: ListTileThemeData(
+      titleTextStyle: textTheme.bodyLarge?.copyWith(
+        color: colorScheme.onSurface,
+        textBaseline: TextBaseline.alphabetic,
+      ),
+      subtitleTextStyle: textTheme.bodySmall?.copyWith(
+        color: colorScheme.onSurfaceVariant,
+        textBaseline: TextBaseline.alphabetic,
+      ),
+    ),
     extensions: const <ThemeExtension<dynamic>>[_darkTransactionColors],
   );
 }
