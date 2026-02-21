@@ -117,6 +117,9 @@ class VoiceOrchestrator {
   /// Set when TTS was stopped by pushStart (user pressed PTT). Skip "recent TTS ended" discard for this hold.
   bool _ttsStoppedByUserAction = false;
 
+  /// When set, TTS was stopped by program (mode switch / confirm). Skip "recent TTS ended" discard for this window.
+  DateTime? _ttsStoppedByProgramAt;
+
   VoiceOrchestrator({
     required AsrRepository asrRepository,
     required NlpOrchestrator nlpOrchestrator,
@@ -517,6 +520,7 @@ class VoiceOrchestrator {
     }
     _nativeTtsCompletions.clear();
     _isTtsSpeaking = false;
+    _ttsStoppedByProgramAt = clock.now();
     if (kDebugMode) {
       debugPrint('[TTSFlow] stopTtsIfPlaying: stopped ${requestIds.length} TTS request(s)');
     }
@@ -532,6 +536,7 @@ class VoiceOrchestrator {
     _resumeStartAt = null;
     _bargeInPending = false;
     _ttsStoppedByUserAction = false;
+    _ttsStoppedByProgramAt = null;
     _currentInputMode = null;
     _cancelInactivityTimer();
     _pushToTalkAutoReleaseTimer?.cancel();
@@ -747,7 +752,11 @@ class VoiceOrchestrator {
       if (_isTtsSpeaking) return;
       if (_ttsEndedAt != null &&
           clock.now().difference(_ttsEndedAt!) < _ttsEchoDiscardWindow) {
-        return;
+        // Program stopped TTS (mode switch/confirm): allow interim in this window.
+        if (_ttsStoppedByProgramAt == null ||
+            clock.now().difference(_ttsStoppedByProgramAt!) >= _ttsEchoDiscardWindow) {
+          return;
+        }
       }
       // 自动模式：正常处理
       final text = event.data['text'] as String?;
@@ -835,6 +844,12 @@ class VoiceOrchestrator {
           if (kDebugMode) {
             debugPrint('[ASRFlow] Accept asrFinalText (after barge-in): "$text"');
           }
+        } else if (_ttsStoppedByProgramAt != null &&
+            clock.now().difference(_ttsStoppedByProgramAt!) < _ttsEchoDiscardWindow) {
+          // Program stopped TTS (mode switch/confirm): accept user speech in this window.
+          if (kDebugMode) {
+            debugPrint('[ASRFlow] Accept asrFinalText (TTS stopped by program): "$text"');
+          }
         } else {
           if (kDebugMode) {
             debugPrint(
@@ -869,6 +884,7 @@ class VoiceOrchestrator {
       }
       _isTtsSpeaking = false;
       _ttsEndedAt = clock.now();
+      _ttsStoppedByProgramAt = null;
       final requestId = event.requestId;
       if (requestId != null) {
         final completer = _nativeTtsCompletions.remove(requestId);
@@ -888,6 +904,7 @@ class VoiceOrchestrator {
     if (event.event == 'ttsError') {
       _isTtsSpeaking = false;
       _ttsEndedAt = clock.now();
+      _ttsStoppedByProgramAt = null;
       final requestId = event.requestId;
       if (requestId != null) {
         final completer = _nativeTtsCompletions.remove(requestId);
