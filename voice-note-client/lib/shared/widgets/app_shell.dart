@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/design_tokens.dart';
+import '../../app/theme.dart';
 import '../../features/transaction/presentation/screens/transaction_form_screen.dart';
 import 'animated_voice_fab.dart';
 import 'fab_visibility_provider.dart';
@@ -81,7 +82,6 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final index = _currentIndex(context);
     final showFab = index < 3;
-    final theme = Theme.of(context);
     final location = GoRouterState.of(context).uri.path;
     final isTransactionPage = location.startsWith('/transactions');
     
@@ -108,11 +108,11 @@ class AppShell extends ConsumerWidget {
                     OpenContainer<void>(
                       transitionDuration: AppDuration.pageTransition,
                       openBuilder: (context, _) => const TransactionFormScreen(),
-                      closedElevation: 6,
+                      closedElevation: 2,
                       closedShape: const RoundedRectangleBorder(
-                        borderRadius: AppRadius.xlAll,
+                        borderRadius: AppRadius.cardAll,
                       ),
-                      closedColor: theme.colorScheme.primaryContainer,
+                      closedColor: AppColors.brandPrimary,
                       closedBuilder: (context, openContainer) {
                         return SizedBox(
                           height: 56,
@@ -120,7 +120,7 @@ class AppShell extends ConsumerWidget {
                           child: Center(
                             child: Icon(
                               Icons.add,
-                              color: theme.colorScheme.onPrimaryContainer,
+                              color: Colors.white,
                             ),
                           ),
                         );

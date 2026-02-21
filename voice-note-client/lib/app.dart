@@ -29,7 +29,7 @@ class _SuikoujiAppState extends ConsumerState<SuikoujiApp> {
 
     return MaterialApp.router(
       title: '快记账',
-      theme: buildTheme(seedColor, Brightness.light),
+      theme: buildLightTheme(),
       darkTheme: buildTheme(seedColor, Brightness.dark),
       themeMode: themeMode,
       routerConfig: appRouter,

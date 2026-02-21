@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../../app/theme.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/fab_toggle_button.dart';
 import '../../../export/presentation/widgets/export_options_sheet.dart';
@@ -100,14 +101,13 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     if (_deleteHintShown) return;
     _deleteHintShown = true;
 
-    final theme = Theme.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             Icon(
               Icons.info_outline,
-              color: theme.colorScheme.onSurface,
+              color: AppColors.textPrimary,
             ),
             const SizedBox(width: AppSpacing.sm),
             const Expanded(
@@ -197,15 +197,12 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                     horizontal: AppSpacing.lg,
                     vertical: AppSpacing.xs,
                   ),
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withValues(alpha: 0.3),
+                  color: AppColors.brandPrimary.withValues(alpha: 0.12),
                   child: Text(
                     '已应用筛选条件',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                      color: AppColors.brandPrimary,
+                    ),
                   ),
                 ),
               FilterBar(
@@ -225,24 +222,21 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                     horizontal: AppSpacing.lg,
                     vertical: AppSpacing.xs,
                   ),
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
-                      .withValues(alpha: 0.5),
+                  color: AppColors.backgroundTertiary.withValues(alpha: 0.8),
                   child: Row(
                     children: [
                       Icon(
                         Icons.swipe_left,
                         size: AppIconSize.sm,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: AppColors.textSecondary,
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
                           '左滑可删除',
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                       IconButton(
@@ -356,14 +350,8 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
         vertical: AppSpacing.md,
       ),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: AppColors.backgroundPrimary,
+        boxShadow: AppShadow.card,
       ),
       child: SafeArea(
         child: Row(
@@ -387,7 +375,9 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                     const SizedBox(width: AppSpacing.xs),
                     Text(
                       '全选',
-                      style: theme.textTheme.titleMedium,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ],
                 ),
@@ -405,8 +395,8 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
               icon: const Icon(Icons.delete_outline),
               label: const Text('删除'),
               style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.error,
-                foregroundColor: theme.colorScheme.onError,
+                backgroundColor: AppColors.expense,
+                foregroundColor: Colors.white,
               ),
             ),
           ],
@@ -620,7 +610,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
-              foregroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: AppColors.expense,
             ),
             child: const Text('删除'),
           ),

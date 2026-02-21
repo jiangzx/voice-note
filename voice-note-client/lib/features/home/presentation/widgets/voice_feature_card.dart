@@ -3,17 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../../app/theme.dart';
 import '../../../../core/permissions/permission_service.dart';
 
-/// Prominent card promoting voice recording feature on home screen.
-///
-/// Features:
-/// - Pulsing animation on microphone icon
-/// - Shadow and border highlight animations
-/// - Arrow icon with slide animation
-/// - Action callout text
-/// - Enhanced touch feedback
-/// - Clickable card that navigates to voice recording screen
+/// Prominent card promoting voice recording on home. Light design: secondary
+/// background, soft shadow, linear icon; tap navigates to voice screen.
 class VoiceFeatureCard extends StatefulWidget {
   const VoiceFeatureCard({super.key});
 
@@ -25,8 +19,6 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
     with TickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnimation;
-  late final AnimationController _shadowController;
-  late final Animation<double> _shadowAnimation;
   late final AnimationController _arrowController;
   late final Animation<Offset> _arrowAnimation;
   bool _isPressed = false;
@@ -35,60 +27,28 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
   @override
   void initState() {
     super.initState();
-    
-    // Icon pulse animation
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
-
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-
-    // Shadow pulse animation (slightly offset phase)
-    _shadowController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _shadowAnimation = Tween<double>(
-      begin: 2.0,
-      end: 6.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _shadowController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    // Arrow slide animation
     _arrowController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-
     _arrowAnimation = Tween<Offset>(
       begin: Offset.zero,
-      end: const Offset(0.15, 0),
+      end: const Offset(0.12, 0),
     ).animate(
-      CurvedAnimation(
-        parent: _arrowController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _arrowController, curve: Curves.easeInOut),
     );
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
-    _shadowController.dispose();
     _arrowController.dispose();
     super.dispose();
   }
@@ -96,68 +56,43 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return AnimatedBuilder(
-      animation: Listenable.merge([_shadowAnimation, _pulseAnimation]),
+      animation: _pulseAnimation,
       builder: (context, child) {
-        return Card(
+        return Container(
           margin: const EdgeInsets.symmetric(
             horizontal: AppSpacing.lg,
             vertical: AppSpacing.sm,
           ),
-          elevation: _shadowAnimation.value,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.mdAll,
-            side: BorderSide(
-              color: colorScheme.tertiary.withOpacity(
-                0.3 + (_shadowAnimation.value - 2.0) / 4.0 * 0.2,
-              ),
-              width: 1.5,
-            ),
+          decoration: BoxDecoration(
+            color: AppColors.backgroundSecondary,
+            borderRadius: AppRadius.cardAll,
+            boxShadow: AppShadow.card,
           ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: AppRadius.mdAll,
+              borderRadius: AppRadius.cardAll,
               onTap: () => _handleTap(context),
               onTapDown: (_) => setState(() => _isPressed = true),
               onTapUp: (_) => setState(() => _isPressed = false),
               onTapCancel: () => setState(() => _isPressed = false),
-              splashColor: colorScheme.tertiary.withOpacity(0.2),
-              highlightColor: colorScheme.tertiary.withOpacity(0.1),
               child: AnimatedScale(
                 scale: _isPressed ? 0.98 : 1.0,
                 duration: AppDuration.fast,
                 curve: Curves.easeOut,
-                child: Container(
+                child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.xl),
-                  decoration: BoxDecoration(
-                    borderRadius: AppRadius.mdAll,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        colorScheme.tertiaryContainer,
-                        colorScheme.tertiaryContainer.withOpacity(0.7),
-                      ],
-                    ),
-                  ),
                   child: Row(
                     children: [
                       RepaintBoundary(
-                        child: AnimatedBuilder(
-                          animation: _pulseAnimation,
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: _pulseAnimation.value,
-                              child: Icon(
-                                Icons.mic_rounded,
-                                size: AppIconSize.xl,
-                                color: colorScheme.onTertiaryContainer,
-                              ),
-                            );
-                          },
+                        child: Transform.scale(
+                          scale: _pulseAnimation.value,
+                          child: Icon(
+                            Icons.mic_rounded,
+                            size: AppIconSize.xl,
+                            color: AppColors.brandPrimary,
+                          ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.lg),
@@ -168,15 +103,15 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
                             Text(
                               '语音记账',
                               style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onTertiaryContainer,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
                               ),
                             ),
                             const SizedBox(height: AppSpacing.xs),
                             Text(
                               '说一句就记好',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onTertiaryContainer.withOpacity(0.9),
+                                color: AppColors.textSecondary,
                               ),
                             ),
                             const SizedBox(height: AppSpacing.sm),
@@ -186,13 +121,13 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
                                 Icon(
                                   Icons.lightbulb_outline,
                                   size: AppIconSize.sm,
-                                  color: colorScheme.onTertiaryContainer.withOpacity(0.7),
+                                  color: AppColors.textPlaceholder,
                                 ),
                                 const SizedBox(width: AppSpacing.xs),
                                 Text(
                                   '试试说：午饭35元',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.onTertiaryContainer.withOpacity(0.8),
+                                    color: AppColors.textPlaceholder,
                                   ),
                                 ),
                               ],
@@ -204,8 +139,8 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
                                 vertical: AppSpacing.xs,
                               ),
                               decoration: BoxDecoration(
-                                color: colorScheme.tertiary,
-                                borderRadius: AppRadius.mdAll,
+                                color: AppColors.backgroundTertiary,
+                                borderRadius: AppRadius.cardAll,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -213,14 +148,14 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
                                   Icon(
                                     Icons.touch_app_rounded,
                                     size: AppIconSize.sm,
-                                    color: colorScheme.onTertiary,
+                                    color: AppColors.textPrimary,
                                   ),
                                   const SizedBox(width: AppSpacing.xs),
                                   Text(
                                     '点击开始',
                                     style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: colorScheme.onTertiary,
-                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
@@ -234,8 +169,8 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
                         position: _arrowAnimation,
                         child: Icon(
                           Icons.arrow_forward_ios_rounded,
-                          size: AppIconSize.md,
-                          color: colorScheme.onTertiaryContainer.withOpacity(0.8),
+                          size: AppIconSize.sm,
+                          color: AppColors.textPlaceholder,
                         ),
                       ),
                     ],
@@ -250,42 +185,25 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
   }
 
   Future<void> _handleTap(BuildContext context) async {
-    // Check current permission status
     final status = await _permissionService.checkMicrophonePermission();
-
     if (status.isGranted) {
-      // Permission already granted, navigate directly
-      if (context.mounted) {
-        context.push('/voice-recording');
-      }
+      if (context.mounted) context.push('/voice-recording');
       return;
     }
-
-    // Permission not granted, request it
     final requestStatus = await _permissionService.requestMicrophonePermission();
-
     if (requestStatus.isGranted) {
-      // Permission granted, navigate
-      if (context.mounted) {
-        context.push('/voice-recording');
-      }
+      if (context.mounted) context.push('/voice-recording');
     } else if (requestStatus.isPermanentlyDenied ||
         await _permissionService.isPermanentlyDenied()) {
-      // Permission permanently denied, show dialog to open settings
-      if (context.mounted) {
-        _showPermissionDeniedDialog(context);
-      }
-    } else {
-      // Permission denied (but not permanently), show message
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('需要麦克风权限才能使用语音记账功能'),
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
+      if (context.mounted) _showPermissionDeniedDialog(context);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('需要麦克风权限才能使用语音记账功能'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 

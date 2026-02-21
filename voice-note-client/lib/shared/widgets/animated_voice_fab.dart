@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../app/theme.dart';
 import '../../core/permissions/permission_service.dart';
 
 /// Floating action button for voice recording with pulsing animation.
@@ -45,9 +46,6 @@ class _AnimatedVoiceFabState extends State<AnimatedVoiceFab>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return RepaintBoundary(
       child: AnimatedBuilder(
         animation: _pulseAnimation,
@@ -57,10 +55,10 @@ class _AnimatedVoiceFabState extends State<AnimatedVoiceFab>
             child: FloatingActionButton(
               heroTag: 'voice_fab',
               onPressed: () => _handleTap(context),
-              backgroundColor: colorScheme.tertiaryContainer,
+              backgroundColor: AppColors.brandPrimary,
               child: Icon(
                 Icons.mic_rounded,
-                color: colorScheme.onTertiaryContainer,
+                color: Colors.white,
               ),
             ),
           );

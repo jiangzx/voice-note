@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../../app/theme.dart';
 import '../../domain/voice_state.dart';
 
 /// Central animated widget reflecting the current voice state.
@@ -78,7 +79,6 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final stateLabel = switch (widget.state) {
       VoiceState.idle => '等待中',
       VoiceState.listening => '正在聆听',
@@ -95,28 +95,28 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
         child: AnimatedSwitcher(
           duration: AppDuration.normal,
           child: switch (widget.state) {
-            VoiceState.idle => _buildIdle(colorScheme),
-            VoiceState.listening => _buildListening(colorScheme),
-            VoiceState.recognizing => _buildRecognizing(colorScheme),
-            VoiceState.confirming => _buildConfirming(colorScheme),
+            VoiceState.idle => _buildIdle(),
+            VoiceState.listening => _buildListening(),
+            VoiceState.recognizing => _buildRecognizing(),
+            VoiceState.confirming => _buildConfirming(),
           },
         ),
       ),
     );
   }
 
-  Widget _buildIdle(ColorScheme cs) {
+  Widget _buildIdle() {
     return _CircleIcon(
       key: const ValueKey('idle'),
-      color: cs.surfaceContainerHighest,
-      iconColor: cs.onSurfaceVariant,
+      color: AppColors.backgroundTertiary,
+      iconColor: AppColors.textSecondary,
       icon: Icons.mic_none_rounded,
       size: widget.size * 0.6,
     );
   }
 
-  Widget _buildListening(ColorScheme cs) {
-    final baseColor = cs.primary.withValues(alpha: 0.15);
+  Widget _buildListening() {
+    final baseColor = AppColors.brandPrimary.withValues(alpha: 0.15);
     return AnimatedBuilder(
       key: const ValueKey('listening'),
       animation: _pulseController,
@@ -127,7 +127,7 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
           scale: scale,
           child: _CircleIcon(
             color: baseColor,
-            iconColor: cs.primary.withValues(alpha: opacity),
+            iconColor: AppColors.brandPrimary.withValues(alpha: opacity),
             icon: Icons.mic_rounded,
             size: widget.size * 0.6,
           ),
@@ -136,7 +136,7 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
     );
   }
 
-  Widget _buildRecognizing(ColorScheme cs) {
+  Widget _buildRecognizing() {
     return AnimatedBuilder(
       key: const ValueKey('recognizing'),
       animation: _waveController,
@@ -145,12 +145,12 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
           size: Size(widget.size, widget.size),
           painter: _WaveRingPainter(
             progress: _waveController.value,
-            color: cs.primary,
+            color: AppColors.brandPrimary,
           ),
           child: Center(
             child: _CircleIcon(
-              color: cs.primary.withValues(alpha: 0.2),
-              iconColor: cs.primary,
+              color: AppColors.brandPrimary.withValues(alpha: 0.2),
+              iconColor: AppColors.brandPrimary,
               icon: Icons.mic_rounded,
               size: widget.size * 0.45,
             ),
@@ -160,7 +160,7 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
     );
   }
 
-  Widget _buildConfirming(ColorScheme cs) {
+  Widget _buildConfirming() {
     return AnimatedBuilder(
       key: const ValueKey('confirming'),
       animation: _pulseController,
@@ -169,8 +169,8 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
         return Transform.scale(
           scale: scale,
           child: _CircleIcon(
-            color: cs.primaryContainer,
-            iconColor: cs.onPrimaryContainer,
+            color: AppColors.brandPrimary.withValues(alpha: 0.12),
+            iconColor: AppColors.brandPrimary,
             icon: Icons.check_rounded,
             size: widget.size * 0.6,
           ),

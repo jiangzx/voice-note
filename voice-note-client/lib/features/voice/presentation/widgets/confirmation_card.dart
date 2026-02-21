@@ -78,8 +78,8 @@ class _ConfirmationCardState extends State<ConfirmationCard>
 
     return Card(
       elevation: 0,
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
-      color: theme.colorScheme.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
+      color: AppColors.backgroundSecondary,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
@@ -171,9 +171,7 @@ class _SourceBadge extends StatelessWidget {
     final isLocal = source == ParseSource.local;
     final label = isLocal ? '本地识别' : 'AI 识别';
     final icon = isLocal ? Icons.phone_android_rounded : Icons.auto_awesome_rounded;
-    final color = isLocal
-        ? theme.colorScheme.outline
-        : theme.colorScheme.tertiary;
+    final color = isLocal ? AppColors.textSecondary : AppColors.income;
 
     final confidenceLabel = confidence >= 0.8
         ? '高'
@@ -277,7 +275,7 @@ class _AmountRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final typeColor = _colorOf(type);
-    final amountColor = isMissing ? theme.colorScheme.error : typeColor;
+    final amountColor = isMissing ? AppColors.expense : typeColor;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
@@ -370,9 +368,8 @@ class _FieldRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final valueColor = isMissing
-        ? theme.colorScheme.error
-        : theme.colorScheme.onSurface;
+    final valueColor = isMissing ? AppColors.expense : AppColors.textPrimary;
+    final labelColor = isMissing ? AppColors.expense : AppColors.textSecondary;
 
     return Semantics(
       button: true,
@@ -389,17 +386,14 @@ class _FieldRow extends StatelessWidget {
               Icon(
                 icon,
                 size: AppIconSize.sm,
-                color: isMissing
-                    ? theme.colorScheme.error
-                    : theme.colorScheme.outline,
+                color: labelColor,
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
                 label,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: isMissing
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.outline,
+                  color: labelColor,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               Expanded(
@@ -429,7 +423,7 @@ class _FieldRow extends StatelessWidget {
               Icon(
                 Icons.chevron_right_rounded,
                 size: AppIconSize.sm,
-                color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                color: AppColors.textPlaceholder,
               ),
             ],
           ),

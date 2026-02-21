@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/theme.dart';
 import 'fab_visibility_provider.dart';
 
 /// Custom FAB location for voice recording screen.
@@ -47,8 +48,6 @@ class HomeFab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final fabVisible = ref.watch(voiceExitFabVisibilityProvider);
 
     return AnimatedOpacity(
@@ -59,11 +58,11 @@ class HomeFab extends ConsumerWidget {
         child: FloatingActionButton.extended(
           heroTag: 'exit_fab',
           onPressed: () => context.go('/home'),
-          backgroundColor: colorScheme.primaryContainer,
-          foregroundColor: colorScheme.onPrimaryContainer,
+          backgroundColor: AppColors.backgroundTertiary,
+          foregroundColor: AppColors.textPrimary,
           icon: const Icon(Icons.arrow_back_rounded),
           label: const Text('退出'),
-          elevation: 6,
+          elevation: 0,
         ),
       ),
     );

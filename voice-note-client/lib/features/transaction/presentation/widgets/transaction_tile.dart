@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
 import '../../domain/entities/transaction_entity.dart';
 
@@ -65,19 +66,29 @@ class TransactionTile extends StatelessWidget {
             )
           : (categoryIcon ??
               CircleAvatar(
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                backgroundColor: AppColors.backgroundTertiary,
+                radius: AppIconSize.md / 2,
                 child: Icon(
                   transaction.type == TransactionType.transfer
                       ? Icons.swap_horiz
-                      : Icons.receipt,
-                  color: theme.colorScheme.onSurfaceVariant,
+                      : Icons.receipt_long_outlined,
+                  size: AppIconSize.sm,
+                  color: AppColors.textSecondary,
                 ),
               )),
-      title: Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(
+        displayName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodyLarge?.copyWith(color: AppColors.textPrimary),
+      ),
       subtitle:
           transaction.type == TransactionType.transfer &&
               transaction.counterparty != null
-          ? Text(transaction.counterparty!)
+          ? Text(
+              transaction.counterparty!,
+              style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+            )
           : null,
       trailing: Text(
           amountText,
@@ -95,7 +106,7 @@ class TransactionTile extends StatelessWidget {
           : onEdit,
       onLongPress: isSelectionMode ? null : onLongPress,
       tileColor: isSelectionMode && isSelected
-          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+          ? AppColors.brandPrimary.withValues(alpha: 0.12)
           : null,
     );
 
@@ -115,8 +126,8 @@ class TransactionTile extends StatelessWidget {
               HapticFeedback.mediumImpact();
               onDelete();
             },
-            backgroundColor: theme.colorScheme.error,
-            foregroundColor: theme.colorScheme.onError,
+            backgroundColor: AppColors.expense,
+            foregroundColor: Colors.white,
             icon: Icons.delete,
             label: '删除',
             borderRadius: BorderRadius.zero,

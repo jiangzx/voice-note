@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../../app/theme.dart';
 import '../../../../core/extensions/date_extensions.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
@@ -100,7 +101,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Recent transactions header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Text('最近交易', style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                '最近交易',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.textPrimary,
+                ),
+              ),
             ),
             if (_swipeDeleteHintShown && !_isSelectionMode)
               Container(
@@ -111,10 +117,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   vertical: AppSpacing.xs,
                 ),
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
-                      .withValues(alpha: 0.5),
+                  color: AppColors.backgroundTertiary.withValues(alpha: 0.8),
                   borderRadius: AppRadius.smAll,
                 ),
                 child: Row(
@@ -122,15 +125,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Icon(
                       Icons.swipe_left,
                       size: AppIconSize.sm,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: AppColors.textSecondary,
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
                         '左滑可删除',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                     IconButton(
@@ -253,14 +256,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         vertical: AppSpacing.md,
       ),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: AppColors.backgroundPrimary,
+        boxShadow: AppShadow.card,
       ),
       child: SafeArea(
         child: Row(
@@ -284,7 +281,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(width: AppSpacing.xs),
                     Text(
                       '全选',
-                      style: theme.textTheme.titleMedium,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ],
                 ),
@@ -302,8 +301,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               icon: const Icon(Icons.delete_outline),
               label: const Text('删除'),
               style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.error,
-                foregroundColor: theme.colorScheme.onError,
+                backgroundColor: AppColors.expense,
+                foregroundColor: Colors.white,
               ),
             ),
           ],
@@ -405,73 +404,88 @@ class _BudgetSummaryCard extends ConsumerWidget {
         final theme = Theme.of(context);
         final isOver = remaining < 0;
         final progressColor = pct >= 100
-            ? Colors.red.shade600
+            ? AppColors.expense
             : pct >= 80
-                ? Colors.amber.shade700
-                : Colors.green.shade600;
+                ? const Color(0xFFB76E00)
+                : AppColors.income;
 
-        return Card(
+        return Container(
           margin: const EdgeInsets.symmetric(
             horizontal: AppSpacing.lg,
             vertical: AppSpacing.sm,
           ),
-          child: InkWell(
-            borderRadius: AppRadius.mdAll,
-            onTap: () => context.push('/settings/budget'),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.savings_outlined,
+          decoration: BoxDecoration(
+            color: AppColors.backgroundSecondary,
+            borderRadius: AppRadius.cardAll,
+            boxShadow: AppShadow.card,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: AppRadius.cardAll,
+              onTap: () => context.push('/settings/budget'),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.savings_outlined,
                           size: AppIconSize.sm,
-                          color: theme.colorScheme.primary),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text('本月预算',
-                          style: theme.textTheme.titleSmall),
-                      const Spacer(),
-                      Text(
-                        '${pct.toStringAsFixed(0)}%',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: progressColor,
-                          fontWeight: FontWeight.bold,
+                          color: AppColors.brandPrimary,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  ClipRRect(
-                    borderRadius: AppRadius.smAll,
-                    child: LinearProgressIndicator(
-                      value: (pct / 100).clamp(0.0, 1.0),
-                      backgroundColor:
-                          theme.colorScheme.surfaceContainerHighest,
-                      color: progressColor,
-                      minHeight: 8,
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(
+                          '本月预算',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${pct.toStringAsFixed(0)}%',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: progressColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '已用 ¥${summary.totalSpent.toStringAsFixed(0)}',
-                        style: theme.textTheme.bodySmall,
+                    const SizedBox(height: AppSpacing.sm),
+                    ClipRRect(
+                      borderRadius: AppRadius.smAll,
+                      child: LinearProgressIndicator(
+                        value: (pct / 100).clamp(0.0, 1.0),
+                        backgroundColor: AppColors.backgroundTertiary,
+                        color: progressColor,
+                        minHeight: 8,
                       ),
-                      Text(
-                        isOver
-                            ? '超支 ¥${(-remaining).toStringAsFixed(0)}'
-                            : '剩余 ¥${remaining.toStringAsFixed(0)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: isOver ? Colors.red : null,
-                          fontWeight: isOver ? FontWeight.bold : null,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '已用 ¥${summary.totalSpent.toStringAsFixed(0)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        Text(
+                          isOver
+                              ? '超支 ¥${(-remaining).toStringAsFixed(0)}'
+                              : '剩余 ¥${remaining.toStringAsFixed(0)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: isOver ? AppColors.expense : AppColors.textSecondary,
+                            fontWeight: isOver ? FontWeight.bold : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/design_tokens.dart';
+import '../../app/theme.dart';
 
 /// Unified error state component with icon, message and retry button.
 class ErrorStateWidget extends StatelessWidget {
@@ -21,13 +22,13 @@ class ErrorStateWidget extends StatelessWidget {
             Icon(
               Icons.error_outline,
               size: AppIconSize.xl,
-              color: theme.colorScheme.error,
+              color: AppColors.expense,
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
               message,
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),

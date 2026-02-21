@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/design_tokens.dart';
+import '../../app/theme.dart';
 
 /// Unified empty state component with icon, title, optional description and action.
 class EmptyStateWidget extends StatelessWidget {
@@ -28,12 +29,12 @@ class EmptyStateWidget extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: AppIconSize.xl, color: theme.colorScheme.outline),
+            Icon(icon, size: AppIconSize.xl, color: AppColors.textPlaceholder),
             const SizedBox(height: AppSpacing.lg),
             Text(
               title,
               style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -42,7 +43,7 @@ class EmptyStateWidget extends StatelessWidget {
               Text(
                 description!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.outline,
+                  color: AppColors.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),

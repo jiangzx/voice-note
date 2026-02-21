@@ -21,35 +21,43 @@ class SummaryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final txColors = theme.extension<TransactionColors>()!;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.all(AppSpacing.lg),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: theme.textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.lg),
-            Row(
-              children: [
-                Expanded(
-                  child: _SummaryItem(
-                    label: '收入',
-                    amount: totalIncome,
-                    color: txColors.income,
-                  ),
-                ),
-                Expanded(
-                  child: _SummaryItem(
-                    label: '支出',
-                    amount: totalExpense,
-                    color: txColors.expense,
-                  ),
-                ),
-              ],
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: AppRadius.cardAll,
+        boxShadow: AppShadow.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: AppColors.textPrimary,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryItem(
+                  label: '收入',
+                  amount: totalIncome,
+                  color: txColors.income,
+                ),
+              ),
+              Expanded(
+                child: _SummaryItem(
+                  label: '支出',
+                  amount: totalExpense,
+                  color: txColors.expense,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -72,7 +80,12 @@ class _SummaryItem extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: theme.textTheme.bodySmall),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
         const SizedBox(height: AppSpacing.xs),
         Text(
           '¥${amount.toStringAsFixed(2)}',

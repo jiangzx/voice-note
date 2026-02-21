@@ -38,10 +38,15 @@ class DailyGroupHeader extends StatelessWidget {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
       ),
-      color: theme.colorScheme.surfaceContainerLow,
+      color: AppColors.backgroundSecondary,
       child: Row(
         children: [
-          Text(dateLabel, style: theme.textTheme.titleSmall),
+          Text(
+            dateLabel,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: AppColors.textPrimary,
+            ),
+          ),
           const Spacer(),
           if (dailyIncome > 0)
             Text(

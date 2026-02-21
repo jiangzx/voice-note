@@ -83,8 +83,8 @@ class _BatchConfirmationCardState extends State<BatchConfirmationCard>
 
     return Card(
       elevation: 0,
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
-      color: theme.colorScheme.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
+      color: AppColors.backgroundSecondary,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
