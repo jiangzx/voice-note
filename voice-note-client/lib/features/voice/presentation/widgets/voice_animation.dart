@@ -237,3 +237,106 @@ class _WaveRingPainter extends CustomPainter {
   bool shouldRepaint(_WaveRingPainter old) =>
       old.progress != progress || old.color != color;
 }
+
+/// Animated voice bars for "speaking" state (e.g. push-to-talk active).
+/// Uses CustomPaint to avoid per-frame layout (only repaint).
+class SpeakingWaveform extends StatefulWidget {
+  final double size;
+  final Color color;
+
+  const SpeakingWaveform({
+    super.key,
+    this.size = 64,
+    this.color = Colors.white,
+  });
+
+  @override
+  State<SpeakingWaveform> createState() => _SpeakingWaveformState();
+}
+
+class _SpeakingWaveformState extends State<SpeakingWaveform>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return CustomPaint(
+            size: Size(widget.size, widget.size),
+            painter: _VoiceBarsPainter(
+              progress: _controller.value,
+              color: widget.color,
+              size: widget.size,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _VoiceBarsPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final double size;
+
+  static const int _barCount = 5;
+  static const double _barWidth = 5.0;
+  static const double _gap = 4.0;
+
+  _VoiceBarsPainter({
+    required this.progress,
+    required this.color,
+    required this.size,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final maxBarHeight = this.size * 0.4;
+    final minBarHeight = this.size * 0.12;
+    const totalWidth = _barCount * _barWidth + (_barCount - 1) * _gap;
+    final left = (this.size - totalWidth) / 2;
+    final centerY = this.size / 2;
+
+    final paint = Paint()..color = color;
+
+    for (int i = 0; i < _barCount; i++) {
+      final phase = (i / _barCount) * 2 * math.pi;
+      final t = progress * 2 * math.pi + phase;
+      final normalized = (math.sin(t) + 1) / 2;
+      final barHeight =
+          minBarHeight + normalized * (maxBarHeight - minBarHeight);
+      final x = left + i * (_barWidth + _gap) + _barWidth / 2;
+      final top = centerY - barHeight / 2;
+      final rrect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x - _barWidth / 2, top, _barWidth, barHeight),
+        const Radius.circular(_barWidth / 2),
+      );
+      canvas.drawRRect(rrect, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_VoiceBarsPainter old) =>
+      old.progress != progress || old.color != color || old.size != size;
+}

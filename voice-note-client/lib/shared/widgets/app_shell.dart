@@ -114,7 +114,7 @@ class AppShell extends ConsumerWidget {
                       ),
                       closedColor: AppColors.brandPrimary,
                       closedBuilder: (context, openContainer) {
-                        return SizedBox(
+                        return const SizedBox(
                           height: 56,
                           width: 56,
                           child: Center(

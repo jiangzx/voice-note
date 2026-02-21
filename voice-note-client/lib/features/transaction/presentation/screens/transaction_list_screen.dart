@@ -103,14 +103,14 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
+        content: const Row(
           children: [
             Icon(
               Icons.info_outline,
               color: AppColors.textPrimary,
             ),
-            const SizedBox(width: AppSpacing.sm),
-            const Expanded(
+            SizedBox(width: AppSpacing.sm),
+            Expanded(
               child: Text('长按项目可进入批量操作模式'),
             ),
           ],
@@ -225,7 +225,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                   color: AppColors.backgroundTertiary.withValues(alpha: 0.8),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.swipe_left,
                         size: AppIconSize.sm,
                         color: AppColors.textSecondary,
@@ -349,7 +349,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
       ),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.backgroundPrimary,
         boxShadow: AppShadow.card,
       ),

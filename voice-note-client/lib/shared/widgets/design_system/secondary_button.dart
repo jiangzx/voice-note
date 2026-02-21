@@ -25,7 +25,7 @@ class SecondaryButton extends StatelessWidget {
         backgroundColor: AppColors.backgroundTertiary,
         foregroundColor: AppColors.textPrimary,
         side: BorderSide.none,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.xl,
           vertical: AppSpacing.md,
@@ -37,7 +37,7 @@ class SecondaryButton extends StatelessWidget {
         children: [
           if (icon != null) ...[
             IconTheme.merge(
-              data: IconThemeData(
+              data: const IconThemeData(
                 color: AppColors.textPrimary,
                 size: AppIconSize.sm,
               ),

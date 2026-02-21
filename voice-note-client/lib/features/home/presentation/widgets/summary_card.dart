@@ -24,7 +24,7 @@ class SummaryCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(AppSpacing.lg),
       padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.backgroundSecondary,
         borderRadius: AppRadius.cardAll,
         boxShadow: AppShadow.card,

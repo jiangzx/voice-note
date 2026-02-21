@@ -25,7 +25,7 @@ class DataCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.backgroundSecondary,
         borderRadius: AppRadius.cardAll,
         boxShadow: AppShadow.card,
@@ -43,7 +43,7 @@ class DataCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           if (children != null) ...children!,
-          if (child != null) child!,
+          ?child,
         ],
       ),
     );

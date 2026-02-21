@@ -216,8 +216,8 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           actions: [
             if (voiceState == VoiceState.listening ||
                 voiceState == VoiceState.recognizing)
-              Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.md),
+              const Padding(
+                padding: EdgeInsets.only(right: AppSpacing.md),
                 child: Center(
                   child: Icon(
                     Icons.mic_rounded,
@@ -279,7 +279,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.cloud_off_rounded,
               size: AppIconSize.sm,
               color: AppColors.expense,
@@ -367,7 +367,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(
+          const SizedBox(
             width: 16,
             height: 16,
             child: CircularProgressIndicator(
@@ -406,7 +406,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                 child: TextField(
                   controller: _textController,
                   enabled: !disabled,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     hintText: '输入记账内容，如"午餐42块"',
                     hintStyle: TextStyle(color: AppColors.textPlaceholder),
                     border: OutlineInputBorder(borderRadius: AppRadius.inputAll),
@@ -525,7 +525,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.backgroundSecondary,
           borderRadius: AppRadius.cardAll,
           boxShadow: AppShadow.card,
@@ -578,11 +578,16 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
             shape: BoxShape.circle,
             color: isActive ? AppColors.expense : AppColors.brandPrimary,
           ),
-          child: Icon(
-            isActive ? Icons.mic_rounded : Icons.mic_none_rounded,
-            size: AppIconSize.xl,
-            color: Colors.white,
-          ),
+          child: isActive
+              ? const SpeakingWaveform(
+                  size: AppIconSize.xl,
+                  color: Colors.white,
+                )
+              : const Icon(
+                  Icons.mic_none_rounded,
+                  size: AppIconSize.xl,
+                  color: Colors.white,
+                ),
         ),
       ),
     );

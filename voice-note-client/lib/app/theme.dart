@@ -143,9 +143,9 @@ ThemeData buildLightTheme() {
         color: AppColors.textPrimary,
         fontWeight: FontWeight.w600,
       ),
-      iconTheme: IconThemeData(color: AppColors.textPrimary, size: AppIconSize.md),
+      iconTheme: const IconThemeData(color: AppColors.textPrimary, size: AppIconSize.md),
     ),
-    cardTheme: CardThemeData(
+    cardTheme: const CardThemeData(
       color: AppColors.backgroundPrimary,
       elevation: 0,
       shadowColor: Colors.transparent,
@@ -155,12 +155,12 @@ ThemeData buildLightTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.backgroundPrimary,
-      border: OutlineInputBorder(borderRadius: AppRadius.inputAll),
-      enabledBorder: OutlineInputBorder(
+      border: const OutlineInputBorder(borderRadius: AppRadius.inputAll),
+      enabledBorder: const OutlineInputBorder(
         borderRadius: AppRadius.inputAll,
         borderSide: BorderSide(color: AppColors.divider),
       ),
-      focusedBorder: OutlineInputBorder(
+      focusedBorder: const OutlineInputBorder(
         borderRadius: AppRadius.inputAll,
         borderSide: BorderSide(color: AppColors.brandPrimary, width: 1.5),
       ),
@@ -175,13 +175,13 @@ ThemeData buildLightTheme() {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.xs,
       ),
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
       tileColor: Colors.transparent,
       titleTextStyle: textTheme.bodyLarge?.copyWith(color: AppColors.textPrimary),
       subtitleTextStyle: textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
       iconColor: AppColors.textSecondary,
     ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: AppColors.brandPrimary,
       foregroundColor: Colors.white,
       elevation: 2,
@@ -195,9 +195,9 @@ ThemeData buildLightTheme() {
       indicatorColor: AppColors.brandPrimary.withValues(alpha: 0.12),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return IconThemeData(color: AppColors.brandPrimary, size: AppIconSize.md);
+          return const IconThemeData(color: AppColors.brandPrimary, size: AppIconSize.md);
         }
-        return IconThemeData(color: AppColors.textPlaceholder, size: AppIconSize.md);
+        return const IconThemeData(color: AppColors.textPlaceholder, size: AppIconSize.md);
       }),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
@@ -220,17 +220,17 @@ ThemeData buildLightTheme() {
           horizontal: AppSpacing.md,
           vertical: AppSpacing.sm,
         )),
-        shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+        shape: const WidgetStatePropertyAll(RoundedRectangleBorder(
           borderRadius: AppRadius.cardAll,
         )),
       ),
     ),
-    extensions: <ThemeExtension<dynamic>>[_lightTransactionColors],
+    extensions: const <ThemeExtension<dynamic>>[_lightTransactionColors],
   );
 }
 
 TextTheme _buildTextTheme(ColorScheme colorScheme) {
-  return TextTheme(
+  return const TextTheme(
     displayLarge: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
     displayMedium: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
     displaySmall: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
@@ -257,7 +257,7 @@ ThemeData buildTheme(Color seedColor, Brightness brightness) {
     useMaterial3: true,
     colorSchemeSeed: seedColor,
     brightness: brightness,
-    extensions: <ThemeExtension<dynamic>>[_darkTransactionColors],
+    extensions: const <ThemeExtension<dynamic>>[_darkTransactionColors],
   );
 }
 

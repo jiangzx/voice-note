@@ -37,7 +37,7 @@ class AppListTile extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             border: showDivider
-                ? Border(
+                ? const Border(
                     bottom: BorderSide(color: AppColors.divider, width: 1),
                   )
                 : null,
@@ -46,7 +46,7 @@ class AppListTile extends StatelessWidget {
             children: [
               if (leading != null) ...[
                 IconTheme.merge(
-                  data: IconThemeData(
+                  data: const IconThemeData(
                     size: AppIconSize.md,
                     color: AppColors.textSecondary,
                   ),
@@ -77,7 +77,7 @@ class AppListTile extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
         ),

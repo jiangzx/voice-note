@@ -420,7 +420,7 @@ class _FieldRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
-              Icon(
+              const Icon(
                 Icons.chevron_right_rounded,
                 size: AppIconSize.sm,
                 color: AppColors.textPlaceholder,

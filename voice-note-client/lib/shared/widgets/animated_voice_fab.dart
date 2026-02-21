@@ -56,7 +56,7 @@ class _AnimatedVoiceFabState extends State<AnimatedVoiceFab>
               heroTag: 'voice_fab',
               onPressed: () => _handleTap(context),
               backgroundColor: AppColors.brandPrimary,
-              child: Icon(
+              child: const Icon(
                 Icons.mic_rounded,
                 color: Colors.white,
               ),

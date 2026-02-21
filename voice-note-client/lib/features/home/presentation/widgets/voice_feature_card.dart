@@ -64,7 +64,7 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
             horizontal: AppSpacing.lg,
             vertical: AppSpacing.sm,
           ),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: AppColors.backgroundSecondary,
             borderRadius: AppRadius.cardAll,
             boxShadow: AppShadow.card,
@@ -88,7 +88,7 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
                       RepaintBoundary(
                         child: Transform.scale(
                           scale: _pulseAnimation.value,
-                          child: Icon(
+                          child: const Icon(
                             Icons.mic_rounded,
                             size: AppIconSize.xl,
                             color: AppColors.brandPrimary,
@@ -118,7 +118,7 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.lightbulb_outline,
                                   size: AppIconSize.sm,
                                   color: AppColors.textPlaceholder,
@@ -138,14 +138,14 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
                                 horizontal: AppSpacing.md,
                                 vertical: AppSpacing.xs,
                               ),
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: AppColors.backgroundTertiary,
                                 borderRadius: AppRadius.cardAll,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.touch_app_rounded,
                                     size: AppIconSize.sm,
                                     color: AppColors.textPrimary,
@@ -167,7 +167,7 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
                       const SizedBox(width: AppSpacing.md),
                       SlideTransition(
                         position: _arrowAnimation,
-                        child: Icon(
+                        child: const Icon(
                           Icons.arrow_forward_ios_rounded,
                           size: AppIconSize.sm,
                           color: AppColors.textPlaceholder,

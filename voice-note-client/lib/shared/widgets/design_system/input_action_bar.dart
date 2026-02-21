@@ -29,7 +29,7 @@ class InputActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.backgroundPrimary,
         borderRadius: AppRadius.inputAll,
         boxShadow: AppShadow.input,
@@ -55,7 +55,7 @@ class InputActionBar extends StatelessWidget {
               ? Padding(
                   padding: const EdgeInsets.only(left: AppSpacing.sm),
                   child: IconTheme.merge(
-                    data: IconThemeData(
+                    data: const IconThemeData(
                       color: AppColors.textPlaceholder,
                       size: AppIconSize.md,
                     ),
@@ -71,7 +71,7 @@ class InputActionBar extends StatelessWidget {
               ? Padding(
                   padding: const EdgeInsets.only(right: AppSpacing.sm),
                   child: IconTheme.merge(
-                    data: IconThemeData(
+                    data: const IconThemeData(
                       color: AppColors.textPlaceholder,
                       size: AppIconSize.md,
                     ),

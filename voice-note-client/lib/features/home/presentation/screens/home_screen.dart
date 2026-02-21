@@ -122,7 +122,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.swipe_left,
                       size: AppIconSize.sm,
                       color: AppColors.textSecondary,
@@ -255,7 +255,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
       ),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.backgroundPrimary,
         boxShadow: AppShadow.card,
       ),
@@ -414,7 +414,7 @@ class _BudgetSummaryCard extends ConsumerWidget {
             horizontal: AppSpacing.lg,
             vertical: AppSpacing.sm,
           ),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: AppColors.backgroundSecondary,
             borderRadius: AppRadius.cardAll,
             boxShadow: AppShadow.card,
@@ -431,7 +431,7 @@ class _BudgetSummaryCard extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.savings_outlined,
                           size: AppIconSize.sm,
                           color: AppColors.brandPrimary,
