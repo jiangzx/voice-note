@@ -14,6 +14,8 @@ abstract final class AppColors {
   static const Color income = Color(0xFF00B42A);
   static const Color expense = Color(0xFFF53F3F);
   static const Color divider = Color(0xFFF2F3F5);
+  /// Unselected gesture lock node stroke (industry spec).
+  static const Color gestureNodeStroke = Color(0xFFE5E6EB);
 }
 
 /// Semantic color extension for transaction types.

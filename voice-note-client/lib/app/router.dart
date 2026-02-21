@@ -1,5 +1,6 @@
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../shared/widgets/app_shell.dart';
@@ -13,6 +14,10 @@ import '../features/voice/presentation/voice_recording_screen.dart';
 import '../features/statistics/presentation/screens/statistics_screen.dart';
 import '../features/budget/presentation/screens/budget_overview_screen.dart';
 import '../features/budget/presentation/screens/budget_edit_screen.dart';
+import '../features/settings/presentation/screens/set_gesture_screen.dart';
+import '../features/settings/presentation/screens/set_password_screen.dart';
+import '../features/settings/presentation/screens/unlock_screen.dart';
+import '../features/settings/presentation/providers/security_settings_provider.dart';
 import 'design_tokens.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -59,7 +64,28 @@ final GoRouter appRouter = GoRouter(
   routes: [
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
-      builder: (context, state, child) => AppShell(child: child),
+      builder: (context, state, child) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final security = ref.watch(
+              securitySettingsProvider,
+            );
+            final path = state.matchedLocation;
+            final isVerifyDisable = path.startsWith('/settings/verify-disable');
+            final isSetGesture = path == '/settings/gesture-set';
+            final isSetPassword = path == '/settings/password-set';
+            final lockRequired = security.isLockEnabled &&
+                !security.isUnlockedThisSession &&
+                !isVerifyDisable &&
+                !isSetGesture &&
+                !isSetPassword;
+            if (lockRequired) {
+              return UnlockScreen(redirectUri: path);
+            }
+            return AppShell(child: child);
+          },
+        );
+      },
       routes: [
         GoRoute(
           path: '/home',
@@ -117,6 +143,32 @@ final GoRouter appRouter = GoRouter(
                       _sharedAxisYPage(const BudgetEditScreen(), state),
                 ),
               ],
+            ),
+            GoRoute(
+              path: 'gesture-set',
+              parentNavigatorKey: _rootNavigatorKey,
+              pageBuilder: (context, state) =>
+                  _sharedAxisYPage(const SetGestureScreen(), state),
+            ),
+            GoRoute(
+              path: 'password-set',
+              parentNavigatorKey: _rootNavigatorKey,
+              pageBuilder: (context, state) =>
+                  _sharedAxisYPage(const SetPasswordScreen(), state),
+            ),
+            GoRoute(
+              path: 'verify-disable',
+              parentNavigatorKey: _rootNavigatorKey,
+              pageBuilder: (context, state) {
+                final target = state.uri.queryParameters['target'];
+                return _sharedAxisYPage(
+                  UnlockScreen(
+                    redirectUri: '/settings',
+                    disableTarget: target,
+                  ),
+                  state,
+                );
+              },
             ),
           ],
         ),

@@ -12,6 +12,7 @@ import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../../account/presentation/providers/account_providers.dart';
 import '../../../voice/presentation/providers/voice_settings_provider.dart';
 import '../../../voice/presentation/widgets/mode_switcher.dart';
+import '../providers/security_settings_provider.dart';
 import '../providers/theme_providers.dart';
 
 /// Settings screen with appearance, account, and category management.
@@ -181,6 +182,13 @@ class SettingsScreen extends ConsumerWidget {
               ref.read(voiceSettingsProvider.notifier).setHideAutoVoiceMode(newValue);
             },
           ),
+
+          const Divider(),
+
+          // --- Security section ---
+          const _SectionHeader(title: '安全设置'),
+
+          _SecuritySettingsSection(),
         ],
       ),
     );
@@ -476,6 +484,54 @@ class _ServerUrlDialogState extends State<_ServerUrlDialog> {
 }
 
 enum _TestStatus { idle, testing, success, failed }
+
+/// Security settings: gesture lock and password lock toggles.
+class _SecuritySettingsSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final security = ref.watch(securitySettingsProvider);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SwitchListTile(
+          secondary: const Icon(Icons.gesture),
+          title: const Text('手势解锁'),
+          subtitle: Text(
+            security.isGestureLockEnabled
+                ? '已开启手势解锁'
+                : '设置手势图案，保护你的账单隐私',
+          ),
+          value: security.isGestureLockEnabled,
+          onChanged: (value) {
+            if (value) {
+              context.go('/settings/gesture-set');
+            } else {
+              context.go('/settings/verify-disable?target=gesture');
+            }
+          },
+        ),
+        SwitchListTile(
+          secondary: const Icon(Icons.lock_outline),
+          title: const Text('密码解锁'),
+          subtitle: Text(
+            security.isPasswordLockEnabled
+                ? '已开启密码解锁'
+                : '设置数字密码，保护你的账单隐私',
+          ),
+          value: security.isPasswordLockEnabled,
+          onChanged: (value) {
+            if (value) {
+              context.go('/settings/password-set');
+            } else {
+              context.go('/settings/verify-disable?target=password');
+            }
+          },
+        ),
+      ],
+    );
+  }
+}
 
 /// TTS enable/disable toggle and speech rate slider.
 class _TtsSettingsSection extends ConsumerStatefulWidget {
