@@ -45,15 +45,19 @@ class AsrNativeTransport(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                connected.set(false)
-                // Only report if this failure is for the still-current connection (not a replaced one).
+                // Only mutate state if this failure is for the still-current connection (not a replaced one after reconnect).
+                if (webSocket === socket) {
+                    connected.set(false)
+                }
                 if (!disconnecting && webSocket === socket) {
                     onError("asr_ws_failure:${t.message}")
                 }
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                connected.set(false)
+                if (webSocket === socket) {
+                    connected.set(false)
+                }
             }
         })
     }
