@@ -13,7 +13,7 @@ class TtsService {
   final SharedPreferences _prefs;
 
   bool _enabled = false;
-  double _speechRate = 1.0;
+  double _speechRate = 1.8;
   bool _initialized = false;
 
   TtsService({
@@ -36,7 +36,7 @@ class TtsService {
     _initialized = true;
 
     _enabled = _prefs.getBool(_kTtsEnabled) ?? true;
-    _speechRate = _prefs.getDouble(_kTtsSpeed) ?? 1.0;
+    _speechRate = _prefs.getDouble(_kTtsSpeed) ?? 1.8;
     if (kDebugMode) {
       debugPrint('[TTSFlow] init: enabled=$_enabled, speechRate=$_speechRate');
     }

@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/audio/audio_session_providers.dart';
 import '../../../../core/audio/native_audio_models.dart';
 import '../../../../core/di/network_providers.dart';
+import '../../../../core/tts/tts_providers.dart';
 import '../../../../core/tts/tts_templates.dart';
 import '../../../budget/domain/budget_service.dart';
 import '../../../budget/presentation/providers/budget_providers.dart';
@@ -143,6 +144,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     if (kDebugMode) {
       debugPrint('[VoiceInit] Step 1: Creating VoiceOrchestrator...');
     }
+    await ref.read(ttsServiceProvider).init();
     final txService = ref.read(voiceTransactionServiceProvider);
     _saveHelper = TransactionSaveHelper(
       persist: (result) => txService.save(result),
@@ -160,6 +162,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       delegate: this,
       nativeAudioGateway: ref.read(nativeAudioGatewayProvider),
       nativeAudioSessionId: sessionId,
+      getSpeechRate: () => ref.read(ttsServiceProvider).speechRate,
     );
 
     final networkService = ref.read(networkStatusServiceProvider);
@@ -192,12 +195,16 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
           },
         );
 
-    final mode = ref.read(voiceSettingsProvider).inputMode;
+    final voiceSettings = ref.read(voiceSettingsProvider);
+    final mode = voiceSettings.inputMode;
     if (kDebugMode) {
       debugPrint('[VoiceInit] Step 2: Starting listening (mode=$mode)...');
     }
     try {
-      await _orchestrator!.startListening(mode);
+      await _orchestrator!.startListening(
+        mode,
+        vadSilenceDurationMs: voiceSettings.vadSilenceDurationMs,
+      );
       if (kDebugMode) debugPrint('[VoiceInit] === startSession COMPLETE ===');
     } catch (e) {
       if (kDebugMode) debugPrint('[VoiceInit] startListening FAILED: $e');
@@ -257,7 +264,10 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     } else if (!wasAudioMode && isAudioMode) {
       // Switching from keyboard to audio mode — restart audio
       try {
-        await _orchestrator?.startListening(newMode);
+        await _orchestrator?.startListening(
+          newMode,
+          vadSilenceDurationMs: ref.read(voiceSettingsProvider).vadSilenceDurationMs,
+        );
         state = state.copyWith(voiceState: VoiceState.listening);
         if (_sessionActive) {
           _addAssistantMessage(
@@ -275,7 +285,11 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       _modeSwitchInFlight = completer.future;
       _modeSwitchInProgress = true;
       try {
-        await _orchestrator?.switchInputMode(newMode, previousMode: oldMode);
+        await _orchestrator?.switchInputMode(
+          newMode,
+          previousMode: oldMode,
+          vadSilenceDurationMs: ref.read(voiceSettingsProvider).vadSilenceDurationMs,
+        );
         if (_sessionActive) {
           _addAssistantMessage(
             _inputModeSwitchMessage(newMode),

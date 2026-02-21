@@ -63,6 +63,7 @@ class VoiceOrchestrator {
   final AsrConnectionManager _asrConnection;
   final NativeAudioGateway? _nativeAudioGateway;
   final String? _nativeAudioSessionId;
+  final double Function()? _getSpeechRate;
 
   // Owned services — created/destroyed per session
   StreamSubscription<NativeAudioEvent>? _nativeAudioSub;
@@ -73,6 +74,11 @@ class VoiceOrchestrator {
 
   // Current input mode tracking
   VoiceInputMode? _currentInputMode;
+
+  /// Server VAD silence_duration_ms for auto mode (200–6000). Used in session.update.
+  static const int _vadSilenceMsMin = 200;
+  static const int _vadSilenceMsMax = 6000;
+  int _vadSilenceDurationMs = 1000;
 
   // Track if pushEnd is pending (waiting for asrFinalText)
   bool _isPushEndPending = false;
@@ -132,12 +138,14 @@ class VoiceOrchestrator {
     NativeAudioGateway? nativeAudioGateway,
     String? nativeAudioSessionId,
     AsrConnectionManager? asrConnectionManager,
+    double Function()? getSpeechRate,
   }) : _nlpOrchestrator = nlpOrchestrator,
        _asrRepository = asrRepository,
        _correctionHandler = correctionHandler,
        _delegate = delegate,
        _nativeAudioGateway = nativeAudioGateway,
        _nativeAudioSessionId = nativeAudioSessionId,
+       _getSpeechRate = getSpeechRate,
        _asrConnection = asrConnectionManager ??
            AsrConnectionManager(asrRepository: asrRepository) {
     _asrConnection.onInterimText =
@@ -161,9 +169,17 @@ class VoiceOrchestrator {
 
   /// Start listening for voice input in the given [mode].
   /// Keyboard mode initializes native session for TTS only (no ASR/capture).
-  Future<void> startListening(VoiceInputMode mode) async {
+  /// [vadSilenceDurationMs] is used for auto mode server VAD (default 1000).
+  Future<void> startListening(
+    VoiceInputMode mode, {
+    int? vadSilenceDurationMs,
+  }) async {
     if (kDebugMode) debugPrint('[VoiceInit] startListening(mode=$mode)');
     _currentInputMode = mode;
+    if (vadSilenceDurationMs != null) {
+      _vadSilenceDurationMs =
+          vadSilenceDurationMs.clamp(_vadSilenceMsMin, _vadSilenceMsMax);
+    }
 
     if (!Platform.isAndroid && !Platform.isIOS) {
       throw StateError('Native audio runtime is only supported on Android and iOS');
@@ -237,6 +253,7 @@ class VoiceOrchestrator {
       token: token.token,
       wsUrl: token.wsUrl,
       model: token.model,
+      vadSilenceDurationMs: _vadSilenceDurationMs,
     );
     final ok = result['ok'] as bool? ?? false;
     if (!ok) {
@@ -417,10 +434,16 @@ class VoiceOrchestrator {
 
   /// Switch input mode at runtime (e.g., auto <-> pushToTalk).
   /// [previousMode] used to revert native and _currentInputMode when switching to auto fails.
+  /// [vadSilenceDurationMs] used when reconnecting ASR for auto mode.
   Future<void> switchInputMode(
     VoiceInputMode mode, {
     VoiceInputMode? previousMode,
+    int? vadSilenceDurationMs,
   }) async {
+    if (vadSilenceDurationMs != null) {
+      _vadSilenceDurationMs =
+          vadSilenceDurationMs.clamp(_vadSilenceMsMin, _vadSilenceMsMax);
+    }
     // Clear any pending draft batch when switching modes to prevent
     // misinterpreting new input as correction
     if (_currentState == VoiceState.confirming && _draftBatch != null) {
@@ -604,11 +627,13 @@ class VoiceOrchestrator {
     if (kDebugMode) {
       debugPrint('[TTSFlow] Native playTts request=$requestId text="$text"');
     }
+    final effectiveRate = _getSpeechRate?.call() ?? 1.0;
     try {
       final result = await native.playTts(
         sessionId: nativeSessionId,
         requestId: requestId,
         text: text,
+        speechRate: effectiveRate,
       );
       final ok = result['ok'] as bool? ?? false;
       if (!ok) {
