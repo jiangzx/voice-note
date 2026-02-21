@@ -12,6 +12,7 @@ import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../../account/presentation/providers/account_providers.dart';
 import '../../../voice/presentation/providers/voice_settings_provider.dart';
 import '../../../voice/presentation/widgets/mode_switcher.dart';
+import '../providers/home_fab_preference_provider.dart';
 import '../providers/security_settings_provider.dart';
 import '../providers/theme_providers.dart';
 
@@ -123,17 +124,18 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.mic_rounded),
             title: const Text('默认输入模式'),
-            subtitle: Text(_inputModeLabel(
-              ref.watch(voiceSettingsProvider).inputMode,
-            )),
+            subtitle: Text(
+              _inputModeLabel(ref.watch(voiceSettingsProvider).inputMode),
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              final hideAuto =
-                  ref.read(voiceSettingsProvider).hideAutoVoiceMode;
+              final hideAuto = ref
+                  .read(voiceSettingsProvider)
+                  .hideAutoVoiceMode;
               final modes = hideAuto
                   ? VoiceInputMode.values
-                      .where((m) => m != VoiceInputMode.auto)
-                      .toList()
+                        .where((m) => m != VoiceInputMode.auto)
+                        .toList()
                   : VoiceInputMode.values;
               _showInputModeDialog(
                 context,
@@ -164,12 +166,57 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
+          ListTile(
+            leading: const Icon(Icons.timer_outlined),
+            title: const Text('自动语音停顿时间'),
+            subtitle: Text(
+              '用于自动语音检测下调整允许的停顿时间。调大可允许说话停顿更久，但语音识别可能会有延迟。',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: Row(
+              children: [
+                const SizedBox(width: 24 + AppSpacing.lg),
+                const Icon(Icons.timer_outlined, size: 20),
+                const SizedBox(width: AppSpacing.sm),
+                const Text('停顿时间'),
+                Expanded(
+                  child: Slider(
+                    value: ref
+                        .watch(voiceSettingsProvider)
+                        .vadSilenceDurationMs
+                        .toDouble(),
+                    min: vadSilenceDurationMsMin.toDouble(),
+                    max: vadSilenceDurationMsMax.toDouble(),
+                    divisions:
+                        (vadSilenceDurationMsMax - vadSilenceDurationMsMin) ~/
+                        100,
+                    label:
+                        '${ref.watch(voiceSettingsProvider).vadSilenceDurationMs} ms',
+                    onChanged: (val) {
+                      ref
+                          .read(voiceSettingsProvider.notifier)
+                          .setVadSilenceDurationMs(val.round());
+                    },
+                  ),
+                ),
+                SizedBox(
+                  width: 52,
+                  child: Text(
+                    '${ref.watch(voiceSettingsProvider).vadSilenceDurationMs} ms',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           SwitchListTile(
             secondary: const Icon(Icons.visibility_off_outlined),
-            title: const Text('隐藏自动语音模式'),
-            subtitle: const Text(
-              '开启后，语音记账页面将隐藏自动模式入口',
-            ),
+            title: const Text('隐藏自动语音检测'),
+            subtitle: const Text('开启后，语音记账页面将隐藏自动模式入口'),
             value: ref.watch(voiceSettingsProvider).hideAutoVoiceMode,
             onChanged: (newValue) {
               if (newValue) {
@@ -179,7 +226,20 @@ class SettingsScreen extends ConsumerWidget {
                   return;
                 }
               }
-              ref.read(voiceSettingsProvider.notifier).setHideAutoVoiceMode(newValue);
+              ref
+                  .read(voiceSettingsProvider.notifier)
+                  .setHideAutoVoiceMode(newValue);
+            },
+          ),
+
+          SwitchListTile(
+            secondary: const Icon(Icons.do_not_disturb_on_outlined),
+            title: const Text('隐藏首页与统计页右下角的悬浮按钮'),
+            value: ref.watch(hideFabOnHomeAndStatsProvider),
+            onChanged: (newValue) {
+              ref
+                  .read(hideFabOnHomeAndStatsProvider.notifier)
+                  .setHideFabOnHomeAndStats(newValue);
             },
           ),
 
@@ -289,10 +349,7 @@ class SettingsScreen extends ConsumerWidget {
   ) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => _ServerUrlDialog(
-        initialUrl: currentUrl,
-        ref: ref,
-      ),
+      builder: (ctx) => _ServerUrlDialog(initialUrl: currentUrl, ref: ref),
     );
   }
 
@@ -300,9 +357,7 @@ class SettingsScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        content: const Text(
-          '请先将默认输入模式切换为手动模式/键盘模式后，再开启隐藏自动语音模式',
-        ),
+        content: const Text('请先将默认输入模式切换为手动模式/键盘模式后，再开启隐藏自动语音模式'),
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(ctx),
@@ -392,8 +447,9 @@ class _ServerUrlDialogState extends State<_ServerUrlDialog> {
     try {
       final ok = await client.healthCheck();
       if (mounted) {
-        setState(() =>
-            _testStatus = ok ? _TestStatus.success : _TestStatus.failed);
+        setState(
+          () => _testStatus = ok ? _TestStatus.success : _TestStatus.failed,
+        );
       }
     } catch (_) {
       if (mounted) setState(() => _testStatus = _TestStatus.failed);
@@ -431,7 +487,9 @@ class _ServerUrlDialogState extends State<_ServerUrlDialog> {
           child: const Text('重置'),
         ),
         OutlinedButton(
-          onPressed: _testStatus == _TestStatus.testing ? null : _testConnection,
+          onPressed: _testStatus == _TestStatus.testing
+              ? null
+              : _testConnection,
           child: _testStatus == _TestStatus.testing
               ? const SizedBox(
                   width: 16,
@@ -462,23 +520,33 @@ class _ServerUrlDialogState extends State<_ServerUrlDialog> {
       _TestStatus.idle => const SizedBox.shrink(),
       _TestStatus.testing => const SizedBox.shrink(),
       _TestStatus.success => Row(
-          children: [
-            Icon(Icons.check_circle_rounded,
-                color: Theme.of(context).colorScheme.primary, size: 16),
-            const SizedBox(width: AppSpacing.xs),
-            Text('连接成功',
-                style: TextStyle(color: Theme.of(context).colorScheme.primary)),
-          ],
-        ),
+        children: [
+          Icon(
+            Icons.check_circle_rounded,
+            color: Theme.of(context).colorScheme.primary,
+            size: 16,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            '连接成功',
+            style: TextStyle(color: Theme.of(context).colorScheme.primary),
+          ),
+        ],
+      ),
       _TestStatus.failed => Row(
-          children: [
-            Icon(Icons.error_rounded,
-                color: Theme.of(context).colorScheme.error, size: 16),
-            const SizedBox(width: AppSpacing.xs),
-            Text('连接失败',
-                style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          ],
-        ),
+        children: [
+          Icon(
+            Icons.error_rounded,
+            color: Theme.of(context).colorScheme.error,
+            size: 16,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            '连接失败',
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
+      ),
     };
   }
 }
@@ -498,9 +566,7 @@ class _SecuritySettingsSection extends ConsumerWidget {
           secondary: const Icon(Icons.gesture),
           title: const Text('手势解锁'),
           subtitle: Text(
-            security.isGestureLockEnabled
-                ? '已开启手势解锁'
-                : '设置手势图案，保护你的账单隐私',
+            security.isGestureLockEnabled ? '已开启手势解锁' : '设置手势图案，保护你的账单隐私',
           ),
           value: security.isGestureLockEnabled,
           onChanged: (value) {
@@ -515,9 +581,7 @@ class _SecuritySettingsSection extends ConsumerWidget {
           secondary: const Icon(Icons.lock_outline),
           title: const Text('密码解锁'),
           subtitle: Text(
-            security.isPasswordLockEnabled
-                ? '已开启密码解锁'
-                : '设置数字密码，保护你的账单隐私',
+            security.isPasswordLockEnabled ? '已开启密码解锁' : '设置数字密码，保护你的账单隐私',
           ),
           value: security.isPasswordLockEnabled,
           onChanged: (value) {

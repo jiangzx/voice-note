@@ -14,6 +14,7 @@
 6. [监控与运维](#6-监控与运维)
 7. [配置参数速查表](#7-配置参数速查表)
 8. [客户端语音错误码（ASR Token）](#8-客户端语音错误码asr-token)
+9. [客户端语音错误码（LLM 解析/纠错）](#9-客户端语音错误码llm-解析纠错)
 
 ---
 
@@ -537,3 +538,17 @@ Server 无状态，水平扩展只需：
 | E-ASR-003 | `POST /api/v1/asr/token` 返回 429（RateLimitException） | 请求过于频繁，请稍后再试 [E-ASR-003] | 检查 Server 限流配置（`rate-limit.asr`）与同一 IP 请求频率 |
 | E-ASR-004 | Token 响应无效（空 token/wsUrl） | 语音服务暂时不可用，请稍后重试 [E-ASR-004] | 检查 Server 与 DashScope Token API 响应及服务端日志 |
 | E-ASR-005 | 其它 AsrToken 失败（如 4xx/5xx、未知异常） | 启动语音识别失败，请稍后重试 [E-ASR-005] | 查看客户端 debug 日志及 Server 对应请求日志 |
+
+---
+
+## 9. 客户端语音错误码（LLM 解析/纠错）
+
+语音记账页在调用 `POST /api/v1/llm/parse-transaction`（语义解析）或 `POST /api/v1/llm/correct-transaction`（纠错）失败时，聊天窗口会显示友好文案并附带错误码，便于工程师根据用户反馈或截图快速定位问题。两接口共用同一套错误码 E-LLM-001～005。
+
+| 错误码 | 接口 | 异常类型 | 用户可见文案 | 排查建议 |
+|--------|------|----------|--------------|----------|
+| E-LLM-001 | parse-transaction / correct-transaction | 超时（TimeoutException） | 语义解析请求超时，请检查网络后重试 [E-LLM-001] | 检查网络延迟与 Server/LLM 超时配置 |
+| E-LLM-002 | parse-transaction / correct-transaction | 网络不可达（NetworkUnavailableException） | 无法连接网络，请检查网络后重试 [E-LLM-002] | 检查客户端网络、DNS、防火墙及 Server 地址是否可达 |
+| E-LLM-003 | parse-transaction / correct-transaction | 返回 429（RateLimitException） | 请求过于频繁，请稍后再试 [E-LLM-003] | 检查 Server 限流配置（`rate-limit.llm`）与同一 IP 请求频率 |
+| E-LLM-004 | parse-transaction / correct-transaction | 返回 422（LLM 解析失败） | 语义解析暂时不可用，请稍后重试 [E-LLM-004] | 查看服务端及 LLM 上游日志 |
+| E-LLM-005 | parse-transaction / correct-transaction | 其它（400/5xx、Validation/Server/Upstream） | 语义解析失败，请稍后重试 [E-LLM-005] | 查看客户端 debug 日志及 Server 对应请求日志 |

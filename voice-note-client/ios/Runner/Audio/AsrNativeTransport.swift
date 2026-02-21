@@ -21,7 +21,16 @@ final class AsrNativeTransport {
     self.onError = onError
   }
 
-  func connect(token: String, wsUrl: String, model: String, useServerVad: Bool = true) {
+  private let silenceDurationMsMin = 200
+  private let silenceDurationMsMax = 6000
+
+  func connect(
+    token: String,
+    wsUrl: String,
+    model: String,
+    useServerVad: Bool = true,
+    silenceDurationMs: Int = 1000
+  ) {
     disconnect()
     guard var components = URLComponents(string: wsUrl) else {
       onError("asr_invalid_ws_url")
@@ -43,7 +52,8 @@ final class AsrNativeTransport {
     task.resume()
     connected = true
     disconnecting = false
-    sendSessionUpdate(useServerVad: useServerVad)
+    let clampedMs = min(max(silenceDurationMs, silenceDurationMsMin), silenceDurationMsMax)
+    sendSessionUpdate(useServerVad: useServerVad, silenceDurationMs: clampedMs)
     receiveLoop()
   }
 
@@ -76,9 +86,15 @@ final class AsrNativeTransport {
   var isConnected: Bool { connected }
 
   /// Send session.update (e.g. after mode switch). No-op if not connected.
-  func sendSessionUpdate(useServerVad: Bool) {
+  func sendSessionUpdate(useServerVad: Bool, silenceDurationMs: Int = 1000) {
     guard connected else { return }
-    let turnDetection: Any = useServerVad ? ["type": "server_vad"] : NSNull()
+    let turnDetection: Any
+    if useServerVad {
+      let clamped = min(max(silenceDurationMs, silenceDurationMsMin), silenceDurationMsMax)
+      turnDetection = ["type": "server_vad", "silence_duration_ms": clamped]
+    } else {
+      turnDetection = NSNull()
+    }
     let sessionDict: [String: Any] = [
       "modalities": ["text"],
       "input_audio_format": "pcm",

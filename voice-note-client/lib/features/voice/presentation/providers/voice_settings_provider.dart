@@ -5,24 +5,35 @@ import '../widgets/mode_switcher.dart';
 
 const _keyInputMode = 'voice_input_mode';
 const _keyHideAutoVoiceMode = 'hide_auto_voice_mode';
+const _keyVadSilenceDurationMs = 'voice_vad_silence_duration_ms';
+
+/// VAD silence_duration_ms bounds per Aliyun Qwen-ASR-Realtime.
+const vadSilenceDurationMsMin = 200;
+const vadSilenceDurationMsMax = 6000;
+const vadSilenceDurationMsDefault = 1000;
 
 /// Persists voice input preferences across sessions.
 class VoiceSettings {
   final VoiceInputMode inputMode;
   final bool hideAutoVoiceMode;
+  final int vadSilenceDurationMs;
 
   const VoiceSettings({
     this.inputMode = VoiceInputMode.pushToTalk,
     this.hideAutoVoiceMode = false,
+    this.vadSilenceDurationMs = vadSilenceDurationMsDefault,
   });
 
   VoiceSettings copyWith({
     VoiceInputMode? inputMode,
     bool? hideAutoVoiceMode,
+    int? vadSilenceDurationMs,
   }) {
     return VoiceSettings(
       inputMode: inputMode ?? this.inputMode,
       hideAutoVoiceMode: hideAutoVoiceMode ?? this.hideAutoVoiceMode,
+      vadSilenceDurationMs:
+          vadSilenceDurationMs ?? this.vadSilenceDurationMs,
     );
   }
 }
@@ -39,9 +50,14 @@ class VoiceSettingsNotifier extends Notifier<VoiceSettings> {
         ? VoiceInputMode.values[modeIndex]
         : VoiceInputMode.pushToTalk;
     final hideAutoVoiceMode = prefs.getBool(_keyHideAutoVoiceMode) ?? false;
+    final rawMs = prefs.getInt(_keyVadSilenceDurationMs);
+    final vadSilenceDurationMs = rawMs != null
+        ? rawMs.clamp(vadSilenceDurationMsMin, vadSilenceDurationMsMax)
+        : vadSilenceDurationMsDefault;
     return VoiceSettings(
       inputMode: inputMode,
       hideAutoVoiceMode: hideAutoVoiceMode,
+      vadSilenceDurationMs: vadSilenceDurationMs,
     );
   }
 
@@ -53,6 +69,13 @@ class VoiceSettingsNotifier extends Notifier<VoiceSettings> {
   void setHideAutoVoiceMode(bool value) {
     state = state.copyWith(hideAutoVoiceMode: value);
     ref.read(sharedPreferencesProvider).setBool(_keyHideAutoVoiceMode, value);
+  }
+
+  void setVadSilenceDurationMs(int value) {
+    final clamped =
+        value.clamp(vadSilenceDurationMsMin, vadSilenceDurationMsMax);
+    state = state.copyWith(vadSilenceDurationMs: clamped);
+    ref.read(sharedPreferencesProvider).setInt(_keyVadSilenceDurationMs, clamped);
   }
 }
 

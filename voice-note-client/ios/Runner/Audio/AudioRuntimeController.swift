@@ -227,8 +227,16 @@ final class AudioRuntimeController {
       return ["ok": false, "error": "missing_model"]
     }
     let useServerVad = (mode != "pushToTalk")
-    print("[iOS Audio] startAsrStream mode=\(mode) useServerVad=\(useServerVad)")
-    asrTransport.connect(token: token, wsUrl: wsUrl, model: model, useServerVad: useServerVad)
+    let rawMs = args["vadSilenceDurationMs"] as? Int ?? (args["vadSilenceDurationMs"] as? NSNumber)?.intValue
+    let silenceDurationMs = rawMs ?? 1000
+    print("[iOS Audio] startAsrStream mode=\(mode) useServerVad=\(useServerVad) silenceDurationMs=\(silenceDurationMs)")
+    asrTransport.connect(
+      token: token,
+      wsUrl: wsUrl,
+      model: model,
+      useServerVad: useServerVad,
+      silenceDurationMs: silenceDurationMs
+    )
     do {
       try captureRuntime.start()
     } catch {

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/design_tokens.dart';
 import '../../app/theme.dart';
+import '../../features/settings/presentation/providers/home_fab_preference_provider.dart';
 import '../../features/transaction/presentation/screens/transaction_form_screen.dart';
 import 'animated_voice_fab.dart';
 import 'draggable_fab_group.dart';
@@ -209,7 +210,10 @@ class _AppShellState extends ConsumerState<AppShell> {
     final index = _currentIndex(context);
     final location = GoRouterState.of(context).uri.path;
     final isTransactionPage = location.startsWith('/transactions');
-    final showFab = index < 3 && !isTransactionPage;
+    final hideOnHomeAndStats = ref.watch(hideFabOnHomeAndStatsProvider);
+    final showFab = index < 3 &&
+        !isTransactionPage &&
+        !(_isHomeOrStatistics && hideOnHomeAndStats);
     final useDraggableFab = showFab && _isHomeOrStatistics;
 
     // Draggable FAB: overlay holds offset so setState during drag only rebuilds overlay, not page.

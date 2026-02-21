@@ -14,7 +14,7 @@ final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
 
 class ThemeModeNotifier extends Notifier<ThemeMode> {
   @override
-  ThemeMode build() => ThemeMode.system;
+  ThemeMode build() => ThemeMode.light;
 
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
@@ -22,7 +22,7 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
     if (value != null) {
       state = ThemeMode.values.firstWhere(
         (m) => m.name == value,
-        orElse: () => ThemeMode.system,
+        orElse: () => ThemeMode.light,
       );
     }
   }

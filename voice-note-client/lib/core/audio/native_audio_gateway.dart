@@ -202,6 +202,7 @@ class NativeAudioGateway {
     required String token,
     required String wsUrl,
     required String model,
+    int vadSilenceDurationMs = 1000,
   }) {
     return _invokeMap(
       'startAsrStream',
@@ -211,6 +212,7 @@ class NativeAudioGateway {
           'token': token,
           'wsUrl': wsUrl,
           'model': model,
+          'vadSilenceDurationMs': vadSilenceDurationMs,
         },
       ).toMap(),
     );

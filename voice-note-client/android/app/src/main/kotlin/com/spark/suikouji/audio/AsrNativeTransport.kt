@@ -21,7 +21,16 @@ class AsrNativeTransport(
     /** When true, we are intentionally disconnecting; do not report failures to UI. */
     private var disconnecting = false
 
-    fun connect(token: String, wsUrl: String, model: String, useServerVad: Boolean = true) {
+    private val silenceDurationMsMin = 200
+    private val silenceDurationMsMax = 6000
+
+    fun connect(
+        token: String,
+        wsUrl: String,
+        model: String,
+        useServerVad: Boolean = true,
+        silenceDurationMs: Int = 1000,
+    ) {
         disconnect()
         val url = "$wsUrl?model=$model"
         val request = Request.Builder()
@@ -29,11 +38,12 @@ class AsrNativeTransport(
             .addHeader("Authorization", "Bearer $token")
             .addHeader("OpenAI-Beta", "realtime=v1")
             .build()
+        val clampedMs = silenceDurationMs.coerceIn(silenceDurationMsMin, silenceDurationMsMax)
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 connected.set(true)
                 disconnecting = false
-                webSocket.send(buildSessionUpdate(useServerVad).toString())
+                webSocket.send(buildSessionUpdate(useServerVad, clampedMs).toString())
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -89,19 +99,23 @@ class AsrNativeTransport(
     fun isConnected(): Boolean = connected.get()
 
     /** Send session.update (e.g. after mode switch). No-op if not connected. */
-    fun sendSessionUpdate(useServerVad: Boolean) {
+    fun sendSessionUpdate(useServerVad: Boolean, silenceDurationMs: Int = 1000) {
         if (!connected.get()) return
-        socket?.send(buildSessionUpdate(useServerVad).toString())
+        socket?.send(buildSessionUpdate(useServerVad, silenceDurationMs).toString())
     }
 
-    private fun buildSessionUpdate(useServerVad: Boolean): JSONObject {
+    private fun buildSessionUpdate(useServerVad: Boolean, silenceDurationMs: Int = 1000): JSONObject {
         val session = JSONObject()
             .put("modalities", JSONArray().put("text"))
             .put("input_audio_format", "pcm")
             .put("sample_rate", 16000)
             .put("input_audio_transcription", JSONObject().put("language", "zh"))
         if (useServerVad) {
-            session.put("turn_detection", JSONObject().put("type", "server_vad"))
+            val clamped = silenceDurationMs.coerceIn(silenceDurationMsMin, silenceDurationMsMax)
+            session.put(
+                "turn_detection",
+                JSONObject().put("type", "server_vad").put("silence_duration_ms", clamped),
+            )
         } else {
             // pushToTalk: only commit triggers final; no mid-speech VAD.
             session.put("turn_detection", JSONObject.NULL)
