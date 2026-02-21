@@ -364,6 +364,8 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   /// User cancelled the current transaction.
   void cancelTransaction() {
     _addAssistantMessage(VoiceCopy.feedbackCancel);
+    // Clear orchestrator state so next ASR is treated as new input, not correction.
+    _orchestrator?.clearDraftBatch();
     state = state.copyWith(
       voiceState: VoiceState.listening,
       clearParseResult: true,
