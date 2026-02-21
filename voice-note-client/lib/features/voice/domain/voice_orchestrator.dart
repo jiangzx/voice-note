@@ -1451,6 +1451,11 @@ class VoiceOrchestrator {
       source: ParseSource.llm,
     );
 
+    if (newResult.amount == null || newResult.amount! <= 0) {
+      _speakWithSuppression(TtsTemplates.appendNoAmount());
+      return;
+    }
+
     final updated = batch.append(newResult);
     if (updated == null) {
       _speakWithSuppression(TtsTemplates.batchLimitReached());
@@ -1471,14 +1476,28 @@ class VoiceOrchestrator {
     if (batch == null || !batch.allResolved) return;
 
     final confirmed = batch.confirmedItems;
+    final valid = confirmed
+        .where((t) =>
+            t.result.amount != null && t.result.amount! > 0)
+        .toList();
     _draftBatch = null;
     _currentState = VoiceState.listening;
     _startInactivityTimer();
 
-    if (confirmed.isNotEmpty) {
-      _delegate.onBatchSaved(confirmed);
-      _speakWithSuppression(TtsTemplates.batchSaved(count: confirmed.length));
+    if (valid.isNotEmpty) {
+      _delegate.onBatchSaved(valid);
+      _speakWithSuppression(TtsTemplates.batchSaved(count: valid.length));
+      if (valid.length < confirmed.length) {
+        _speakWithSuppression(
+          TtsTemplates.batchSkippedNoAmount(count: confirmed.length - valid.length),
+        );
+      }
       _delegate.onConfirmTransaction();
+    } else if (confirmed.isNotEmpty) {
+      _delegate.onCancelTransaction();
+      _speakWithSuppression(
+        TtsTemplates.batchSkippedNoAmount(count: confirmed.length),
+      );
     } else {
       _delegate.onCancelTransaction();
     }

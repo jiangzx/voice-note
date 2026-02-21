@@ -67,6 +67,12 @@ class TtsTemplates {
 
   static String batchLimitReached() => '最多只能记10笔，请先确认当前交易';
 
+  /// When user says append but no amount was parsed (e.g. only "吃饭").
+  static String appendNoAmount() => '未识别到金额，请说清楚金额再追加';
+
+  static String batchSkippedNoAmount({required int count}) =>
+      '有$count笔缺少金额未保存';
+
   // ── Helpers ──
 
   static String _typeLabel(String type) => switch (type.toLowerCase()) {
