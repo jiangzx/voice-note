@@ -10,8 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../app/design_tokens.dart';
 import '../../../app/theme.dart';
 import '../../../core/permissions/permission_service.dart';
-import '../../../shared/widgets/home_fab.dart';
-import '../../../shared/widgets/voice_exit_fab_toggle_button.dart';
 import '../domain/draft_batch.dart';
 import '../domain/parse_result.dart';
 import '../domain/voice_state.dart';
@@ -150,39 +148,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
         }
       }
 
-      // Handle success/error messages with snackbar
-      if (latest.type == ChatMessageType.success ||
-          latest.type == ChatMessageType.error) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).clearSnackBars();
-        final isSuccess = latest.type == ChatMessageType.success;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(
-                  isSuccess ? Icons.check_circle_rounded : Icons.error_rounded,
-                  color: Colors.white,
-                  size: AppIconSize.sm,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(child: Text(latest.text)),
-              ],
-            ),
-            backgroundColor: isSuccess
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.only(
-              bottom: MediaQuery.of(context).size.height * 0.15,
-              left: AppSpacing.lg,
-              right: AppSpacing.lg,
-            ),
-            duration: Duration(milliseconds: isSuccess ? 1500 : 3000),
-            shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-          ),
-        );
-      }
+      // Success/error only shown in chat (no SnackBar pop-up)
     }
   }
 
@@ -291,16 +257,9 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                 ],
               ),
             ),
-            // Exit FAB toggle button positioned below the exit FAB
-            // Position: right edge, directly below FAB bottom
-            if (voiceState != VoiceState.confirming)
-              _buildExitFabTogglePosition(),
           ],
         ),
-        floatingActionButton: voiceState == VoiceState.confirming
-            ? null
-            : const HomeFab(),
-        floatingActionButtonLocation: voiceScreenFabLocation,
+        floatingActionButton: null,
       ),
     );
   }
@@ -553,7 +512,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
         else
           VoiceAnimationWidget(state: voiceState),
         const SizedBox(height: AppSpacing.lg),
-        _buildStatusText(voiceState),
+        _buildStatusText(voiceState, inputMode),
       ],
     );
     return Padding(
@@ -629,12 +588,14 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     );
   }
 
-  Widget _buildStatusText(VoiceState voiceState) {
+  Widget _buildStatusText(VoiceState voiceState, VoiceInputMode inputMode) {
     final batch = ref.read(voiceSessionProvider).draftBatch;
     final isBatch = batch != null && !batch.isSingleItem;
     final text = switch (voiceState) {
       VoiceState.idle => '点击开始',
-      VoiceState.listening => '正在聆听...',
+      VoiceState.listening => inputMode == VoiceInputMode.pushToTalk
+          ? '按住 说话'
+          : '正在聆听...',
       VoiceState.recognizing => '正在识别...',
       VoiceState.confirming => isBatch ? '请确认或说出要修改的内容' : '请确认以下信息',
     };
@@ -643,34 +604,6 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       text,
       style: Theme.of(context).textTheme.bodySmall?.copyWith(
         color: AppColors.textPlaceholder,
-      ),
-    );
-  }
-
-  /// Builds the exit FAB toggle button positioned below the exit FAB.
-  /// Extracts MediaQuery calculation to avoid repeated calculations in build method.
-  Widget _buildExitFabTogglePosition() {
-    final mediaQuery = MediaQuery.of(context);
-    // Calculate toggle button position: below the exit FAB center
-    // FAB is positioned at screen center vertically, toggle should be below FAB bottom
-    final top = mediaQuery.padding.top +
-        kToolbarHeight + // AppBar height
-        (mediaQuery.size.height -
-                mediaQuery.padding.top -
-                mediaQuery.padding.bottom -
-                kToolbarHeight) /
-            2 +
-        28 + // Half of FAB height (56/2) to get FAB bottom
-        AppSpacing.sm; // Spacing between FAB and toggle button
-
-    return Positioned(
-      right: mediaQuery.padding.right +
-          16 + // kFloatingActionButtonMargin
-          (100 - 40) /
-              2, // Center toggle button horizontally with FAB (FAB width - toggle width) / 2
-      top: top,
-      child: const RepaintBoundary(
-        child: VoiceExitFabToggleButton(),
       ),
     );
   }

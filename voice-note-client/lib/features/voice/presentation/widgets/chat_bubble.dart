@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../../app/theme.dart';
 
 /// Semantic type of a chat message.
 enum ChatMessageType {
@@ -97,41 +99,55 @@ class _NormalBubble extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
             ],
             Flexible(
-              child: GestureDetector(
-                onLongPress: () {
-                  Clipboard.setData(ClipboardData(text: message.text));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('已复制'),
-                      behavior: SnackBarBehavior.floating,
+              child: Column(
+                crossAxisAlignment:
+                    isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onLongPress: () {
+                      Clipboard.setData(ClipboardData(text: message.text));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('已复制'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isUser
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(AppRadius.xl),
+                          topRight: const Radius.circular(AppRadius.xl),
+                          bottomLeft: Radius.circular(isUser ? AppRadius.xl : 4),
+                          bottomRight: Radius.circular(isUser ? 4 : AppRadius.xl),
+                        ),
+                      ),
+                      child: Text(
+                        message.text,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: isUser
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurface,
+                        ),
+                      ),
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
                   ),
-                  decoration: BoxDecoration(
-                    color: isUser
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(AppRadius.xl),
-                      topRight: const Radius.circular(AppRadius.xl),
-                      bottomLeft: Radius.circular(isUser ? AppRadius.xl : 4),
-                      bottomRight: Radius.circular(isUser ? 4 : AppRadius.xl),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    DateFormat('yyyy-MM-dd HH:mm:ss').format(message.timestamp),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: AppColors.textPlaceholder,
                     ),
                   ),
-                  child: Text(
-                    message.text,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: isUser
-                          ? theme.colorScheme.onPrimary
-                          : theme.colorScheme.onSurface,
-                    ),
-                  ),
-                ),
+                ],
               ),
             ),
             if (isUser) ...[
@@ -170,34 +186,46 @@ class _SystemChip extends StatelessWidget {
           vertical: AppSpacing.xs,
         ),
         child: Center(
-          child: GestureDetector(
-            onLongPress: () {
-              Clipboard.setData(ClipboardData(text: message.text));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('已复制'),
-                  behavior: SnackBarBehavior.floating,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onLongPress: () {
+                  Clipboard.setData(ClipboardData(text: message.text));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('已复制'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.xs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.6),
+                    borderRadius: AppRadius.xlAll,
+                  ),
+                  child: Text(
+                    message.text,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.xs,
               ),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.6),
-                borderRadius: AppRadius.xlAll,
-              ),
-              child: Text(
-                message.text,
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                DateFormat('yyyy-MM-dd HH:mm:ss').format(message.timestamp),
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: AppColors.textPlaceholder,
                 ),
-                textAlign: TextAlign.center,
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -242,35 +270,48 @@ class _StatusBubble extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.sm),
             Flexible(
-              child: GestureDetector(
-                onLongPress: () {
-                  Clipboard.setData(ClipboardData(text: message.text));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('已复制'),
-                      behavior: SnackBarBehavior.floating,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onLongPress: () {
+                      Clipboard.setData(ClipboardData(text: message.text));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('已复制'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(AppRadius.xl),
+                          topRight: Radius.circular(AppRadius.xl),
+                          bottomLeft: Radius.circular(4),
+                          bottomRight: Radius.circular(AppRadius.xl),
+                        ),
+                      ),
+                      child: Text(
+                        message.text,
+                        style: theme.textTheme.bodyMedium?.copyWith(color: fgColor),
+                      ),
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
                   ),
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(AppRadius.xl),
-                      topRight: Radius.circular(AppRadius.xl),
-                      bottomLeft: Radius.circular(4),
-                      bottomRight: Radius.circular(AppRadius.xl),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    DateFormat('yyyy-MM-dd HH:mm:ss').format(message.timestamp),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: AppColors.textPlaceholder,
                     ),
                   ),
-                  child: Text(
-                    message.text,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: fgColor),
-                  ),
-                ),
+                ],
               ),
             ),
           ],

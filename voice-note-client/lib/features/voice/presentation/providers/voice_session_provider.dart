@@ -280,7 +280,12 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       voiceState: VoiceState.listening,
       clearParseResult: true,
     );
-    _orchestrator?.speakAndResumeTimer(TtsTemplates.saved());
+    final inputMode = ref.read(voiceSettingsProvider).inputMode;
+    if (inputMode == VoiceInputMode.auto) {
+      _orchestrator?.speakAndResumeTimer(TtsTemplates.saved());
+    } else {
+      _orchestrator?.resumeTimer();
+    }
   }
 
   /// Update a single field on the current parse result.

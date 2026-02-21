@@ -310,7 +310,7 @@ class VoiceOrchestrator {
                 }
                 // 如果超时且仍在等待，说明没有检测到语音，提示用户
                 if (_isPushEndPending) {
-                  _delegate.onError('哎呀，没听到声音呢～再试一次吧！');
+                  _delegate.onError('未检测到语音');
                 }
               },
             );
@@ -320,7 +320,7 @@ class VoiceOrchestrator {
             }
             // 如果出错且仍在等待，也提示用户
             if (_isPushEndPending) {
-              _delegate.onError('哎呀，没听到声音呢～再试一次吧！');
+              _delegate.onError('未检测到语音');
             }
           }
 
@@ -857,6 +857,13 @@ class VoiceOrchestrator {
   /// Speak text with VAD suppression, then restart the inactivity timer.
   Future<void> speakAndResumeTimer(String text) async {
     await _speakWithSuppression(text);
+    if (_currentState == VoiceState.listening && !_disposed) {
+      _startInactivityTimer();
+    }
+  }
+
+  /// Restart the inactivity timer only (no TTS). Use in manual mode after confirm.
+  void resumeTimer() {
     if (_currentState == VoiceState.listening && !_disposed) {
       _startInactivityTimer();
     }
