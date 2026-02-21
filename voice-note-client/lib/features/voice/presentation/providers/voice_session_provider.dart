@@ -560,7 +560,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   void onSuggestPushToTalk() {
     if (!_sessionActive) return;
     _addAssistantMessage(
-      '检测到多次环境噪音误触，建议切换到「按住说话」模式',
+      '检测到多次环境噪音误触，建议切换到「手动模式」',
       type: ChatMessageType.system,
     );
   }

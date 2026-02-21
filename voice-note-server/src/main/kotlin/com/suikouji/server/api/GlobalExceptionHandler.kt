@@ -38,6 +38,12 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception::class)
     fun handleGeneric(e: Exception): ResponseEntity<ErrorResponse> {
+        val upstream = e.cause as? WebClientResponseException
+        if (upstream != null) {
+            log.error("Upstream API error (wrapped): {} {}", upstream.statusCode, upstream.message)
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ErrorResponse(error = "upstream_error", message = "Upstream service returned ${upstream.statusCode}"))
+        }
         log.error("Unexpected error", e)
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(ErrorResponse(error = "internal_error", message = "An unexpected error occurred"))

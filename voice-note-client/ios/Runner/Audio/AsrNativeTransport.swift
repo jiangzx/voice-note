@@ -4,6 +4,8 @@ final class AsrNativeTransport {
   private var socketTask: URLSessionWebSocketTask?
   private let session = URLSession(configuration: .default)
   private var connected = false
+  /// When true, we are intentionally disconnecting; do not report send/receive errors to UI.
+  private var disconnecting = false
 
   private let onInterimText: (String) -> Void
   private let onFinalText: (String) -> Void
@@ -40,6 +42,7 @@ final class AsrNativeTransport {
     socketTask = task
     task.resume()
     connected = true
+    disconnecting = false
     sendSessionUpdate(useServerVad: useServerVad)
     receiveLoop()
   }
@@ -64,6 +67,7 @@ final class AsrNativeTransport {
   }
 
   func disconnect() {
+    disconnecting = true
     connected = false
     socketTask?.cancel(with: .normalClosure, reason: nil)
     socketTask = nil
@@ -95,8 +99,9 @@ final class AsrNativeTransport {
     guard let data = try? JSONSerialization.data(withJSONObject: payload),
           let text = String(data: data, encoding: .utf8) else { return }
     socketTask?.send(.string(text)) { [weak self] error in
-      if let error = error {
-        self?.onError("asr_send_error:\(error.localizedDescription)")
+      guard let self = self else { return }
+      if let error = error, !self.disconnecting {
+        self.onError("asr_send_error:\(error.localizedDescription)")
       }
     }
   }
@@ -108,7 +113,9 @@ final class AsrNativeTransport {
       switch result {
       case .failure(let error):
         self.connected = false
-        self.onError("asr_ws_failure:\(error.localizedDescription)")
+        if !self.disconnecting {
+          self.onError("asr_ws_failure:\(error.localizedDescription)")
+        }
       case .success(let message):
         switch message {
         case .string(let text):

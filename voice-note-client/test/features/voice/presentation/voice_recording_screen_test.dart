@@ -112,7 +112,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('自动'), findsOneWidget);
-      expect(find.text('按住'), findsOneWidget);
+      expect(find.text('手动'), findsOneWidget);
       expect(find.text('键盘'), findsOneWidget);
     });
 

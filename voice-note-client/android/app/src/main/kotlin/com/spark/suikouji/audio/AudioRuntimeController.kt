@@ -228,10 +228,8 @@ class AudioRuntimeController(
                 // 禁用 barge-in（pushToTalk 模式下不需要自动 VAD）
                 bargeInConfig = bargeInConfig.copy(enabled = false)
                 bargeInDetector?.updateConfig(bargeInConfig)
-                // pushToTalk: 仅由 commit 触发 final，不因静音分段
-                if (asrTransport?.isConnected() == true) {
-                    asrTransport?.sendSessionUpdate(useServerVad = false)
-                }
+                // Do not send session.update — server rejects second update and disconnects.
+                // PushToTalk is enforced by client: mute when not holding, commit on pushEnd only.
             }
             "auto" -> {
                 // 如果之前是 keyboard 或 pushToTalk 模式，captureRuntime 可能已停止
@@ -249,9 +247,8 @@ class AudioRuntimeController(
                 setAsrMuted(mapOf("muted" to false))
                 bargeInConfig = bargeInConfig.copy(enabled = true)
                 bargeInDetector?.updateConfig(bargeInConfig)
-                if (asrTransport?.isConnected() == true) {
-                    asrTransport?.sendSessionUpdate(useServerVad = true)
-                }
+                // Do not send session.update — server rejects second update and disconnects.
+                // Server already has server_vad from initial connect.
             }
         }
 

@@ -286,9 +286,8 @@ final class AudioRuntimeController {
           cooldownMs: bargeInConfig["cooldownMs"] as? Int ?? 300
         )
       )
-      if asrTransport.isConnected {
-        asrTransport.sendSessionUpdate(useServerVad: false)
-      }
+      // Do not send session.update here — server rejects second update and disconnects.
+      // PushToTalk is enforced by client: mute when not holding, commit on pushEnd only.
     case "auto":
       // 如果之前是 keyboard 或 pushToTalk 模式，captureRuntime 可能已停止
       let captureWasRunning = captureRuntime.isRunning()
@@ -320,9 +319,8 @@ final class AudioRuntimeController {
           cooldownMs: bargeInConfig["cooldownMs"] as? Int ?? 300
         )
       )
-      if asrTransport.isConnected {
-        asrTransport.sendSessionUpdate(useServerVad: true)
-      }
+      // Do not send session.update here — server rejects second update and disconnects.
+      // Server already has server_vad from initial connect.
     default:
       break
     }

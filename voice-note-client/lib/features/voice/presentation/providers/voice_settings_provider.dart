@@ -6,7 +6,7 @@ import '../widgets/mode_switcher.dart';
 class VoiceSettings {
   final VoiceInputMode inputMode;
 
-  const VoiceSettings({this.inputMode = VoiceInputMode.auto});
+  const VoiceSettings({this.inputMode = VoiceInputMode.pushToTalk});
 
   VoiceSettings copyWith({VoiceInputMode? inputMode}) {
     return VoiceSettings(inputMode: inputMode ?? this.inputMode);

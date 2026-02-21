@@ -18,6 +18,8 @@ class AsrNativeTransport(
     private val client = OkHttpClient()
     private var socket: WebSocket? = null
     private val connected = AtomicBoolean(false)
+    /** When true, we are intentionally disconnecting; do not report failures to UI. */
+    private var disconnecting = false
 
     fun connect(token: String, wsUrl: String, model: String, useServerVad: Boolean = true) {
         disconnect()
@@ -30,6 +32,7 @@ class AsrNativeTransport(
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 connected.set(true)
+                disconnecting = false
                 webSocket.send(buildSessionUpdate(useServerVad).toString())
             }
 
@@ -43,7 +46,9 @@ class AsrNativeTransport(
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 connected.set(false)
-                onError("asr_ws_failure:${t.message}")
+                if (!disconnecting) {
+                    onError("asr_ws_failure:${t.message}")
+                }
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -70,6 +75,7 @@ class AsrNativeTransport(
     }
 
     fun disconnect() {
+        disconnecting = true
         connected.set(false)
         socket?.close(1000, "client_close")
         socket = null

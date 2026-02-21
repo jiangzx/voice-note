@@ -219,7 +219,7 @@ class SettingsScreen extends ConsumerWidget {
   String _inputModeLabel(VoiceInputMode mode) {
     return switch (mode) {
       VoiceInputMode.auto => '自动检测',
-      VoiceInputMode.pushToTalk => '按住说话',
+      VoiceInputMode.pushToTalk => '手动模式',
       VoiceInputMode.keyboard => '键盘输入',
     };
   }

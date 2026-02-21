@@ -108,7 +108,7 @@ class VoiceOrchestrator {
   DateTime? _resumeStartAt;
   bool _bargeInPending = false;
   DateTime? _ttsEndedAt;
-  static const Duration _ttsEchoDiscardWindow = Duration(milliseconds: 400);
+  static const Duration _ttsEchoDiscardWindow = Duration(milliseconds: 1200);
 
   VoiceOrchestrator({
     required AsrRepository asrRepository,
@@ -167,7 +167,6 @@ class VoiceOrchestrator {
       await _startNativeAsrStream();
       _currentState = VoiceState.listening;
       _startInactivityTimer();
-      await _speakWithSuppression(TtsTemplates.welcome());
     } catch (e) {
       if (kDebugMode) debugPrint('[VoiceInit] FAILED: $e');
       // 提取用户友好的错误消息
@@ -406,6 +405,11 @@ class VoiceOrchestrator {
         mode: mode.name,
       );
       if (kDebugMode) debugPrint('[VoiceMode] Switched to ${mode.name}');
+      // Reconnect ASR with server_vad when switching to auto so server does turn detection.
+      if (mode == VoiceInputMode.auto) {
+        await native.stopAsrStream(nativeSessionId);
+        await _startNativeAsrStream();
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('[VoiceMode] Failed to switch mode: $e');
       _delegate.onError('切换模式失败：$e');
@@ -423,11 +427,10 @@ class VoiceOrchestrator {
     }
   }
 
-  /// Stop all audio services and go back to idle.
+  /// Stop ASR and release mic; keeps native session (and TTS) alive for keyboard mode.
   Future<void> stopListening() async {
     _draftBatch = null;
     _asrConnection.resetReconnectAttempts();
-    // Reset misfire counter (保留用于未来可能的用途)
     _consecutiveMisfires = 0;
     _isTtsSpeaking = false;
     _bargeInTriggeredAt = null;
@@ -445,12 +448,22 @@ class VoiceOrchestrator {
     if (native != null && nativeSessionId != null) {
       try {
         await native.stopAsrStream(nativeSessionId);
-        await native.disposeSession(nativeSessionId);
       } catch (_) {
         // Keep cleanup resilient if native runtime isn't ready yet.
       }
     }
     _currentState = VoiceState.idle;
+  }
+
+  /// Release native session (TTS, capture, ASR). Call when leaving voice screen.
+  Future<void> _disposeNativeSession() async {
+    final nativeSessionId = _nativeAudioSessionId;
+    final native = _nativeAudioGateway;
+    if (native != null && nativeSessionId != null) {
+      try {
+        await native.disposeSession(nativeSessionId);
+      } catch (_) {}
+    }
   }
 
   /// Speak text with VAD suppression — ignore VAD events during playback.
@@ -552,14 +565,15 @@ class VoiceOrchestrator {
 
     final status = await native.getDuplexStatus(nativeSessionId);
     final captureActive = status['captureActive'] as bool? ?? false;
-    if (!captureActive) {
+    // pushToTalk: capture is stopped until pushStart; do not require active here.
+    if (mode != VoiceInputMode.pushToTalk && !captureActive) {
       if (kDebugMode) {
         debugPrint('[VoiceInit] getDuplexStatus: captureActive=false');
       }
       throw StateError('capture_not_active_after_init');
     }
     if (kDebugMode) {
-      debugPrint('[VoiceInit] Capture verified active: $captureActive');
+      debugPrint('[VoiceInit] Capture verified active: $captureActive (mode=$mode)');
     }
   }
 
@@ -620,12 +634,18 @@ class VoiceOrchestrator {
         }
         return;
       }
-      // 按住模式：只有在 recognizing 状态下才处理
+      // 手动模式：只有在 recognizing 状态下才处理
       if (_currentInputMode == VoiceInputMode.pushToTalk &&
           _currentState != VoiceState.recognizing) {
         if (kDebugMode) {
           debugPrint('[ASRFlow] Ignore asrInterimText (pushToTalk mode, not recognizing)');
         }
+        return;
+      }
+      // TTS 播放中或刚结束的回声窗口内不派发 interim，避免 TTS 被识别后误触发
+      if (_isTtsSpeaking) return;
+      if (_ttsEndedAt != null &&
+          clock.now().difference(_ttsEndedAt!) < _ttsEchoDiscardWindow) {
         return;
       }
       // 自动模式：正常处理
@@ -644,7 +664,7 @@ class VoiceOrchestrator {
         }
         return;
       }
-      // 按住模式：仅当用户已松开（pushEnd 已调用）时才处理；中间停顿由 server_vad 触发的 final 忽略
+      // 手动模式：仅当用户已松开（pushEnd 已调用）时才处理；中间停顿由 server_vad 触发的 final 忽略
       if (_currentInputMode == VoiceInputMode.pushToTalk &&
           !_isPushEndPending) {
         if (kDebugMode) {
@@ -831,13 +851,13 @@ class VoiceOrchestrator {
   Future<void> dispose() async {
     _disposed = true;
     _asrConnection.markDisposed();
-    // Clean up pushEnd pending state
     _isPushEndPending = false;
     _pushEndCompleter?.completeError(StateError('Orchestrator disposed'));
     _pushEndCompleter = null;
     _pushToTalkAutoReleaseTimer?.cancel();
     _pushToTalkAutoReleaseTimer = null;
     await stopListening();
+    await _disposeNativeSession();
   }
 
   // ======================== Inactivity Timer ========================

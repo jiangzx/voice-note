@@ -28,7 +28,7 @@ class ModeSwitcher extends StatelessWidget {
 
   String _modeLabel(VoiceInputMode m) => switch (m) {
         VoiceInputMode.auto => '自动',
-        VoiceInputMode.pushToTalk => '按住说话',
+        VoiceInputMode.pushToTalk => '手动',
         VoiceInputMode.keyboard => '键盘',
       };
 
@@ -46,7 +46,7 @@ class ModeSwitcher extends StatelessWidget {
         ButtonSegment(
           value: VoiceInputMode.pushToTalk,
           icon: Icon(Icons.touch_app_rounded, size: AppIconSize.sm),
-          label: Text('按住'),
+          label: Text('手动'),
         ),
         ButtonSegment(
           value: VoiceInputMode.keyboard,

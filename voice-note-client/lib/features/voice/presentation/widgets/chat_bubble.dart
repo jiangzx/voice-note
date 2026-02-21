@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../app/design_tokens.dart';
 
@@ -96,28 +97,39 @@ class _NormalBubble extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
             ],
             Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                decoration: BoxDecoration(
-                  color: isUser
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(AppRadius.xl),
-                    topRight: const Radius.circular(AppRadius.xl),
-                    bottomLeft: Radius.circular(isUser ? AppRadius.xl : 4),
-                    bottomRight: Radius.circular(isUser ? 4 : AppRadius.xl),
+              child: GestureDetector(
+                onLongPress: () {
+                  Clipboard.setData(ClipboardData(text: message.text));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('已复制'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
                   ),
-                ),
-                child: Text(
-                  message.text,
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  decoration: BoxDecoration(
                     color: isUser
-                        ? theme.colorScheme.onPrimary
-                        : theme.colorScheme.onSurface,
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(AppRadius.xl),
+                      topRight: const Radius.circular(AppRadius.xl),
+                      bottomLeft: Radius.circular(isUser ? AppRadius.xl : 4),
+                      bottomRight: Radius.circular(isUser ? 4 : AppRadius.xl),
+                    ),
+                  ),
+                  child: Text(
+                    message.text,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isUser
+                          ? theme.colorScheme.onPrimary
+                          : theme.colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ),
@@ -158,22 +170,33 @@ class _SystemChip extends StatelessWidget {
           vertical: AppSpacing.xs,
         ),
         child: Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.xs,
-            ),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.6),
-              borderRadius: AppRadius.xlAll,
-            ),
-            child: Text(
-              message.text,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+          child: GestureDetector(
+            onLongPress: () {
+              Clipboard.setData(ClipboardData(text: message.text));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('已复制'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs,
               ),
-              textAlign: TextAlign.center,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.6),
+                borderRadius: AppRadius.xlAll,
+              ),
+              child: Text(
+                message.text,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
         ),
@@ -219,23 +242,34 @@ class _StatusBubble extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.sm),
             Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(AppRadius.xl),
-                    topRight: Radius.circular(AppRadius.xl),
-                    bottomLeft: Radius.circular(4),
-                    bottomRight: Radius.circular(AppRadius.xl),
+              child: GestureDetector(
+                onLongPress: () {
+                  Clipboard.setData(ClipboardData(text: message.text));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('已复制'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
                   ),
-                ),
-                child: Text(
-                  message.text,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: fgColor),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(AppRadius.xl),
+                      topRight: Radius.circular(AppRadius.xl),
+                      bottomLeft: Radius.circular(4),
+                      bottomRight: Radius.circular(AppRadius.xl),
+                    ),
+                  ),
+                  child: Text(
+                    message.text,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: fgColor),
+                  ),
                 ),
               ),
             ),
