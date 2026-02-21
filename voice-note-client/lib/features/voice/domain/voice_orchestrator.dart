@@ -74,6 +74,10 @@ class VoiceOrchestrator {
   bool _isPushEndPending = false;
   Completer<void>? _pushEndCompleter;
 
+  /// Accumulates asrFinalText segments while user is still holding (pushToTalk).
+  /// Merged with the final segment on release so multi-phrase input is not lost.
+  final List<String> _pushToTalkFinalTextBuffer = [];
+
   DraftBatch? _draftBatch;
 
   // TTS VAD suppression flag
@@ -109,6 +113,9 @@ class VoiceOrchestrator {
   bool _bargeInPending = false;
   DateTime? _ttsEndedAt;
   static const Duration _ttsEchoDiscardWindow = Duration(milliseconds: 1200);
+
+  /// Set when TTS was stopped by pushStart (user pressed PTT). Skip "recent TTS ended" discard for this hold.
+  bool _ttsStoppedByUserAction = false;
 
   VoiceOrchestrator({
     required AsrRepository asrRepository,
@@ -197,6 +204,11 @@ class VoiceOrchestrator {
     if (native == null || nativeSessionId == null) {
       throw StateError('native_audio_not_configured');
     }
+    if (kDebugMode) {
+      debugPrint(
+          '[ASRFlow] _startNativeAsrStream mode=${_currentInputMode?.name ?? "null"}',
+      );
+    }
     final token = await _asrRepository.getToken();
     final result = await native.startAsrStream(
       sessionId: nativeSessionId,
@@ -224,6 +236,14 @@ class VoiceOrchestrator {
 
     // 在 pushToTalk 模式下，启动 captureRuntime 并 unmute ASR
     if (_currentInputMode == VoiceInputMode.pushToTalk) {
+      if (_isTtsSpeaking) {
+        await stopTtsIfPlaying();
+        _ttsStoppedByUserAction = true;
+        if (kDebugMode) {
+          debugPrint('[VoiceMode] pushStart: Stopped TTS for user speech');
+        }
+      }
+      _pushToTalkFinalTextBuffer.clear();
       final native = _nativeAudioGateway;
       final nativeSessionId = _nativeAudioSessionId;
       if (native != null && nativeSessionId != null) {
@@ -336,9 +356,13 @@ class VoiceOrchestrator {
             _delegate.onError('录音处理失败：$e');
           }
         } finally {
-          // Always clean up state flags, even if errors occurred
+          if (_pushToTalkFinalTextBuffer.isNotEmpty) {
+            _onAsrFinalText(_pushToTalkFinalTextBuffer.join(''));
+            _pushToTalkFinalTextBuffer.clear();
+          }
           _isPushEndPending = false;
           _pushEndCompleter = null;
+          _ttsStoppedByUserAction = false;
         }
       } else {
         // 非 pushToTalk 模式，直接 commit
@@ -367,7 +391,11 @@ class VoiceOrchestrator {
   }
 
   /// Switch input mode at runtime (e.g., auto <-> pushToTalk).
-  Future<void> switchInputMode(VoiceInputMode mode) async {
+  /// [previousMode] used to revert native and _currentInputMode when switching to auto fails.
+  Future<void> switchInputMode(
+    VoiceInputMode mode, {
+    VoiceInputMode? previousMode,
+  }) async {
     // Clear any pending draft batch when switching modes to prevent
     // misinterpreting new input as correction
     if (_currentState == VoiceState.confirming && _draftBatch != null) {
@@ -386,8 +414,10 @@ class VoiceOrchestrator {
       }
     }
 
-    _currentInputMode = mode;
+    await stopTtsIfPlaying();
+
     if (mode == VoiceInputMode.keyboard) {
+      _currentInputMode = mode;
       if (kDebugMode) debugPrint('[VoiceMode] Switching to keyboard mode');
       return;
     }
@@ -404,15 +434,48 @@ class VoiceOrchestrator {
         sessionId: nativeSessionId,
         mode: mode.name,
       );
-      if (kDebugMode) debugPrint('[VoiceMode] Switched to ${mode.name}');
       // Reconnect ASR with server_vad when switching to auto so server does turn detection.
       if (mode == VoiceInputMode.auto) {
+        if (kDebugMode) {
+          debugPrint('[VoiceMode] Reconnecting ASR for auto (useServerVad=true)');
+        }
         await native.stopAsrStream(nativeSessionId);
         await _startNativeAsrStream();
       }
+      // Reconnect ASR with client commit when switching from auto to pushToTalk so manual commit gets asrFinalText.
+      if (mode == VoiceInputMode.pushToTalk &&
+          previousMode == VoiceInputMode.auto) {
+        if (kDebugMode) {
+          debugPrint('[VoiceMode] Reconnecting ASR for pushToTalk from auto (useServerVad=false)');
+        }
+        await native.stopAsrStream(nativeSessionId);
+        await _startNativeAsrStream();
+      }
+      _currentInputMode = mode;
+      if (kDebugMode) debugPrint('[VoiceMode] Switched to ${mode.name}');
     } catch (e) {
       if (kDebugMode) debugPrint('[VoiceMode] Failed to switch mode: $e');
-      _delegate.onError('切换模式失败：$e');
+      final shouldRevert = (mode == VoiceInputMode.auto &&
+              previousMode != null &&
+              previousMode != VoiceInputMode.keyboard) ||
+          (mode == VoiceInputMode.pushToTalk &&
+              previousMode == VoiceInputMode.auto);
+      if (shouldRevert && previousMode != null) {
+        try {
+          await native.switchInputMode(
+            sessionId: nativeSessionId,
+            mode: previousMode.name,
+          );
+          _currentInputMode = previousMode;
+          if (kDebugMode) {
+            debugPrint(
+                '[VoiceMode] Reverted to ${previousMode.name} after mode switch failed');
+          }
+        } catch (revertErr) {
+          if (kDebugMode) debugPrint('[VoiceMode] Revert failed: $revertErr');
+        }
+      }
+      _delegate.onError('切换模式失败，请检查网络后重试');
     }
   }
 
@@ -427,6 +490,38 @@ class VoiceOrchestrator {
     }
   }
 
+  /// Stop any playing TTS and clear local TTS state. Call on mode switch, confirm, or pushStart (manual) to interrupt playback.
+  Future<void> stopTtsIfPlaying() async {
+    if (!_isTtsSpeaking) return;
+    final native = _nativeAudioGateway;
+    final nativeSessionId = _nativeAudioSessionId;
+    if (native == null || nativeSessionId == null) return;
+    final requestIds = _nativeTtsCompletions.keys.toList();
+    if (requestIds.isEmpty) {
+      _isTtsSpeaking = false;
+      return;
+    }
+    for (final requestId in requestIds) {
+      try {
+        await native.stopTts(
+          sessionId: nativeSessionId,
+          requestId: requestId,
+          reason: 'user_action',
+        );
+      } catch (_) {
+        // Best-effort; continue stopping others.
+      }
+    }
+    for (final completer in _nativeTtsCompletions.values) {
+      if (!completer.isCompleted) completer.complete();
+    }
+    _nativeTtsCompletions.clear();
+    _isTtsSpeaking = false;
+    if (kDebugMode) {
+      debugPrint('[TTSFlow] stopTtsIfPlaying: stopped ${requestIds.length} TTS request(s)');
+    }
+  }
+
   /// Stop ASR and release mic; keeps native session (and TTS) alive for keyboard mode.
   Future<void> stopListening() async {
     _draftBatch = null;
@@ -436,6 +531,7 @@ class VoiceOrchestrator {
     _bargeInTriggeredAt = null;
     _resumeStartAt = null;
     _bargeInPending = false;
+    _ttsStoppedByUserAction = false;
     _currentInputMode = null;
     _cancelInactivityTimer();
     _pushToTalkAutoReleaseTimer?.cancel();
@@ -662,6 +758,12 @@ class VoiceOrchestrator {
     }
 
     if (event.event == 'asrFinalText') {
+      final textFromEvent = event.data['text'] as String?;
+      if (kDebugMode) {
+        debugPrint(
+          '[ASRFlow] Received asrFinalText length=${textFromEvent?.length ?? 0}',
+        );
+      }
       // 键盘模式：忽略所有 ASR 事件
       if (_currentInputMode == VoiceInputMode.keyboard) {
         if (kDebugMode) {
@@ -669,13 +771,16 @@ class VoiceOrchestrator {
         }
         return;
       }
-      // 手动模式：仅当用户已松开（pushEnd 已调用）时才处理；中间停顿由 server_vad 触发的 final 忽略
+      // 手动模式：仍按住时只累积到 buffer，松开后再与最后一段合并处理
       if (_currentInputMode == VoiceInputMode.pushToTalk &&
           !_isPushEndPending) {
-        if (kDebugMode) {
-          debugPrint(
-            '[ASRFlow] Ignore asrFinalText (pushToTalk mode, still holding, pushEndPending: $_isPushEndPending)',
-          );
+        if (textFromEvent != null && textFromEvent.isNotEmpty) {
+          _pushToTalkFinalTextBuffer.add(textFromEvent);
+          if (kDebugMode) {
+            debugPrint(
+              '[ASRFlow] PushToTalk accumulated segment (still holding): "${textFromEvent.replaceAll(RegExp(r'\s+'), ' ').trim()}"',
+            );
+          }
         }
         return;
       }
@@ -688,15 +793,22 @@ class VoiceOrchestrator {
         _pushEndCompleter!.complete();
       }
 
-      // 自动模式：正常处理（继续现有逻辑）
-      final text = event.data['text'] as String?;
-      // Check for empty text: if pushToTalk and pushEnd is pending, this is an empty recording
+      final text = textFromEvent;
+      // Check for empty text: if pushToTalk and pushEnd is pending, either process buffer or empty recording
       if (text == null || text.isEmpty) {
+        if (_currentInputMode == VoiceInputMode.pushToTalk &&
+            _isPushEndPending &&
+            _pushToTalkFinalTextBuffer.isNotEmpty) {
+          final combined = _pushToTalkFinalTextBuffer.join('');
+          _pushToTalkFinalTextBuffer.clear();
+          _onAsrFinalText(combined);
+          return;
+        }
         if (_currentInputMode == VoiceInputMode.pushToTalk && _isPushEndPending) {
           if (kDebugMode) {
             debugPrint('[ASRFlow] Empty text received during pushEnd (empty recording)');
           }
-          return; // Silent handling for empty recording
+          return;
         }
         return;
       }
@@ -712,18 +824,39 @@ class VoiceOrchestrator {
       }
       if (_ttsEndedAt != null &&
           clock.now().difference(_ttsEndedAt!) < _ttsEchoDiscardWindow) {
-        if (kDebugMode) {
-          debugPrint(
-            '[ASRFlow] Discard asrFinalText (recent TTS ended): "$text"',
+        // User stopped TTS by pressing PTT: this asrFinalText is their speech, do not discard.
+        if (_ttsStoppedByUserAction) {
+          if (kDebugMode) {
+            debugPrint('[ASRFlow] Accept asrFinalText (TTS stopped by pushStart): "$text"');
+          }
+        } else if (_bargeInTriggeredAt != null &&
+            clock.now().difference(_bargeInTriggeredAt!) < _ttsEchoDiscardWindow) {
+          // Barge-in just happened: this is the user's interrupting phrase, do not discard.
+          if (kDebugMode) {
+            debugPrint('[ASRFlow] Accept asrFinalText (after barge-in): "$text"');
+          }
+        } else {
+          if (kDebugMode) {
+            debugPrint(
+              '[ASRFlow] Discard asrFinalText (recent TTS ended): "$text"',
+            );
+          }
+          dev.log(
+            'discard asrFinalText (recent TTS ended)',
+            name: 'VoiceOrchestrator',
           );
+          return;
         }
-        dev.log(
-          'discard asrFinalText (recent TTS ended)',
-          name: 'VoiceOrchestrator',
-        );
-        return;
       }
-      _onAsrFinalText(text);
+      if (_currentInputMode == VoiceInputMode.pushToTalk &&
+          _pushToTalkFinalTextBuffer.isNotEmpty) {
+        final combined =
+            _pushToTalkFinalTextBuffer.join('') + (text);
+        _pushToTalkFinalTextBuffer.clear();
+        _onAsrFinalText(combined);
+      } else {
+        _onAsrFinalText(text);
+      }
       return;
     }
 
@@ -829,7 +962,6 @@ class VoiceOrchestrator {
         }
         return; // Suppress the error
       }
-      // Suppress benign ASR reconnect errors (intentional disconnect when switching to auto).
       if (errorMessage.startsWith('asr_ws_failure:') &&
           (errorMessage.contains('Socket is not connected') ||
               errorMessage.contains('closed') ||

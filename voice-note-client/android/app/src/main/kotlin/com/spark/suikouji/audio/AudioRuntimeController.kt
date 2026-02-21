@@ -1,6 +1,7 @@
 package com.spark.suikouji.audio
 
 import android.content.Context
+import android.util.Log
 import java.util.concurrent.atomic.AtomicBoolean
 
 class AudioRuntimeController(
@@ -96,6 +97,7 @@ class AudioRuntimeController(
         val model = args["model"] as? String
             ?: return mapOf("ok" to false, "error" to "missing_model")
         val useServerVad = mode != "pushToTalk"
+        Log.d("AudioRuntime", "startAsrStream mode=$mode useServerVad=$useServerVad")
         asrTransport?.connect(token = token, wsUrl = wsUrl, model = model, useServerVad = useServerVad)
         try {
             captureRuntime?.start()

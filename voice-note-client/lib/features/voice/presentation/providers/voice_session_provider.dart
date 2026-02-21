@@ -89,6 +89,8 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   String? _nativeAudioSessionId;
   /// Serializes auto ↔ pushToTalk mode switches to avoid overlapping stop/start.
   Future<void>? _modeSwitchInFlight;
+  /// True while switching audio mode; used to suppress asr_send_error from disconnect.
+  bool _modeSwitchInProgress = false;
 
   @override
   VoiceSessionState build() {
@@ -229,12 +231,12 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         _addAssistantMessage('启动麦克风失败：$e', type: ChatMessageType.error);
       }
     } else if (wasAudioMode && isAudioMode) {
-      // Serialize mode switches to avoid overlapping stopAsrStream / _startNativeAsrStream.
       await _modeSwitchInFlight;
       final completer = Completer<void>();
       _modeSwitchInFlight = completer.future;
+      _modeSwitchInProgress = true;
       try {
-        await _orchestrator?.switchInputMode(newMode);
+        await _orchestrator?.switchInputMode(newMode, previousMode: oldMode);
         if (_sessionActive) {
           _addAssistantMessage(
             _inputModeSwitchMessage(newMode),
@@ -243,8 +245,10 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         }
       } catch (e) {
         if (!_sessionActive) return;
-        _addAssistantMessage('切换模式失败：$e', type: ChatMessageType.error);
+        settings.setInputMode(oldMode);
+        _addAssistantMessage('切换模式失败，请检查网络后重试', type: ChatMessageType.error);
       } finally {
+        _modeSwitchInProgress = false;
         completer.complete();
         _modeSwitchInFlight = null;
       }
@@ -278,6 +282,8 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   Future<void> confirmTransaction() async {
     final result = state.parseResult;
     if (result == null) return;
+
+    await _orchestrator?.stopTtsIfPlaying();
 
     try {
       await _saveHelper?.saveOne(result);
@@ -430,11 +436,15 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
 
     if (event.event == 'runtimeError' && event.error != null) {
       final errorMessage = event.error!.message;
-      // Suppress empty recording errors for better UX (same logic as VoiceOrchestrator)
       if (errorMessage.contains('error committing input audio buffer') ||
           errorMessage.contains('maybe no invalid audio stream') ||
           errorMessage.contains('no audio')) {
-        // Suppress the error - VoiceOrchestrator will handle user-friendly message
+        return;
+      }
+      if (_modeSwitchInProgress && errorMessage.contains('asr_send_error')) {
+        if (kDebugMode) {
+          debugPrint('[VoiceSession] Suppressing asr_send_error during mode switch');
+        }
         return;
       }
       _addAssistantMessage(
@@ -613,6 +623,12 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   @override
   void onError(String message) {
     if (!_sessionActive) return;
+    if (_modeSwitchInProgress && message.contains('asr_send_error')) {
+      if (kDebugMode) {
+        debugPrint('[VoiceSession] Suppressing onError(asr_send_error) during mode switch');
+      }
+      return;
+    }
     HapticFeedback.vibrate();
     state = state.copyWith(
       errorMessage: message,
