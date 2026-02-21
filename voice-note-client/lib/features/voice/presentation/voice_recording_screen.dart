@@ -23,6 +23,7 @@ import 'widgets/confirmation_card.dart';
 import 'widgets/field_editor.dart';
 import 'widgets/mode_switcher.dart';
 import 'widgets/voice_animation.dart';
+import 'widgets/voice_recognition_loading.dart';
 import 'widgets/voice_tutorial_dialog.dart';
 
 /// The main voice recording screen combining all voice UI widgets.
@@ -202,6 +203,9 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     final inputMode = ref.watch(
       voiceSettingsProvider.select((s) => s.inputMode),
     );
+    final isRecognizing = ref.watch(
+      voiceSessionProvider.select((s) => s.isRecognizing),
+    );
 
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
@@ -257,6 +261,16 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                   _buildModeSwitcher(inputMode),
                 ],
               ),
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder:
+                  (Widget child, Animation<double> animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: isRecognizing
+                  ? const VoiceRecognitionLoading(key: ValueKey(true))
+                  : const SizedBox.shrink(key: ValueKey(false)),
             ),
           ],
         ),

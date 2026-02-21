@@ -43,6 +43,9 @@ abstract class VoiceOrchestratorDelegate {
 
   /// Called when voice state changes (e.g., recognizing -> listening).
   void onStateChanged(VoiceState newState);
+
+  /// Called when ASR final text is about to be processed (auto mode only); show recognition loading.
+  void onRecognizingStarted();
 }
 
 /// Orchestrates the full voice pipeline: AudioCapture → VAD → ASR → NLP.
@@ -862,6 +865,9 @@ class VoiceOrchestrator {
           );
           return;
         }
+      }
+      if (_currentInputMode == VoiceInputMode.auto) {
+        _delegate.onRecognizingStarted();
       }
       if (_currentInputMode == VoiceInputMode.pushToTalk &&
           _pushToTalkFinalTextBuffer.isNotEmpty) {

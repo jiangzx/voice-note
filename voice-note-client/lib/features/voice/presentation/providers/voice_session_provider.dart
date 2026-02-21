@@ -39,6 +39,9 @@ class VoiceSessionState {
   /// True while NLP is parsing text (between submit and result).
   final bool isProcessing;
 
+  /// True while waiting for ASR/NLP after user finished speaking (show recognition loading overlay).
+  final bool isRecognizing;
+
   const VoiceSessionState({
     this.voiceState = VoiceState.idle,
     this.interimText = '',
@@ -48,6 +51,7 @@ class VoiceSessionState {
     this.errorMessage,
     this.isOffline = false,
     this.isProcessing = false,
+    this.isRecognizing = false,
   });
 
   VoiceSessionState copyWith({
@@ -59,6 +63,7 @@ class VoiceSessionState {
     String? errorMessage,
     bool? isOffline,
     bool? isProcessing,
+    bool? isRecognizing,
     bool clearParseResult = false,
     bool clearError = false,
   }) {
@@ -71,6 +76,7 @@ class VoiceSessionState {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       isOffline: isOffline ?? this.isOffline,
       isProcessing: isProcessing ?? this.isProcessing,
+      isRecognizing: isRecognizing ?? this.isRecognizing,
     );
   }
 }
@@ -87,10 +93,33 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   StreamSubscription<NativeAudioEvent>? _nativeAudioSub;
   TransactionSaveHelper? _saveHelper;
   String? _nativeAudioSessionId;
+
   /// Serializes auto ↔ pushToTalk mode switches to avoid overlapping stop/start.
   Future<void>? _modeSwitchInFlight;
+
   /// True while switching audio mode; used to suppress asr_send_error from disconnect.
   bool _modeSwitchInProgress = false;
+
+  static const Duration _recognizingTimeoutDuration = Duration(seconds: 12);
+  Timer? _recognizingTimeout;
+
+  void _cancelRecognizingTimeout() {
+    _recognizingTimeout?.cancel();
+    _recognizingTimeout = null;
+  }
+
+  void _startRecognizingTimeout() {
+    _cancelRecognizingTimeout();
+    _recognizingTimeout = Timer(_recognizingTimeoutDuration, () {
+      if (!_sessionActive || !state.isRecognizing) return;
+      _recognizingTimeout = null;
+      state = state.copyWith(isRecognizing: false);
+      _addAssistantMessage(
+        VoiceCopy.recognizingTimeout,
+        type: ChatMessageType.error,
+      );
+    });
+  }
 
   @override
   VoiceSessionState build() {
@@ -111,7 +140,8 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     ref.read(apiClientProvider).setSessionId(sessionId);
     dev.log('Session started: $sessionId', name: 'VoiceSession');
 
-    if (kDebugMode) debugPrint('[VoiceInit] Step 1: Creating VoiceOrchestrator...');
+    if (kDebugMode)
+      debugPrint('[VoiceInit] Step 1: Creating VoiceOrchestrator...');
     final txService = ref.read(voiceTransactionServiceProvider);
     _saveHelper = TransactionSaveHelper(
       persist: (result) => txService.save(result),
@@ -150,13 +180,20 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     _nativeAudioSub = ref
         .read(nativeAudioGatewayProvider)
         .events
-        .listen(_onNativeAudioEvent, onError: (Object error) {
-      if (!_sessionActive) return;
-      _addAssistantMessage('原生音频事件异常：$error', type: ChatMessageType.error);
-    });
+        .listen(
+          _onNativeAudioEvent,
+          onError: (Object error) {
+            if (!_sessionActive) return;
+            _addAssistantMessage(
+              '原生音频事件异常：$error',
+              type: ChatMessageType.error,
+            );
+          },
+        );
 
     final mode = ref.read(voiceSettingsProvider).inputMode;
-    if (kDebugMode) debugPrint('[VoiceInit] Step 2: Starting listening (mode=$mode)...');
+    if (kDebugMode)
+      debugPrint('[VoiceInit] Step 2: Starting listening (mode=$mode)...');
     try {
       await _orchestrator!.startListening(mode);
       if (kDebugMode) debugPrint('[VoiceInit] === startSession COMPLETE ===');
@@ -275,6 +312,8 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
 
   /// Push-to-talk: stop recording.
   Future<void> pushEnd() async {
+    state = state.copyWith(isRecognizing: true);
+    _startRecognizingTimeout();
     await _orchestrator?.pushEnd();
   }
 
@@ -290,8 +329,8 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       HapticFeedback.heavyImpact();
       final amountStr = result.amount != null
           ? result.amount! == result.amount!.roundToDouble()
-              ? result.amount!.toInt().toString()
-              : result.amount!.toStringAsFixed(2)
+                ? result.amount!.toInt().toString()
+                : result.amount!.toStringAsFixed(2)
           : '--';
       _addAssistantMessage(
         VoiceCopy.successFeedback(
@@ -377,6 +416,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   /// Exit voice mode entirely — dispose orchestrator.
   Future<void> endSession() async {
     _sessionActive = false;
+    _cancelRecognizingTimeout();
     _networkSub?.cancel();
     _networkSub = null;
     _nativeAudioSub?.cancel();
@@ -412,15 +452,16 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   }
 
   static String _typeLabel(String type) => switch (type.toUpperCase()) {
-        'EXPENSE' => '支出',
-        'INCOME' => '收入',
-        'TRANSFER' => '转账',
-        _ => '支出',
-      };
+    'EXPENSE' => '支出',
+    'INCOME' => '收入',
+    'TRANSFER' => '转账',
+    _ => '支出',
+  };
 
   void _onNativeAudioEvent(NativeAudioEvent event) {
     if (!_sessionActive) return;
-    if (_nativeAudioSessionId == null || event.sessionId != _nativeAudioSessionId) {
+    if (_nativeAudioSessionId == null ||
+        event.sessionId != _nativeAudioSessionId) {
       return;
     }
 
@@ -447,22 +488,24 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       }
       if (_modeSwitchInProgress && errorMessage.contains('asr_send_error')) {
         if (kDebugMode) {
-          debugPrint('[VoiceSession] Suppressing asr_send_error during mode switch');
+          debugPrint(
+            '[VoiceSession] Suppressing asr_send_error during mode switch',
+          );
         }
         return;
       }
       // Same as orchestrator: suppress teardown send errors (arrive after mode switch clears flag).
       if (errorMessage.startsWith('asr_send_error:') &&
-          (errorMessage.contains('cancelled') || errorMessage.contains('canceled'))) {
+          (errorMessage.contains('cancelled') ||
+              errorMessage.contains('canceled'))) {
         if (kDebugMode) {
-          debugPrint('[VoiceSession] Suppressing benign asr_send_error (teardown): $errorMessage');
+          debugPrint(
+            '[VoiceSession] Suppressing benign asr_send_error (teardown): $errorMessage',
+          );
         }
         return;
       }
-      _addAssistantMessage(
-        '原生音频错误：$errorMessage',
-        type: ChatMessageType.error,
-      );
+      _addAssistantMessage('原生音频错误：$errorMessage', type: ChatMessageType.error);
     }
   }
 
@@ -482,6 +525,13 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   }
 
   @override
+  void onRecognizingStarted() {
+    if (!_sessionActive) return;
+    state = state.copyWith(isRecognizing: true);
+    _startRecognizingTimeout();
+  }
+
+  @override
   void onInterimText(String text) {
     if (!_sessionActive) return;
     state = state.copyWith(interimText: text);
@@ -490,6 +540,8 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   @override
   void onFinalText(String text, DraftBatch draftBatch) {
     if (!_sessionActive) return;
+    _cancelRecognizingTimeout();
+    state = state.copyWith(isRecognizing: false);
     HapticFeedback.mediumImpact();
     _addUserMessage(text);
     final result = draftBatch.items.isNotEmpty
@@ -637,16 +689,20 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     if (!_sessionActive) return;
     if (_modeSwitchInProgress && message.contains('asr_send_error')) {
       if (kDebugMode) {
-        debugPrint('[VoiceSession] Suppressing onError(asr_send_error) during mode switch');
+        debugPrint(
+          '[VoiceSession] Suppressing onError(asr_send_error) during mode switch',
+        );
       }
       return;
     }
-    HapticFeedback.vibrate();
+    _cancelRecognizingTimeout();
     state = state.copyWith(
+      isRecognizing: false,
       errorMessage: message,
       voiceState: VoiceState.listening,
       isProcessing: false,
     );
+    HapticFeedback.vibrate();
     final isNoVoice = message.contains('未检测到语音');
     _addAssistantMessage(
       isNoVoice ? VoiceCopy.feedbackNoBill : '出了点问题：$message',
@@ -670,7 +726,10 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     try {
       if (helper.totalAmount > 0) {
         await _orchestrator?.speakAndResumeTimer(
-          TtsTemplates.sessionEnd(count: helper.count, total: helper.totalAmount),
+          TtsTemplates.sessionEnd(
+            count: helper.count,
+            total: helper.totalAmount,
+          ),
         );
       }
     } catch (e) {

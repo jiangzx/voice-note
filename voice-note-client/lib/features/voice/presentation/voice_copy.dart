@@ -21,6 +21,10 @@ abstract final class VoiceCopy {
   static const String idleHint = '点击开始';
   static const String pushToTalkHint = '按住 说话';
 
+  // --- Recognition loading ---
+  static const String recognizingHint = '正在识别语音，请稍候...';
+  static const String recognizingTimeout = '识别超时，请重试';
+
   // --- Dialogue feedback ---
   static const String feedbackCancel =
       '已为你取消本次记录，你可以继续说话记账啦';
