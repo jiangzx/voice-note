@@ -225,6 +225,17 @@ ThemeData buildLightTheme() {
         )),
       ),
     ),
+    // OFF-state track/thumb with sufficient contrast on light background.
+    switchTheme: SwitchThemeData(
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return null;
+        return const Color(0xFFD0D3D9);
+      }),
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return null;
+        return Colors.white;
+      }),
+    ),
     extensions: const <ThemeExtension<dynamic>>[_lightTransactionColors],
   );
 }

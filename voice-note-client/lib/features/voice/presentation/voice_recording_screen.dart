@@ -203,6 +203,13 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     final inputMode = ref.watch(
       voiceSettingsProvider.select((s) => s.inputMode),
     );
+    final hideAutoVoiceMode = ref.watch(
+      voiceSettingsProvider.select((s) => s.hideAutoVoiceMode),
+    );
+    final effectiveMode = hideAutoVoiceMode &&
+            inputMode == VoiceInputMode.auto
+        ? VoiceInputMode.pushToTalk
+        : inputMode;
     final isRecognizing = ref.watch(
       voiceSessionProvider.select((s) => s.isRecognizing),
     );
@@ -258,7 +265,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                     _buildKeyboardInput(voiceState, isProcessing)
                   else
                     _buildVoiceControls(voiceState, inputMode, isProcessing),
-                  _buildModeSwitcher(inputMode),
+                  _buildModeSwitcher(effectiveMode, hideAutoVoiceMode),
                 ],
               ),
             ),
@@ -664,7 +671,10 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     ref.read(voiceSessionProvider.notifier).submitTextInput(phrase);
   }
 
-  Widget _buildModeSwitcher(VoiceInputMode inputMode) {
+  Widget _buildModeSwitcher(
+    VoiceInputMode displayMode,
+    bool hideAutoMode,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -673,9 +683,10 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
         AppSpacing.xl,
       ),
       child: ModeSwitcher(
-        mode: inputMode,
+        mode: displayMode,
         onChanged: (mode) =>
             ref.read(voiceSessionProvider.notifier).switchMode(mode),
+        hideAutoMode: hideAutoMode,
       ),
     );
   }

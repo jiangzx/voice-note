@@ -126,11 +126,21 @@ class SettingsScreen extends ConsumerWidget {
               ref.watch(voiceSettingsProvider).inputMode,
             )),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showInputModeDialog(
-              context,
-              ref,
-              ref.read(voiceSettingsProvider).inputMode,
-            ),
+            onTap: () {
+              final hideAuto =
+                  ref.read(voiceSettingsProvider).hideAutoVoiceMode;
+              final modes = hideAuto
+                  ? VoiceInputMode.values
+                      .where((m) => m != VoiceInputMode.auto)
+                      .toList()
+                  : VoiceInputMode.values;
+              _showInputModeDialog(
+                context,
+                ref,
+                ref.read(voiceSettingsProvider).inputMode,
+                modes,
+              );
+            },
           ),
 
           // TTS toggle
@@ -138,8 +148,8 @@ class SettingsScreen extends ConsumerWidget {
 
           const Divider(),
 
-          // --- Advanced section ---
-          const _SectionHeader(title: '高级设置'),
+          // --- Preferences section ---
+          const _SectionHeader(title: '偏好设置'),
 
           ListTile(
             leading: const Icon(Icons.dns_rounded),
@@ -153,20 +163,24 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          Builder(builder: (context) {
-            final key = ref.watch(apiConfigProvider).apiKey;
-            return ListTile(
-              leading: const Icon(Icons.key_rounded),
-              title: const Text('API Key'),
-              subtitle: Text(
-                key.isEmpty
-                    ? '未设置'
-                    : '••••${key.substring(key.length > 4 ? key.length - 4 : 0)}',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showApiKeyDialog(context, ref),
-            );
-          }),
+          SwitchListTile(
+            secondary: const Icon(Icons.visibility_off_outlined),
+            title: const Text('隐藏自动语音模式'),
+            subtitle: const Text(
+              '开启后，语音记账页面将隐藏自动模式入口',
+            ),
+            value: ref.watch(voiceSettingsProvider).hideAutoVoiceMode,
+            onChanged: (newValue) {
+              if (newValue) {
+                final inputMode = ref.read(voiceSettingsProvider).inputMode;
+                if (inputMode == VoiceInputMode.auto) {
+                  _showHideAutoModeBlockedDialog(context);
+                  return;
+                }
+              }
+              ref.read(voiceSettingsProvider.notifier).setHideAutoVoiceMode(newValue);
+            },
+          ),
         ],
       ),
     );
@@ -228,12 +242,13 @@ class SettingsScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     VoiceInputMode current,
+    List<VoiceInputMode> modes,
   ) {
     showDialog<void>(
       context: context,
       builder: (ctx) => SimpleDialog(
         title: const Text('选择默认输入模式'),
-        children: VoiceInputMode.values.map((mode) {
+        children: modes.map((mode) {
           final isSelected = mode == current;
           return ListTile(
             title: Text(_inputModeLabel(mode)),
@@ -273,42 +288,17 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showApiKeyDialog(BuildContext context, WidgetRef ref) {
-    final currentKey = ref.read(apiConfigProvider).apiKey;
-    final controller = TextEditingController(text: currentKey);
-
+  void _showHideAutoModeBlockedDialog(BuildContext context) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('API Key'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: '输入服务器 API Key',
-            labelText: 'API Key',
-            border: OutlineInputBorder(),
-          ),
-          obscureText: true,
+        content: const Text(
+          '请先将默认输入模式切换为手动模式/键盘模式后，再开启隐藏自动语音模式',
         ),
         actions: [
-          TextButton(
-            onPressed: () async {
-              await ref.read(apiConfigProvider).clearApiKey();
-              ref.read(apiClientProvider).updateApiKey('');
-              ref.invalidate(apiConfigProvider);
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('清除'),
-          ),
           FilledButton(
-            onPressed: () async {
-              final key = controller.text.trim();
-              await ref.read(apiConfigProvider).setApiKey(key);
-              ref.read(apiClientProvider).updateApiKey(key);
-              ref.invalidate(apiConfigProvider);
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('保存'),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('我知道了'),
           ),
         ],
       ),

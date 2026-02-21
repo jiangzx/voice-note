@@ -19,11 +19,13 @@ enum VoiceInputMode {
 class ModeSwitcher extends StatelessWidget {
   final VoiceInputMode mode;
   final ValueChanged<VoiceInputMode> onChanged;
+  final bool hideAutoMode;
 
   const ModeSwitcher({
     super.key,
     required this.mode,
     required this.onChanged,
+    this.hideAutoMode = false,
   });
 
   String _modeLabel(VoiceInputMode m) => switch (m) {
@@ -32,28 +34,31 @@ class ModeSwitcher extends StatelessWidget {
         VoiceInputMode.keyboard => '键盘',
       };
 
+  static const _segmentAuto = ButtonSegment<VoiceInputMode>(
+    value: VoiceInputMode.auto,
+    icon: Icon(Icons.auto_mode_rounded, size: AppIconSize.sm),
+    label: Text('自动'),
+  );
+  static const _segmentPushToTalk = ButtonSegment<VoiceInputMode>(
+    value: VoiceInputMode.pushToTalk,
+    icon: Icon(Icons.touch_app_rounded, size: AppIconSize.sm),
+    label: Text('手动'),
+  );
+  static const _segmentKeyboard = ButtonSegment<VoiceInputMode>(
+    value: VoiceInputMode.keyboard,
+    icon: Icon(Icons.keyboard_rounded, size: AppIconSize.sm),
+    label: Text('键盘'),
+  );
+
   @override
   Widget build(BuildContext context) {
+    final segments = hideAutoMode
+        ? const [_segmentPushToTalk, _segmentKeyboard]
+        : const [_segmentAuto, _segmentPushToTalk, _segmentKeyboard];
     return Semantics(
       label: '输入模式：当前为${_modeLabel(mode)}',
       child: SegmentedButton<VoiceInputMode>(
-      segments: const [
-        ButtonSegment(
-          value: VoiceInputMode.auto,
-          icon: Icon(Icons.auto_mode_rounded, size: AppIconSize.sm),
-          label: Text('自动'),
-        ),
-        ButtonSegment(
-          value: VoiceInputMode.pushToTalk,
-          icon: Icon(Icons.touch_app_rounded, size: AppIconSize.sm),
-          label: Text('手动'),
-        ),
-        ButtonSegment(
-          value: VoiceInputMode.keyboard,
-          icon: Icon(Icons.keyboard_rounded, size: AppIconSize.sm),
-          label: Text('键盘'),
-        ),
-      ],
+      segments: segments,
       selected: {mode},
       onSelectionChanged: (selected) {
         HapticFeedback.selectionClick();
