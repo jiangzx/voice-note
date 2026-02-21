@@ -197,6 +197,21 @@ class VoiceOrchestrator {
         } else {
           userMessage = '无法启动录音，可能是权限问题或音频资源被占用';
         }
+      } else if (e is AsrTokenException) {
+        if (errorStr.contains('TimeoutException') ||
+            errorStr.contains('Request timed out')) {
+          userMessage = '获取语音服务超时，请检查网络后重试 [E-ASR-001]';
+        } else if (errorStr.contains('NetworkUnavailableException') ||
+            errorStr.contains('Network unavailable')) {
+          userMessage = '无法连接网络，请检查网络后重试 [E-ASR-002]';
+        } else if (errorStr.contains('RateLimitException') ||
+            errorStr.contains('Rate limit')) {
+          userMessage = '请求过于频繁，请稍后再试 [E-ASR-003]';
+        } else if (errorStr.contains('Invalid token response')) {
+          userMessage = '语音服务暂时不可用，请稍后重试 [E-ASR-004]';
+        } else {
+          userMessage = '启动语音识别失败，请稍后重试 [E-ASR-005]';
+        }
       } else {
         userMessage = '启动语音识别失败：$errorStr';
       }

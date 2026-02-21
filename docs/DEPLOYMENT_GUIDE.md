@@ -13,6 +13,7 @@
 5. [安全加固](#5-安全加固)
 6. [监控与运维](#6-监控与运维)
 7. [配置参数速查表](#7-配置参数速查表)
+8. [客户端语音错误码（ASR Token）](#8-客户端语音错误码asr-token)
 
 ---
 
@@ -522,3 +523,17 @@ Server 无状态，水平扩展只需：
 | 文件 | 用途 |
 |------|------|
 | `api-contracts/voice-note-api.yaml` | OpenAPI 3.0 规范，Client-Server 接口定义 |
+
+---
+
+## 8. 客户端语音错误码（ASR Token）
+
+语音记账页在调用 `POST /api/v1/asr/token` 失败时，聊天窗口会显示友好文案并附带错误码，便于工程师根据用户反馈或截图快速定位问题。
+
+| 错误码 | 接口/异常类型 | 用户可见文案 | 排查建议 |
+|--------|----------------|--------------|----------|
+| E-ASR-001 | `POST /api/v1/asr/token` 超时（客户端 TimeoutException） | 获取语音服务超时，请检查网络后重试 [E-ASR-001] | 检查网络延迟、Server 与 DashScope 可用性及客户端/服务端超时配置 |
+| E-ASR-002 | 网络不可达（NetworkUnavailableException / connectionError） | 无法连接网络，请检查网络后重试 [E-ASR-002] | 检查客户端网络、DNS、防火墙及 Server 地址是否可达 |
+| E-ASR-003 | `POST /api/v1/asr/token` 返回 429（RateLimitException） | 请求过于频繁，请稍后再试 [E-ASR-003] | 检查 Server 限流配置（`rate-limit.asr`）与同一 IP 请求频率 |
+| E-ASR-004 | Token 响应无效（空 token/wsUrl） | 语音服务暂时不可用，请稍后重试 [E-ASR-004] | 检查 Server 与 DashScope Token API 响应及服务端日志 |
+| E-ASR-005 | 其它 AsrToken 失败（如 4xx/5xx、未知异常） | 启动语音识别失败，请稍后重试 [E-ASR-005] | 查看客户端 debug 日志及 Server 对应请求日志 |
