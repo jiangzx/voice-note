@@ -167,21 +167,23 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                     const SizedBox(height: 48),
                     // Gesture / password zone
                     if (_showGesture)
-                      GestureLockPad(
-                        path: _path,
-                        isError: _gestureError,
-                        onPointTapped: (i) {
-                          if (_path.contains(i)) return;
-                          setState(() => _path = [..._path, i]);
-                        },
-                        onPathComplete: () {
-                          if (_path.length >= 4) {
-                            _onGestureVerified(_path.join(','));
-                          }
-                        },
-                        onGestureStart: (firstNode) {
-                          setState(() => _path = firstNode != null ? [firstNode] : []);
-                        },
+                      RepaintBoundary(
+                        child: GestureLockPad(
+                          path: _path,
+                          isError: _gestureError,
+                          onPointTapped: (i) {
+                            if (_path.contains(i)) return;
+                            setState(() => _path = [..._path, i]);
+                          },
+                          onPathComplete: () {
+                            if (_path.length >= 4) {
+                              _onGestureVerified(_path.join(','));
+                            }
+                          },
+                          onGestureStart: (firstNode) {
+                            setState(() => _path = firstNode != null ? [firstNode] : []);
+                          },
+                        ),
                       )
                     else if (_showPassword)
                       _UnlockPasswordInput(
@@ -298,9 +300,11 @@ class _UnlockPasswordInputState extends State<_UnlockPasswordInput> {
           ),
         ),
         const SizedBox(height: AppSpacing.xxl),
-        _Numpad(
-          onDigit: _onDigit,
-          onBackspace: _backspace,
+        RepaintBoundary(
+          child: _Numpad(
+            onDigit: _onDigit,
+            onBackspace: _backspace,
+          ),
         ),
       ],
     );

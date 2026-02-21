@@ -23,28 +23,27 @@ void main() {
 
     // Mock native audio gateway channels
     const nativeAudioMethodChannel = MethodChannel('voice_note/native_audio');
-    const nativeAudioEventChannel = EventChannel('voice_note/native_audio/events');
-    
+    const nativeAudioEventChannel = EventChannel(
+      'voice_note/native_audio/events',
+    );
+
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-          nativeAudioMethodChannel,
-          (call) async {
-            switch (call.method) {
-              case 'initializeSession':
-              case 'disposeSession':
-              case 'setAsrMuted':
-              case 'playTts':
-              case 'stopTts':
-              case 'startAsrStream':
-              case 'commitAsr':
-              case 'stopAsrStream':
-              case 'switchInputMode':
-                return {'ok': true};
-              default:
-                return {};
-            }
-          },
-        );
+        .setMockMethodCallHandler(nativeAudioMethodChannel, (call) async {
+          switch (call.method) {
+            case 'initializeSession':
+            case 'disposeSession':
+            case 'setAsrMuted':
+            case 'playTts':
+            case 'stopTts':
+            case 'startAsrStream':
+            case 'commitAsr':
+            case 'stopAsrStream':
+            case 'switchInputMode':
+              return {'ok': true};
+            default:
+              return {};
+          }
+        });
   });
 
   Widget buildScreen() {
@@ -67,7 +66,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('语音记账'), findsOneWidget);
+      expect(find.text('AI语音记账'), findsOneWidget);
     });
 
     testWidgets('shows close button in app bar', (tester) async {

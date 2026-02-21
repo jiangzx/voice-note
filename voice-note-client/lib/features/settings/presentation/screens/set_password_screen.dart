@@ -101,9 +101,11 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               Expanded(
-                child: _Numpad(
-                  onDigit: _appendDigit,
-                  onBackspace: _backspace,
+                child: RepaintBoundary(
+                  child: _Numpad(
+                    onDigit: _appendDigit,
+                    onBackspace: _backspace,
+                  ),
                 ),
               ),
             ],

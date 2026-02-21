@@ -71,8 +71,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     // iOS: brief delay and recheck so permission state is stable before native capture
     if (Platform.isIOS) {
       await Future<void>.delayed(const Duration(milliseconds: 100));
-      final recheck =
-          await _permissionService.checkMicrophonePermission();
+      final recheck = await _permissionService.checkMicrophonePermission();
       if (!recheck.isGranted && mounted) {
         _showPermissionRequiredDialog();
         return;
@@ -112,7 +111,9 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
   }
 
   Future<void> _onSessionChanged(
-      VoiceSessionState? prev, VoiceSessionState next) async {
+    VoiceSessionState? prev,
+    VoiceSessionState next,
+  ) async {
     if (prev == null) return;
 
     // Check for session timeout message in auto mode
@@ -206,8 +207,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     final hideAutoVoiceMode = ref.watch(
       voiceSettingsProvider.select((s) => s.hideAutoVoiceMode),
     );
-    final effectiveMode = hideAutoVoiceMode &&
-            inputMode == VoiceInputMode.auto
+    final effectiveMode = hideAutoVoiceMode && inputMode == VoiceInputMode.auto
         ? VoiceInputMode.pushToTalk
         : inputMode;
     final isRecognizing = ref.watch(
@@ -220,7 +220,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('语音记账'),
+          title: const Text('AI语音记账'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: _exitScreen,
@@ -271,8 +271,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
             ),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              transitionBuilder:
-                  (Widget child, Animation<double> animation) {
+              transitionBuilder: (Widget child, Animation<double> animation) {
                 return FadeTransition(opacity: animation, child: child);
               },
               child: isRecognizing
@@ -400,9 +399,9 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           const SizedBox(width: AppSpacing.sm),
           Text(
             '正在解析...',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.textPlaceholder,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.textPlaceholder),
           ),
         ],
       ),
@@ -431,7 +430,9 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                   decoration: const InputDecoration(
                     hintText: '输入记账内容，如"午餐42块"',
                     hintStyle: TextStyle(color: AppColors.textPlaceholder),
-                    border: OutlineInputBorder(borderRadius: AppRadius.inputAll),
+                    border: OutlineInputBorder(
+                      borderRadius: AppRadius.inputAll,
+                    ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: AppRadius.inputAll,
                       borderSide: BorderSide(color: AppColors.divider),
@@ -671,10 +672,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     ref.read(voiceSessionProvider.notifier).submitTextInput(phrase);
   }
 
-  Widget _buildModeSwitcher(
-    VoiceInputMode displayMode,
-    bool hideAutoMode,
-  ) {
+  Widget _buildModeSwitcher(VoiceInputMode displayMode, bool hideAutoMode) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -732,7 +730,6 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       ),
     );
   }
-
 }
 
 /// Clickable chip that submits the phrase as text input (same path as keyboard).

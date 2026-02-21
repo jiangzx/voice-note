@@ -140,8 +140,9 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     ref.read(apiClientProvider).setSessionId(sessionId);
     dev.log('Session started: $sessionId', name: 'VoiceSession');
 
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint('[VoiceInit] Step 1: Creating VoiceOrchestrator...');
+    }
     final txService = ref.read(voiceTransactionServiceProvider);
     _saveHelper = TransactionSaveHelper(
       persist: (result) => txService.save(result),
@@ -192,8 +193,9 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         );
 
     final mode = ref.read(voiceSettingsProvider).inputMode;
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint('[VoiceInit] Step 2: Starting listening (mode=$mode)...');
+    }
     try {
       await _orchestrator!.startListening(mode);
       if (kDebugMode) debugPrint('[VoiceInit] === startSession COMPLETE ===');

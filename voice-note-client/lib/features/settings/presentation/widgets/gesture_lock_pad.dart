@@ -37,8 +37,7 @@ class _GestureLockPadState extends State<GestureLockPad>
     with SingleTickerProviderStateMixin {
   int? _lastTappedIndex;
   late AnimationController _shakeController;
-  /// Current finger position during drag; null when not dragging. Used to draw trailing line.
-  Offset? _trailingOffset;
+  final ValueNotifier<Offset?> _trailingNotifier = ValueNotifier<Offset?>(null);
 
   static const double _nodeSizeSelected = 20;
   static const double _lineWidth = 4;
@@ -73,6 +72,7 @@ class _GestureLockPadState extends State<GestureLockPad>
   @override
   void dispose() {
     _shakeController.dispose();
+    _trailingNotifier.dispose();
     super.dispose();
   }
 
@@ -100,7 +100,7 @@ class _GestureLockPadState extends State<GestureLockPad>
   static const double _panStartHitRadius = 28;
 
   void _onPanStart(DragStartDetails details) {
-    _trailingOffset = details.localPosition;
+    _trailingNotifier.value = details.localPosition;
     final nodeAt = _nodeAt(details.localPosition, _panStartHitRadius);
     _lastTappedIndex = nodeAt;
     if (widget.onGestureStart != null) {
@@ -111,7 +111,7 @@ class _GestureLockPadState extends State<GestureLockPad>
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
-    setState(() => _trailingOffset = details.localPosition);
+    _trailingNotifier.value = details.localPosition;
     const hitRadius = _nodeSizeSelected;
     for (var i = 0; i < _gridSize * _gridSize; i++) {
       final cx = _indexToX(i);
@@ -136,7 +136,7 @@ class _GestureLockPadState extends State<GestureLockPad>
   }
 
   void _onPanEnd(DragEndDetails _) {
-    setState(() => _trailingOffset = null);
+    _trailingNotifier.value = null;
     _lastTappedIndex = null;
     if (widget.path.length >= _minPoints) widget.onPathComplete();
   }
@@ -148,54 +148,63 @@ class _GestureLockPadState extends State<GestureLockPad>
         : AppColors.brandPrimary.withValues(alpha: 0.8);
     final nodeColor = widget.isError ? AppColors.expense : AppColors.brandPrimary;
 
-    return AnimatedBuilder(
-      animation: _shakeController,
-      builder: (context, child) {
-        final shake = widget.isError
-            ? 4.0 * math.sin(_shakeController.value * 2 * math.pi)
-            : 0.0;
-        return Transform.translate(
-          offset: Offset(shake, 0),
-          child: child,
-        );
-      },
-      child: GestureDetector(
-        onPanStart: _onPanStart,
-        onPanUpdate: _onPanUpdate,
-        onPanEnd: _onPanEnd,
-        child: SizedBox(
-          width: widget.padSize,
-          height: widget.padSize,
-          child: CustomPaint(
-            painter: _GestureLockPadPainter(
-              path: widget.path,
-              trailingOffset: _trailingOffset,
-              indexToX: _indexToX,
-              indexToY: _indexToY,
-              color: lineColor,
-              lineWidth: _lineWidth,
-            ),
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _shakeController,
+        builder: (context, child) {
+          final shake = widget.isError
+              ? 4.0 * math.sin(_shakeController.value * 2 * math.pi)
+              : 0.0;
+          return Transform.translate(
+            offset: Offset(shake, 0),
+            child: child,
+          );
+        },
+        child: GestureDetector(
+          onPanStart: _onPanStart,
+          onPanUpdate: _onPanUpdate,
+          onPanEnd: _onPanEnd,
+          child: SizedBox(
+            width: widget.padSize,
+            height: widget.padSize,
             child: Stack(
-              children: List.generate(_gridSize * _gridSize, (i) {
-                final x = _indexToX(i);
-                final y = _indexToY(i);
-                final selected = widget.path.contains(i);
-                const halfTotal = 12.0; // _nodeSizeSelected/2 + _strokeWidth
-                return Positioned(
-                  left: x - halfTotal,
-                  top: y - halfTotal,
-                  child: _GestureNode(
-                    selected: selected,
-                    nodeColor: nodeColor,
-                    onTap: () {
-                      widget.onPointTapped(i);
-                      if (widget.path.length + 1 >= _minPoints) {
-                        widget.onPathComplete();
-                      }
-                    },
+              children: [
+                Positioned.fill(
+                  child: ListenableBuilder(
+                    listenable: _trailingNotifier,
+                    builder: (context, _) => CustomPaint(
+                      painter: _GestureLockPadPainter(
+                        path: widget.path,
+                        trailingOffset: _trailingNotifier.value,
+                        indexToX: _indexToX,
+                        indexToY: _indexToY,
+                        color: lineColor,
+                        lineWidth: _lineWidth,
+                      ),
+                    ),
                   ),
-                );
-              }),
+                ),
+                ...List.generate(_gridSize * _gridSize, (i) {
+                  final x = _indexToX(i);
+                  final y = _indexToY(i);
+                  final selected = widget.path.contains(i);
+                  const halfTotal = 12.0; // _nodeSizeSelected/2 + _strokeWidth
+                  return Positioned(
+                    left: x - halfTotal,
+                    top: y - halfTotal,
+                    child: _GestureNode(
+                      selected: selected,
+                      nodeColor: nodeColor,
+                      onTap: () {
+                        widget.onPointTapped(i);
+                        if (widget.path.length + 1 >= _minPoints) {
+                          widget.onPathComplete();
+                        }
+                      },
+                    ),
+                  );
+                }),
+              ],
             ),
           ),
         ),
@@ -275,7 +284,9 @@ class _GestureLockPadPainter extends CustomPainter {
     required this.indexToY,
     required this.color,
     required this.lineWidth,
-  });
+  }) : _paint = Paint()
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
 
   final List<int> path;
   final Offset? trailingOffset;
@@ -283,28 +294,27 @@ class _GestureLockPadPainter extends CustomPainter {
   final double Function(int) indexToY;
   final Color color;
   final double lineWidth;
+  final Paint _paint;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
+    _paint
       ..color = color
-      ..strokeWidth = lineWidth
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
+      ..strokeWidth = lineWidth;
     for (var i = 0; i < path.length - 1; i++) {
       final a = path[i];
       final b = path[i + 1];
       canvas.drawLine(
         Offset(indexToX(a), indexToY(a)),
         Offset(indexToX(b), indexToY(b)),
-        paint,
+        _paint,
       );
     }
     if (path.isNotEmpty && trailingOffset != null) {
       canvas.drawLine(
         Offset(indexToX(path.last), indexToY(path.last)),
         trailingOffset!,
-        paint,
+        _paint,
       );
     }
   }

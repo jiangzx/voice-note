@@ -55,9 +55,9 @@ class _DraggableFabOverlayState extends State<_DraggableFabOverlay> {
       builder: (context, constraints) {
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
-        final minX = 0.0;
+        const minX = 0.0;
         final maxX = (w - kFabGroupSize.width).clamp(0.0, double.infinity);
-        final minY = 0.0;
+        const minY = 0.0;
         final maxY = (h - kFabGroupSize.height).clamp(0.0, double.infinity);
         final defaultOffset = Offset(
           w - kFloatingActionButtonMargin - kFabGroupSize.width,

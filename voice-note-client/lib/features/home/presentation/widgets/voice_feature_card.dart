@@ -38,12 +38,10 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-    _arrowAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0.12, 0),
-    ).animate(
-      CurvedAnimation(parent: _arrowController, curve: Curves.easeInOut),
-    );
+    _arrowAnimation =
+        Tween<Offset>(begin: Offset.zero, end: const Offset(0.12, 0)).animate(
+          CurvedAnimation(parent: _arrowController, curve: Curves.easeInOut),
+        );
   }
 
   @override
@@ -101,7 +99,7 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '语音记账',
+                              'AI语音记账',
                               style: theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textPrimary,
@@ -190,7 +188,8 @@ class _VoiceFeatureCardState extends State<VoiceFeatureCard>
       if (context.mounted) context.push('/voice-recording');
       return;
     }
-    final requestStatus = await _permissionService.requestMicrophonePermission();
+    final requestStatus = await _permissionService
+        .requestMicrophonePermission();
     if (requestStatus.isGranted) {
       if (context.mounted) context.push('/voice-recording');
     } else if (requestStatus.isPermanentlyDenied ||
