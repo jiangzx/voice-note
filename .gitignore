@@ -14,6 +14,12 @@ Thumbs.db
 .agent/
 .skillsrc
 
+# Trae
+.trae/
+
+# OpenSpec
+openspec/
+
 # Environment
 .env
 *.env.local

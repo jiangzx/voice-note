@@ -46,7 +46,8 @@ class AsrNativeTransport(
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 connected.set(false)
-                if (!disconnecting) {
+                // Only report if this failure is for the still-current connection (not a replaced one).
+                if (!disconnecting && webSocket === socket) {
                     onError("asr_ws_failure:${t.message}")
                 }
             }

@@ -108,12 +108,14 @@ final class AsrNativeTransport {
 
   private func receiveLoop() {
     guard connected else { return }
-    socketTask?.receive { [weak self] result in
+    let currentTask = socketTask
+    currentTask?.receive { [weak self] result in
       guard let self = self else { return }
       switch result {
       case .failure(let error):
         self.connected = false
-        if !self.disconnecting {
+        // Only report if this failure is for the still-current connection (not a replaced one).
+        if !self.disconnecting, self.socketTask === currentTask {
           self.onError("asr_ws_failure:\(error.localizedDescription)")
         }
       case .success(let message):

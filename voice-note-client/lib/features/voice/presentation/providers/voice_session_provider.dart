@@ -86,6 +86,8 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   StreamSubscription<NativeAudioEvent>? _nativeAudioSub;
   TransactionSaveHelper? _saveHelper;
   String? _nativeAudioSessionId;
+  /// Serializes auto ↔ pushToTalk mode switches to avoid overlapping stop/start.
+  Future<void>? _modeSwitchInFlight;
 
   @override
   VoiceSessionState build() {
@@ -215,12 +217,18 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         _addAssistantMessage('启动麦克风失败：$e', type: ChatMessageType.error);
       }
     } else if (wasAudioMode && isAudioMode) {
-      // Switching between auto and pushToTalk — update native mode
+      // Serialize mode switches to avoid overlapping stopAsrStream / _startNativeAsrStream.
+      await _modeSwitchInFlight;
+      final completer = Completer<void>();
+      _modeSwitchInFlight = completer.future;
       try {
         await _orchestrator?.switchInputMode(newMode);
       } catch (e) {
         if (!_sessionActive) return;
         _addAssistantMessage('切换模式失败：$e', type: ChatMessageType.error);
+      } finally {
+        completer.complete();
+        _modeSwitchInFlight = null;
       }
     }
   }
