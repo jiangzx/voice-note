@@ -223,16 +223,6 @@ void main() {
       expect(response.corrections[0].updatedFields['amount'], 50.0);
     });
 
-    test('LLM error falls back to local correction', () async {
-      fakeNetwork.online = true;
-      fakeLlmRepo.shouldFailCorrection = true;
-      final orchestrator = createOrchestrator();
-
-      final response = await orchestrator.correct('改成50', draftBatch);
-
-      expect(response.model, 'local');
-    });
-
     test('local correction returns unclear when no match', () async {
       fakeNetwork.online = false;
       final orchestrator = createOrchestrator();

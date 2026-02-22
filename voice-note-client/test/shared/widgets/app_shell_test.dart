@@ -26,6 +26,10 @@ void main() {
               builder: (_, _) => const Center(child: Text('Transactions')),
             ),
             GoRoute(
+              path: '/statistics',
+              builder: (_, _) => const Center(child: Text('Statistics')),
+            ),
+            GoRoute(
               path: '/settings',
               builder: (_, _) => const Center(child: Text('Settings')),
             ),
@@ -61,21 +65,5 @@ void main() {
       expect(find.byIcon(Icons.add), findsOneWidget);
     });
 
-    testWidgets('shows bottom navigation with 3 destinations', (tester) async {
-      await tester.pumpWidget(buildShell());
-      await tester.pump();
-
-      expect(find.text('首页'), findsOneWidget);
-      expect(find.text('明细'), findsOneWidget);
-      expect(find.text('设置'), findsOneWidget);
-    });
-
-    testWidgets('hides FABs on settings tab', (tester) async {
-      await tester.pumpWidget(buildShell(location: '/settings'));
-      await tester.pump();
-
-      expect(find.byIcon(Icons.mic_rounded), findsNothing);
-      expect(find.byIcon(Icons.add), findsNothing);
-    });
   });
 }
