@@ -60,9 +60,7 @@ class CategoryRanking extends ConsumerWidget {
     CategorySummary category,
   ) {
     if (category.categoryId == '_other') return;
-    final periodType = ref.read(selectedPeriodTypeProvider);
-    final date = ref.read(selectedDateProvider);
-    final range = dateRangeForPeriod(date, periodType);
+    final range = ref.read(effectiveDateRangeProvider);
     final from = range.start.toIso8601String();
     final to = range.end.toIso8601String();
     context.go(
@@ -111,9 +109,25 @@ class _CategoryRankItem extends StatelessWidget {
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
-                  child: Text(
-                    category.categoryName,
-                    style: theme.textTheme.bodyLarge,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${category.categoryName} ${category.percentage.toStringAsFixed(2)}%',
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      ClipRRect(
+                        borderRadius: AppRadius.smAll,
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 4,
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          valueColor: AlwaysStoppedAnimation<Color>(color),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Text(
@@ -123,24 +137,20 @@ class _CategoryRankItem extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xs),
+                const SizedBox(width: AppSpacing.sm),
                 Text(
-                  '${category.percentage.toStringAsFixed(1)}%',
+                  '${category.transactionCount}笔',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
+                const SizedBox(width: AppSpacing.xs),
+                Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            ClipRRect(
-              borderRadius: AppRadius.smAll,
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 4,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
             ),
           ],
         ),

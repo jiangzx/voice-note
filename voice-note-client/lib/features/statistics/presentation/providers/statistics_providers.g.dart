@@ -57,6 +57,54 @@ final class StatisticsRepositoryProvider
 String _$statisticsRepositoryHash() =>
     r'5041146a0d1ad733e9d194766c3bda7e64f926fd';
 
+@ProviderFor(effectiveDateRange)
+final effectiveDateRangeProvider = EffectiveDateRangeProvider._();
+
+final class EffectiveDateRangeProvider
+    extends
+        $FunctionalProvider<
+          EffectiveDateRange,
+          EffectiveDateRange,
+          EffectiveDateRange
+        >
+    with $Provider<EffectiveDateRange> {
+  EffectiveDateRangeProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'effectiveDateRangeProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$effectiveDateRangeHash();
+
+  @$internal
+  @override
+  $ProviderElement<EffectiveDateRange> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  EffectiveDateRange create(Ref ref) {
+    return effectiveDateRange(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(EffectiveDateRange value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<EffectiveDateRange>(value),
+    );
+  }
+}
+
+String _$effectiveDateRangeHash() =>
+    r'e2032fcf12df7bec2a9e5898d9d5aad631a09b53';
+
 @ProviderFor(periodSummary)
 final periodSummaryProvider = PeriodSummaryProvider._();
 
@@ -94,7 +142,7 @@ final class PeriodSummaryProvider
   }
 }
 
-String _$periodSummaryHash() => r'1f51491fb722abc6ffc4f4abe168d4a92301c2a8';
+String _$periodSummaryHash() => r'9e9736567bb764382e66206046d92336b53d849e';
 
 @ProviderFor(previousPeriodSummary)
 final previousPeriodSummaryProvider = PreviousPeriodSummaryProvider._();
@@ -175,7 +223,7 @@ final class CategorySummaryProvider
   }
 }
 
-String _$categorySummaryHash() => r'81431beb11c7506a8d803d83c293ead00df5b069';
+String _$categorySummaryHash() => r'761b9fe308c0b2275caf1cfb09fd5c144b223769';
 
 @ProviderFor(trendData)
 final trendDataProvider = TrendDataProvider._();
@@ -214,4 +262,87 @@ final class TrendDataProvider
   }
 }
 
-String _$trendDataHash() => r'3a356d829d81f2c89c545948ad87e07aff4c1d80';
+String _$trendDataHash() => r'db3c0a7a87c0b071dd4fb51848096d611c120f3c';
+
+@ProviderFor(dailyBreakdown)
+final dailyBreakdownProvider = DailyBreakdownProvider._();
+
+final class DailyBreakdownProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<DailyBreakdownRow>>,
+          List<DailyBreakdownRow>,
+          FutureOr<List<DailyBreakdownRow>>
+        >
+    with
+        $FutureModifier<List<DailyBreakdownRow>>,
+        $FutureProvider<List<DailyBreakdownRow>> {
+  DailyBreakdownProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'dailyBreakdownProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$dailyBreakdownHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<DailyBreakdownRow>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<DailyBreakdownRow>> create(Ref ref) {
+    return dailyBreakdown(ref);
+  }
+}
+
+String _$dailyBreakdownHash() => r'18095817a4d53900ca93e1c6d26d213895cee304';
+
+@ProviderFor(topTransactionsByAmount)
+final topTransactionsByAmountProvider = TopTransactionsByAmountProvider._();
+
+final class TopTransactionsByAmountProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<TopTransactionRankItem>>,
+          List<TopTransactionRankItem>,
+          FutureOr<List<TopTransactionRankItem>>
+        >
+    with
+        $FutureModifier<List<TopTransactionRankItem>>,
+        $FutureProvider<List<TopTransactionRankItem>> {
+  TopTransactionsByAmountProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'topTransactionsByAmountProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$topTransactionsByAmountHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<TopTransactionRankItem>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<TopTransactionRankItem>> create(Ref ref) {
+    return topTransactionsByAmount(ref);
+  }
+}
+
+String _$topTransactionsByAmountHash() =>
+    r'3c38996e5c7a9b45dc57a9827b730257ddf0b599';

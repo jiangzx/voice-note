@@ -7,6 +7,7 @@ class CategorySummary {
     required this.color,
     required this.totalAmount,
     required this.percentage,
+    required this.transactionCount,
   });
 
   final String categoryId;
@@ -17,4 +18,7 @@ class CategorySummary {
 
   /// Percentage of total (0.0 - 100.0).
   final double percentage;
+
+  /// Number of transactions in this category in the period.
+  final int transactionCount;
 }

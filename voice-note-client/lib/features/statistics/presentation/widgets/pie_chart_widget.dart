@@ -15,36 +15,17 @@ class PieChartWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(categorySummaryProvider);
-    final type = ref.watch(categorySummaryTypeProvider);
     final txColors = Theme.of(context).extension<TransactionColors>()!;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SegmentedButton<String>(
-          segments: const [
-            ButtonSegment(value: 'expense', label: Text('支出')),
-            ButtonSegment(value: 'income', label: Text('收入')),
-          ],
-          selected: {type},
-          onSelectionChanged: (Set<String> selected) {
-            ref.read(categorySummaryTypeProvider.notifier).update((_) => selected.first);
-          },
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Expanded(
-          child: categoriesAsync.when(
-            data: (categories) => _PieChartContent(
-              categories: categories,
-              txColors: txColors,
-            ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Text('加载失败: $e', style: TextStyle(color: txColors.expense)),
-            ),
-          ),
-        ),
-      ],
+    return categoriesAsync.when(
+      data: (categories) => _PieChartContent(
+        categories: categories,
+        txColors: txColors,
+      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
+        child: Text('加载失败: $e', style: TextStyle(color: txColors.expense)),
+      ),
     );
   }
 }
@@ -78,8 +59,6 @@ class _PieChartContentState extends State<_PieChartContent> {
       );
     }
 
-    final total =
-        widget.categories.fold<double>(0, (s, c) => s + c.totalAmount);
     final sections = List<PieChartSectionData>.generate(
       widget.categories.length,
       (i) {
@@ -88,9 +67,9 @@ class _PieChartContentState extends State<_PieChartContent> {
         final color = _parseColor(c.color);
         return PieChartSectionData(
           value: c.totalAmount,
-          title: total > 0 ? '${c.percentage.toStringAsFixed(1)}%' : '',
+          title: '',
           color: isTouched ? color.withValues(alpha: 0.8) : color,
-          radius: isTouched ? 58 : 50,
+          radius: isTouched ? 62 : 54,
           titleStyle: TextStyle(
             fontSize: 12,
             color: Theme.of(context).colorScheme.onSurface,
@@ -104,7 +83,7 @@ class _PieChartContentState extends State<_PieChartContent> {
       PieChartData(
         sections: sections,
         sectionsSpace: 2,
-        centerSpaceRadius: 0,
+        centerSpaceRadius: 48,
         pieTouchData: PieTouchData(
           touchCallback: (FlTouchEvent event, pieTouchResponse) {
             setState(() {

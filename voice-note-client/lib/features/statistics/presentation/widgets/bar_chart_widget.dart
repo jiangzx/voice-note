@@ -7,7 +7,7 @@ import '../../../../app/theme.dart';
 import '../../domain/models/trend_point.dart';
 import '../providers/statistics_providers.dart';
 
-/// Bar chart showing income vs expense side by side.
+/// Bar chart: 每日趋势，支持 支出|收入|结余 切换。
 class BarChartWidget extends ConsumerWidget {
   const BarChartWidget({super.key});
 
@@ -15,6 +15,7 @@ class BarChartWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final trendAsync = ref.watch(trendDataProvider);
     final periodType = ref.watch(selectedPeriodTypeProvider);
+    final series = ref.watch(trendSeriesProvider);
     final txColors = Theme.of(context).extension<TransactionColors>()!;
 
     return SizedBox(
@@ -23,6 +24,7 @@ class BarChartWidget extends ConsumerWidget {
         data: (points) => _BarChartContent(
           points: points,
           periodType: periodType,
+          series: series,
           txColors: txColors,
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -41,11 +43,13 @@ class _BarChartContent extends StatelessWidget {
   const _BarChartContent({
     required this.points,
     required this.periodType,
+    required this.series,
     required this.txColors,
   });
 
   final List<TrendPoint> points;
   final PeriodType periodType;
+  final String series;
   final TransactionColors txColors;
 
   @override
@@ -61,40 +65,84 @@ class _BarChartContent extends StatelessWidget {
       );
     }
 
-    final maxY = points.fold<double>(
-      0,
-      (m, p) {
-        final maxVal = p.income > p.expense ? p.income : p.expense;
-        return maxVal > m ? maxVal : m;
-      },
-    );
+    // 零/低值灰色，有值蓝色（参考图）
+    const barZeroColor = Color(0xFFE5E7EB);
+    const barValueColor = AppColors.brandPrimary;
+
+    double maxY;
+    List<BarChartGroupData> barGroups;
+    if (series == 'expense') {
+      maxY = points.fold<double>(0, (m, p) => p.expense > m ? p.expense : m);
+      barGroups = List.generate(
+        points.length,
+        (i) {
+          final v = points[i].expense;
+          return BarChartGroupData(
+            x: i,
+            barRods: [
+              BarChartRodData(
+                toY: v,
+                color: v > 0 ? barValueColor : barZeroColor,
+                width: 8,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+              ),
+            ],
+            showingTooltipIndicators: [],
+          );
+        },
+      );
+    } else if (series == 'income') {
+      maxY = points.fold<double>(0, (m, p) => p.income > m ? p.income : m);
+      barGroups = List.generate(
+        points.length,
+        (i) {
+          final v = points[i].income;
+          return BarChartGroupData(
+            x: i,
+            barRods: [
+              BarChartRodData(
+                toY: v,
+                color: v > 0 ? barValueColor : barZeroColor,
+                width: 8,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+              ),
+            ],
+            showingTooltipIndicators: [],
+          );
+        },
+      );
+    } else {
+      maxY = points.fold<double>(
+        0,
+        (m, p) {
+          final b = p.income - p.expense;
+          final abs = b < 0 ? -b : b;
+          return abs > m ? abs : m;
+        },
+      );
+      barGroups = List.generate(
+        points.length,
+        (i) {
+          final balance = points[i].income - points[i].expense;
+          final absBalance = balance >= 0 ? balance : -balance;
+          final color = absBalance > 0 ? barValueColor : barZeroColor;
+          return BarChartGroupData(
+            x: i,
+            barRods: [
+              BarChartRodData(
+                toY: absBalance,
+                color: color,
+                width: 8,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+              ),
+            ],
+            showingTooltipIndicators: [],
+          );
+        },
+      );
+    }
     final maxYPadded = maxY * 1.2;
     if (maxYPadded == 0) return const SizedBox();
-
-    final barGroups = List.generate(
-      points.length,
-      (i) {
-        final p = points[i];
-        return BarChartGroupData(
-          x: i,
-          barRods: [
-            BarChartRodData(
-              toY: p.income,
-              color: txColors.income,
-              width: 8,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
-            ),
-            BarChartRodData(
-              toY: p.expense,
-              color: txColors.expense,
-              width: 8,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
-            ),
-          ],
-          showingTooltipIndicators: [],
-        );
-      },
-    );
 
     return BarChart(
       BarChartData(

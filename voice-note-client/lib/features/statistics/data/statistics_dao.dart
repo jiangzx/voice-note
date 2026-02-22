@@ -12,6 +12,7 @@ class CategorySummaryRow {
     required this.icon,
     required this.color,
     required this.totalAmount,
+    required this.transactionCount,
   });
 
   final String categoryId;
@@ -19,6 +20,26 @@ class CategorySummaryRow {
   final String icon;
   final String color;
   final double totalAmount;
+  final int transactionCount;
+}
+
+/// Raw row for top N transactions by amount (单笔排行).
+class TopTransactionRow {
+  const TopTransactionRow({
+    required this.id,
+    required this.amount,
+    required this.description,
+    required this.categoryName,
+    required this.icon,
+    required this.color,
+  });
+
+  final String id;
+  final double amount;
+  final String? description;
+  final String categoryName;
+  final String icon;
+  final String color;
 }
 
 /// Raw row from daily/monthly trend query.
@@ -85,6 +106,7 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
     String? accountId,
   }) async {
     final sumExpr = transactions.amount.sum();
+    final countExpr = transactions.id.count();
     final typeFilter = type == 'expense'
         ? (transactions.type.equals('expense') |
             (transactions.type.equals('transfer') &
@@ -110,6 +132,7 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
         categories.icon,
         categories.color,
         sumExpr,
+        countExpr,
       ])
       ..where(filter)
       ..groupBy([transactions.categoryId])
@@ -123,8 +146,58 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
         icon: row.read(categories.icon)!,
         color: row.read(categories.color)!,
         totalAmount: row.read(sumExpr) ?? 0.0,
+        transactionCount: row.read(countExpr) ?? 0,
       ),
     ).toList();
+  }
+
+  /// Top N transactions by amount in date range (expense = expense + transfer out, income = income + transfer in).
+  Future<List<TopTransactionRow>> getTopTransactionsByAmount({
+    required DateTime dateFrom,
+    required DateTime dateTo,
+    required String type,
+    String? accountId,
+    int limit = 10,
+  }) async {
+    final typeFilter = type == 'expense'
+        ? (transactions.type.equals('expense') |
+            (transactions.type.equals('transfer') &
+                transactions.transferDirection.equals('out')))
+        : (transactions.type.equals('income') |
+            (transactions.type.equals('transfer') &
+                transactions.transferDirection.equals('in')));
+    var filter = transactions.date.isBiggerOrEqualValue(dateFrom) &
+        transactions.date.isSmallerOrEqualValue(dateTo) &
+        transactions.isDraft.equals(false) &
+        typeFilter;
+    if (accountId != null) {
+      filter = filter & transactions.accountId.equals(accountId);
+    }
+
+    final query = select(transactions).join([
+      leftOuterJoin(categories, categories.id.equalsExp(transactions.categoryId)),
+    ])
+      ..where(filter)
+      ..orderBy([OrderingTerm.desc(transactions.amount)])
+      ..limit(limit);
+
+    final rows = await query.get();
+    const defaultName = '资金往来';
+    const defaultIcon = 'material:swap_horiz';
+    const defaultColor = 'FF9E9E9E';
+
+    return rows.map((row) {
+      final tx = row.readTable(transactions);
+      final cat = row.readTableOrNull(categories);
+      return TopTransactionRow(
+        id: tx.id,
+        amount: tx.amount,
+        description: tx.description,
+        categoryName: cat?.name ?? defaultName,
+        icon: cat?.icon ?? defaultIcon,
+        color: cat?.color ?? defaultColor,
+      );
+    }).toList();
   }
 
   /// Get daily income/expense trend. Income = type income or transfer in; expense = type expense or transfer out.
