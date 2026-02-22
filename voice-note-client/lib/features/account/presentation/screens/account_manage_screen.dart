@@ -94,6 +94,7 @@ class AccountManageScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
+                isDense: false,
                 initialValue: selectedType,
                 style: (Theme.of(ctx).textTheme.titleMedium ??
                         const TextStyle(fontSize: 16))

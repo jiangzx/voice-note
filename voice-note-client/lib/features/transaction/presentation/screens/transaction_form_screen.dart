@@ -257,6 +257,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
+              isDense: false,
               initialValue: formState.accountId,
               items: accounts
                   .map(
