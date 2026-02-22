@@ -10,8 +10,8 @@ import '../providers/statistics_providers.dart';
 class PeriodSelector extends ConsumerWidget {
   const PeriodSelector({super.key});
 
-  static const _borderColor = Color(0xFFE5E7EB);
-  static const _radius = 10.0;
+  static const _borderColor = Color(0xFFEBEDF0);
+  static const _radius = 8.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,7 +41,7 @@ class PeriodSelector extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: 8),
         // < 2026年 2 月 >
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -57,9 +57,10 @@ class PeriodSelector extends ConsumerWidget {
               onTap: isCustom ? () => _pickCustomRange(context, ref) : null,
               child: Text(
                 label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.2,
+                  fontSize: 14,
                 ),
               ),
             ),
@@ -99,12 +100,12 @@ class PeriodSelector extends ConsumerWidget {
         },
         behavior: HitTestBehavior.opaque,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             color: isSelected
                 ? AppColors.brandPrimary.withValues(alpha: 0.12)
                 : null,
-            borderRadius: BorderRadius.circular(_radius - 2),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Center(
             child: Text(
@@ -112,7 +113,7 @@ class PeriodSelector extends ConsumerWidget {
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 color: isSelected ? AppColors.brandPrimary : AppColors.textSecondary,
-                fontSize: 14,
+                fontSize: 13,
               ),
             ),
           ),

@@ -19,7 +19,7 @@ class BarChartWidget extends ConsumerWidget {
     final txColors = Theme.of(context).extension<TransactionColors>()!;
 
     return SizedBox(
-      height: 220,
+      height: 200,
       child: trendAsync.when(
         data: (points) => _BarChartContent(
           points: points,

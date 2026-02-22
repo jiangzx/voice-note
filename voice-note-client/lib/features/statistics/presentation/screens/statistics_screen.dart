@@ -20,13 +20,15 @@ class StatisticsScreen extends ConsumerWidget {
   const StatisticsScreen({super.key});
 
   static const _sectionStyle = TextStyle(
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: FontWeight.w600,
-    color: AppColors.textPlaceholder,
-    letterSpacing: 0.5,
+    color: AppColors.textSecondary,
+    letterSpacing: 0.8,
   );
-  static const _cardRadius = 12.0;
-  static const _cardBorder = Color(0xFFE5E7EB);
+  static const _cardRadius = 10.0;
+  static const _cardBorder = Color(0xFFEBEDF0);
+  static const _cardPaddingH = 12.0;
+  static const _cardPaddingV = 10.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -73,26 +75,26 @@ class StatisticsScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.xl),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
         children: [
           const PeriodSelector(),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 12),
           _sectionTitle('汇总'),
           _SummaryCard(txColors: txColors),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 12),
           _sectionRow('每日支出趋势', _trendToggle(ref)),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: 4),
           const _TrendDateDetailRow(),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 8),
           _chartCard(const BarChartWidget()),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 12),
           _sectionRow('支出分类构成', _categoryTypeToggle(ref)),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 8),
           _chartCard(const _CategoryCompositionSection()),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 12),
           _sectionRow('单笔支出排行榜', _rankingTypeToggle(ref)),
           _chartCard(SingleTransactionRanking()),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 12),
           _sectionTitle('账单汇总'),
           const BillSummaryTable(),
         ],
@@ -102,7 +104,7 @@ class StatisticsScreen extends ConsumerWidget {
 
   Widget _sectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Text(title, style: _sectionStyle),
     );
   }
@@ -110,7 +112,7 @@ class StatisticsScreen extends ConsumerWidget {
   /// 区块一行：左侧标题，右侧分段控制（参考图）。
   Widget _sectionRow(String title, Widget segmentedControl) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
           Text(title, style: _sectionStyle),
@@ -164,18 +166,19 @@ class StatisticsScreen extends ConsumerWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.brandPrimary : AppColors.backgroundPrimary,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: isSelected ? AppColors.brandPrimary : _cardBorder,
+            width: 1,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             color: isSelected ? Colors.white : AppColors.textSecondary,
           ),
@@ -239,10 +242,19 @@ class StatisticsScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: AppColors.backgroundPrimary,
         borderRadius: BorderRadius.circular(_cardRadius),
-        border: Border.all(color: _cardBorder),
-        boxShadow: AppShadow.card,
+        border: Border.all(color: _cardBorder, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            offset: Offset(0, 1),
+            blurRadius: 4,
+          ),
+        ],
       ),
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: _cardPaddingH,
+        vertical: _cardPaddingV,
+      ),
       child: child,
     );
   }
@@ -285,13 +297,14 @@ class _TrendDateDetailRow extends ConsumerWidget {
           onTap: () =>
               context.go('/transactions?dateFrom=$from&dateTo=$to'),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+            padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               children: [
                 Text(
                   '$dateStr $label ¥${amount.toStringAsFixed(2)}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: AppColors.textPrimary,
+                    fontSize: 13,
                   ),
                 ),
                 const Spacer(),
@@ -333,10 +346,16 @@ class _SummaryCard extends ConsumerWidget {
         decoration: BoxDecoration(
           color: AppColors.backgroundPrimary,
           borderRadius: BorderRadius.circular(StatisticsScreen._cardRadius),
-          border: Border.all(color: StatisticsScreen._cardBorder),
-          boxShadow: AppShadow.card,
+          border: Border.all(color: StatisticsScreen._cardBorder, width: 1),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0D000000),
+              offset: Offset(0, 1),
+              blurRadius: 4,
+            ),
+          ],
         ),
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg, horizontal: AppSpacing.md),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         child: Row(
           children: [
             Expanded(
@@ -363,7 +382,7 @@ class _SummaryCard extends ConsumerWidget {
           ],
         ),
       ),
-      loading: () => ShimmerPlaceholder.card(height: 72),
+      loading: () => ShimmerPlaceholder.card(height: 64),
       error: (e, st) => ErrorStateWidget(
         message: '汇总加载失败: $e',
         onRetry: () => ref.invalidate(periodSummaryProvider),
@@ -392,10 +411,10 @@ class _SummaryItem extends StatelessWidget {
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: AppColors.textPlaceholder,
-            fontSize: 12,
+            fontSize: 11,
           ),
         ),
-        const SizedBox(height: AppSpacing.xs),
+        const SizedBox(height: 4),
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
@@ -403,7 +422,7 @@ class _SummaryItem extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: color,
               fontWeight: FontWeight.w600,
-              fontSize: 15,
+              fontSize: 14,
             ),
           ),
         ),
@@ -439,7 +458,7 @@ class _PieChartSection extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return SizedBox(
-      height: 220,
+      height: 200,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -459,17 +478,17 @@ class _PieChartSection extends ConsumerWidget {
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.textPlaceholder,
-                          fontSize: 12,
+                          fontSize: 11,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         '¥${total.toStringAsFixed(2)}',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
-                          fontSize: 16,
+                          fontSize: 15,
                         ),
                       ),
                     ],
@@ -496,7 +515,7 @@ class _CategoryCompositionSection extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         const _PieChartSection(),
-        const Divider(height: 1),
+        const Divider(height: 1, color: Color(0xFFEBEDF0)),
         const CategoryRanking(),
       ],
     );

@@ -94,8 +94,8 @@ class _CategoryRankItem extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
+          horizontal: 12,
+          vertical: 10,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,9 +114,11 @@ class _CategoryRankItem extends StatelessWidget {
                     children: [
                       Text(
                         '${category.categoryName} ${category.percentage.toStringAsFixed(2)}%',
-                        style: theme.textTheme.bodyLarge,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 14,
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
+                      const SizedBox(height: 6),
                       ClipRRect(
                         borderRadius: AppRadius.smAll,
                         child: LinearProgressIndicator(

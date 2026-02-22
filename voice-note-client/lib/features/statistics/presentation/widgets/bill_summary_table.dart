@@ -10,8 +10,8 @@ import '../providers/statistics_providers.dart';
 class BillSummaryTable extends ConsumerWidget {
   const BillSummaryTable({super.key});
 
-  static const _borderColor = Color(0xFFE5E7EB);
-  static const _headerBg = Color(0xFFF8F9FA);
+  static const _borderColor = Color(0xFFEBEDF0);
+  static const _headerBg = Color(0xFFF7F8FA);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,9 +41,15 @@ class BillSummaryTable extends ConsumerWidget {
         return Container(
           decoration: BoxDecoration(
             color: AppColors.backgroundPrimary,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _borderColor),
-            boxShadow: AppShadow.card,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _borderColor, width: 1),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0D000000),
+                offset: Offset(0, 1),
+                blurRadius: 4,
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -61,7 +67,7 @@ class BillSummaryTable extends ConsumerWidget {
                 )
               else
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 280),
+                  constraints: const BoxConstraints(maxHeight: 240),
                   child: ListView.separated(
                     shrinkWrap: true,
                     physics: const ClampingScrollPhysics(),
@@ -93,10 +99,10 @@ class BillSummaryTable extends ConsumerWidget {
 
   Widget _tableHeader(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: const BoxDecoration(
         color: _headerBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
       ),
       child: Row(
         children: [
@@ -153,7 +159,7 @@ class BillSummaryTable extends ConsumerWidget {
     final theme = Theme.of(context);
     final dateStr = r.dateLabel.length >= 10 ? r.dateLabel.substring(5) : r.dateLabel;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
         children: [
           SizedBox(
@@ -223,7 +229,7 @@ class BillSummaryTable extends ConsumerWidget {
   ) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
         children: [
           SizedBox(

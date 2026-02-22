@@ -71,8 +71,8 @@ class _SingleTransactionRankingState
                 onTap: () => setState(() => _expanded = true),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    vertical: AppSpacing.md,
-                    horizontal: AppSpacing.lg,
+                    vertical: 10,
+                    horizontal: 12,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -139,8 +139,8 @@ class _RankItem extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.sm,
+          horizontal: 12,
+          vertical: 8,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
