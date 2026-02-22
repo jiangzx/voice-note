@@ -3,22 +3,24 @@ import 'package:flutter/material.dart';
 import '../../../../app/design_tokens.dart';
 
 /// Displays the current amount string with animated value transitions.
+/// When [focused] is true, shows a focus ring so user sees they are in amount input.
 class AmountDisplay extends StatelessWidget {
   const AmountDisplay({
     super.key,
     required this.amountText,
     this.currencySymbol = '¥',
+    this.focused = false,
   });
 
   final String amountText;
   final String currencySymbol;
+  final bool focused;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final displayText = amountText.isEmpty ? '0' : amountText;
-
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.xl,
         vertical: AppSpacing.lg,
@@ -64,6 +66,24 @@ class AmountDisplay extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    if (!focused) return content;
+    final colorScheme = theme.colorScheme;
+    return AnimatedContainer(
+      duration: AppDuration.fast,
+      curve: Curves.easeOut,
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.2),
+        borderRadius: AppRadius.inputAll,
+        border: Border.all(
+          color: colorScheme.primary,
+          width: 2,
+        ),
+      ),
+      child: content,
     );
   }
 }

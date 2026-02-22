@@ -11,12 +11,15 @@ class TransferFields extends StatefulWidget {
     this.counterparty,
     required this.onDirectionChanged,
     required this.onCounterpartyChanged,
+    this.onCounterpartyFocusChange,
   });
 
   final TransferDirection? direction;
   final String? counterparty;
   final ValueChanged<TransferDirection> onDirectionChanged;
   final ValueChanged<String?> onCounterpartyChanged;
+  /// Called when the counterparty TextField gains or loses focus (for hiding custom keypad).
+  final ValueChanged<bool>? onCounterpartyFocusChange;
 
   @override
   State<TransferFields> createState() => _TransferFieldsState();
@@ -24,11 +27,18 @@ class TransferFields extends StatefulWidget {
 
 class _TransferFieldsState extends State<TransferFields> {
   late final TextEditingController _controller;
+  late final FocusNode _counterpartyFocusNode;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.counterparty);
+    _counterpartyFocusNode = FocusNode();
+    _counterpartyFocusNode.addListener(_notifyFocusChange);
+  }
+
+  void _notifyFocusChange() {
+    widget.onCounterpartyFocusChange?.call(_counterpartyFocusNode.hasFocus);
   }
 
   @override
@@ -42,6 +52,8 @@ class _TransferFieldsState extends State<TransferFields> {
 
   @override
   void dispose() {
+    _counterpartyFocusNode.removeListener(_notifyFocusChange);
+    _counterpartyFocusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -69,6 +81,8 @@ class _TransferFieldsState extends State<TransferFields> {
         ),
         const SizedBox(height: AppSpacing.md),
         TextField(
+          focusNode: _counterpartyFocusNode,
+          textInputAction: TextInputAction.done,
           decoration: const InputDecoration(
             labelText: '对方 (可选)',
             hintText: '账户名或人名',
@@ -77,6 +91,7 @@ class _TransferFieldsState extends State<TransferFields> {
           ),
           controller: _controller,
           onChanged: (v) => widget.onCounterpartyChanged(v.isEmpty ? null : v),
+          onSubmitted: (_) => FocusScope.of(context).unfocus(),
         ),
       ],
     );

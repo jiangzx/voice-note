@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../../app/theme.dart';
 import '../../../../core/utils/id_generator.dart' as id_gen;
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
@@ -34,13 +35,45 @@ class TransactionFormScreen extends ConsumerStatefulWidget {
       _TransactionFormScreenState();
 }
 
+/// Scroll offset above which the number pad is hidden when user scrolls down.
+const double _scrollThresholdToHideNumberPad = 80;
+
 class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   final _amountController = AmountInputController();
   final _descriptionController = TextEditingController();
+  final _descriptionFocusNode = FocusNode();
+  final _scrollController = ScrollController();
   bool _initialized = false;
+  bool _counterpartyFocused = false;
+  bool _showNumberPad = false;
+
+  void _onScroll() {
+    if (!mounted || !_scrollController.hasClients) return;
+    if (_scrollController.offset > _scrollThresholdToHideNumberPad &&
+        _showNumberPad) {
+      FocusScope.of(context).unfocus();
+      setState(() => _showNumberPad = false);
+    }
+  }
+
+  /// Only hide pad when a text field gains focus; do not show pad when focus is lost (user must tap amount to show).
+  void _updateShowNumberPad() {
+    if (!mounted) return;
+    final anyTextFieldFocused =
+        _descriptionFocusNode.hasFocus || _counterpartyFocused;
+    if (anyTextFieldFocused && _showNumberPad) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _showNumberPad = false);
+      });
+    }
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _descriptionFocusNode.removeListener(_updateShowNumberPad);
+    _descriptionFocusNode.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
@@ -59,9 +92,16 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     setState(() {});
   }
 
+  void _onAmountAreaTap() {
+    FocusScope.of(context).unfocus();
+    if (!_showNumberPad) setState(() => _showNumberPad = true);
+  }
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
+    _descriptionFocusNode.addListener(_updateShowNumberPad);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.isEditing) {
         _initEditMode();
@@ -69,8 +109,28 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         ref.read(transactionFormProvider.notifier).reset();
         _amountController.clear();
         _descriptionController.clear();
+        // Default account to wallet so dropdown shows 钱包
+        ref.read(defaultAccountProvider.future).then((acc) {
+          if (acc != null && mounted) {
+            ref.read(transactionFormProvider.notifier).setAccountId(acc.id);
+          }
+        });
       }
     });
+  }
+
+  void _onCounterpartyFocusChange(bool hasFocus) {
+    if (_counterpartyFocused == hasFocus) return;
+    setState(() {
+      _counterpartyFocused = hasFocus;
+      if (hasFocus) _showNumberPad = false;
+    });
+  }
+
+  /// Hide number pad when user interacts with non-amount areas (type, date, category, transfer direction).
+  void _hideNumberPad() {
+    FocusScope.of(context).unfocus();
+    if (_showNumberPad) setState(() => _showNumberPad = false);
   }
 
   @override
@@ -84,108 +144,251 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     final canSave = _amountController.toDouble() > 0 &&
         (isTransfer || formState.categoryId != null);
 
+    // Hide save bar while editing (description/counterparty) or while amount number pad is shown; "完成" only dismisses input, then user reviews and taps save.
+    final isEditingText =
+        _descriptionFocusNode.hasFocus || _counterpartyFocused;
+    final showSaveBar = !isEditingText && !_showNumberPad;
+    final showAmountDoneBar = _showNumberPad;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? '编辑交易' : '记一笔'),
       ),
-      body: Column(
-        children: [
-          // Top section: scrollable form fields
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: AppSpacing.sm),
-                  // Type selector
-                  Center(
-                    child: TypeSelector(
-                      selected: formState.selectedType,
-                      onChanged: (type) {
-                        ref
-                            .read(transactionFormProvider.notifier)
-                            .setType(type);
-                      },
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableHeight = constraints.maxHeight;
+          const topSectionHeight = 130.0;
+          const dividerHeight = 1.0;
+          const saveBarHeight = 72.0;
+          final reserveForBottomBar =
+              (showSaveBar || showAmountDoneBar) ? saveBarHeight : 0.0;
+          final numberPadMaxH = _showNumberPad
+              ? (availableHeight -
+                      topSectionHeight -
+                      dividerHeight -
+                      reserveForBottomBar)
+                  .clamp(
+                0.0,
+                MediaQuery.sizeOf(context).height * 0.28,
+              )
+              : 0.0;
+
+          return Column(
+            children: [
+              // Fixed top: type + amount (always visible when using number pad)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: Column(
+                  children: [
+                    const SizedBox(height: AppSpacing.sm),
+                    Center(
+                      child: TypeSelector(
+                        selected: formState.selectedType,
+                        onChanged: (type) {
+                          _hideNumberPad();
+                          ref
+                              .read(transactionFormProvider.notifier)
+                              .setType(type);
+                        },
+                      ),
                     ),
-                  ),
-                  // Amount display
-                  AmountDisplay(amountText: _amountController.value),
-                  const Divider(),
-                  // Category section or Transfer fields
-                  if (isTransfer) ...[
-                    TransferFields(
-                      direction: formState.transferDirection,
-                      counterparty: formState.counterparty,
-                      onDirectionChanged: (dir) {
-                        ref
-                            .read(transactionFormProvider.notifier)
-                            .setTransferDirection(dir);
-                      },
-                      onCounterpartyChanged: (val) {
-                        ref
-                            .read(transactionFormProvider.notifier)
-                            .setCounterparty(val);
-                      },
+                    GestureDetector(
+                      onTap: _onAmountAreaTap,
+                      behavior: HitTestBehavior.opaque,
+                      child: AmountDisplay(
+                        amountText: _amountController.value,
+                        focused: _showNumberPad,
+                      ),
                     ),
-                  ] else ...[
-                    _buildCategorySection(categoryType, formState),
+                    const SizedBox(height: AppSpacing.md),
                   ],
-                  const SizedBox(height: AppSpacing.md),
-                  // Date selection
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DateQuickSelect(
-                      selected: formState.date,
-                      onChanged: (date) {
-                        ref
-                            .read(transactionFormProvider.notifier)
-                            .setDate(date);
-                      },
-                    ),
+                ),
+              ),
+              // Scrollable form: date, description, category, account (date/description above for focus)
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildSection(
+                        context,
+                        title: '日期',
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: DateQuickSelect(
+                            selected: formState.date,
+                            onChanged: (date) {
+                              _hideNumberPad();
+                              ref
+                                  .read(transactionFormProvider.notifier)
+                                  .setDate(date);
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      _buildSection(
+                        context,
+                        title: '描述',
+                        child: TextField(
+                          controller: _descriptionController,
+                          focusNode: _descriptionFocusNode,
+                          textInputAction: TextInputAction.done,
+                          decoration: const InputDecoration(
+                            hintText: '选填',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          onChanged: (val) {
+                            ref
+                                .read(transactionFormProvider.notifier)
+                                .setDescription(val.isEmpty ? null : val);
+                          },
+                          onSubmitted: (_) =>
+                              FocusScope.of(context).unfocus(),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      _buildSection(
+                        context,
+                        title: isTransfer ? '转账' : '分类',
+                        child: isTransfer
+                            ? TransferFields(
+                                direction: formState.transferDirection,
+                                counterparty: formState.counterparty,
+                                onDirectionChanged: (dir) {
+                                  _hideNumberPad();
+                                  ref
+                                      .read(transactionFormProvider.notifier)
+                                      .setTransferDirection(dir);
+                                },
+                                onCounterpartyChanged: (val) {
+                                  ref
+                                      .read(transactionFormProvider.notifier)
+                                      .setCounterparty(val);
+                                },
+                                onCounterpartyFocusChange:
+                                    _onCounterpartyFocusChange,
+                              )
+                            : _buildCategorySection(
+                                categoryType,
+                                formState,
+                                onCategoryTap: _hideNumberPad,
+                              ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      _buildAccountSectionWithTitle(context, formState),
+                      const SizedBox(height: AppSpacing.sm),
+                    ],
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  // Description
-                  TextField(
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: '描述 (可选)',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    onChanged: (val) {
+                ),
+              ),
+              const Divider(height: 1),
+              if (_showNumberPad && numberPadMaxH > 0)
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: numberPadMaxH),
+                  child: NumberPad(
+                    onKey: (key) {
+                      _amountController.append(key);
                       ref
                           .read(transactionFormProvider.notifier)
-                          .setDescription(val.isEmpty ? null : val);
+                          .setAmount(_amountController.toDouble());
+                      setState(() {});
+                    },
+                    onBackspace: () {
+                      _amountController.backspace();
+                      ref
+                          .read(transactionFormProvider.notifier)
+                          .setAmount(_amountController.toDouble());
+                      setState(() {});
                     },
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  // Account selection (multi-account mode)
-                  _buildAccountSection(formState),
-                ],
+                ),
+              if (showAmountDoneBar)
+                _buildAmountDoneBar(),
+              if (showSaveBar)
+                _buildBottomSaveBar(canSave, formState),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// "完成" bar when number pad is visible: dismisses pad so user can review page then tap save.
+  Widget _buildAmountDoneBar() {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: theme.colorScheme.outline.withValues(alpha: 0.2),
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Semantics(
+          button: true,
+          label: '完成',
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _hideNumberPad,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                minimumSize: const Size(0, 48),
+              ),
+              child: const Text('完成'),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection(
+    BuildContext context, {
+    required String title,
+    required Widget child,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: const BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: AppRadius.lgAll,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: Text(
+              title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          // Bottom: Number pad
-          const Divider(height: 1),
-          NumberPad(
-            onKey: (key) {
-              _amountController.append(key);
-              ref
-                  .read(transactionFormProvider.notifier)
-                  .setAmount(_amountController.toDouble());
-              setState(() {});
-            },
-            onBackspace: () {
-              _amountController.backspace();
-              ref
-                  .read(transactionFormProvider.notifier)
-                  .setAmount(_amountController.toDouble());
-              setState(() {});
-            },
-          ),
-          // Bottom save button bar
-          _buildBottomSaveBar(canSave, formState),
+          child,
         ],
       ),
     );
@@ -193,8 +396,9 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
 
   Widget _buildCategorySection(
     String categoryType,
-    TransactionFormState formState,
-  ) {
+    TransactionFormState formState, {
+    VoidCallback? onCategoryTap,
+  }) {
     final categoriesAsync = ref.watch(visibleCategoriesProvider(categoryType));
     final recentIdsAsync = ref.watch(recentCategoriesProvider);
     final recommendedNames = ref.watch(recommendedCategoryNamesProvider);
@@ -217,6 +421,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
               categories: recentCategories,
               selectedId: formState.categoryId,
               onSelected: (id) {
+                onCategoryTap?.call();
                 ref.read(transactionFormProvider.notifier).setCategoryId(id);
               },
             ),
@@ -226,6 +431,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
               categories: categories,
               selectedId: formState.categoryId,
               onSelected: (id) {
+                onCategoryTap?.call();
                 ref.read(transactionFormProvider.notifier).setCategoryId(id);
               },
               recommendedNames: recommendedNames,
@@ -241,7 +447,10 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     );
   }
 
-  Widget _buildAccountSection(TransactionFormState formState) {
+  Widget _buildAccountSectionWithTitle(
+    BuildContext context,
+    TransactionFormState formState,
+  ) {
     final multiAccountAsync = ref.watch(multiAccountEnabledProvider);
 
     return multiAccountAsync.when(
@@ -251,22 +460,30 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         final accountsAsync = ref.watch(accountListProvider);
         return accountsAsync.when(
           data: (accounts) {
-            return DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: '账户',
-                border: OutlineInputBorder(),
-                isDense: true,
+            return _buildSection(
+              context,
+              title: '账户',
+              child: DropdownButtonFormField<String>(
+                key: ValueKey(formState.accountId ?? ''),
+                decoration: const InputDecoration(
+                  labelText: '选择账户',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                isDense: false,
+                initialValue: formState.accountId,
+                items: accounts
+                    .map(
+                      (a) => DropdownMenuItem(
+                        value: a.id,
+                        child: Text(a.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (id) {
+                  ref.read(transactionFormProvider.notifier).setAccountId(id);
+                },
               ),
-              isDense: false,
-              initialValue: formState.accountId,
-              items: accounts
-                  .map(
-                    (a) => DropdownMenuItem(value: a.id, child: Text(a.name)),
-                  )
-                  .toList(),
-              onChanged: (id) {
-                ref.read(transactionFormProvider.notifier).setAccountId(id);
-              },
             );
           },
           loading: () => ShimmerPlaceholder.listItem(),
@@ -371,29 +588,43 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   Widget _buildBottomSaveBar(bool canSave, TransactionFormState formState) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.md,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        AppSpacing.md,
       ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: theme.colorScheme.outline.withValues(alpha: 0.2),
+          ),
+        ),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: 0.1),
+            color: theme.colorScheme.shadow.withValues(alpha: 0.08),
             blurRadius: 4,
             offset: const Offset(0, -2),
           ),
         ],
       ),
       child: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: canSave ? () => _save(formState) : null,
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+        top: false,
+        child: Semantics(
+          button: true,
+          enabled: canSave,
+          label: '保存',
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: canSave ? () => _save(formState) : null,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                minimumSize: const Size(0, 48),
+              ),
+              child: const Text('保存'),
             ),
-            child: const Text('保存'),
           ),
         ),
       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../app/design_tokens.dart';
+
 /// Controller for amount string input logic.
 class AmountInputController {
   String _value = '0';
@@ -86,22 +88,57 @@ class NumberPad extends StatelessWidget {
     '⌫',
   ];
 
+  /// Max fraction of screen height for the keypad (keeps it compact).
+  static const double _maxHeightFraction = 0.28;
+  /// Prefer flatter keys; raised if constrained to avoid overflow.
+  static const double _baseChildAspectRatio = 2.5;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.8,
-      children: _keys.map((key) {
-        return _KeyButton(
-          label: key,
-          onTap: key == '⌫' ? onBackspace : () => onKey(key),
-          isBackspace: key == '⌫',
-          theme: theme,
-        );
-      }).toList(),
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final maxHeight = screenHeight * _maxHeightFraction;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          final capHeight = constraints.maxHeight.isFinite
+              ? constraints.maxHeight
+              : double.infinity;
+          final effectiveMaxHeight = maxHeight < capHeight ? maxHeight : capHeight;
+          final cellHeight = (w / 3) / _baseChildAspectRatio;
+          final intrinsicHeight = 4 * cellHeight;
+          final height = intrinsicHeight <= effectiveMaxHeight
+              ? intrinsicHeight
+              : effectiveMaxHeight;
+          final aspectRatio = height <= intrinsicHeight
+              ? _baseChildAspectRatio
+              : (w / 3) * 4 / height;
+
+          return SizedBox(
+            height: height,
+            child: GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: aspectRatio,
+              children: _keys.map((key) {
+                return _KeyButton(
+                  label: key,
+                  onTap: key == '⌫' ? onBackspace : () => onKey(key),
+                  isBackspace: key == '⌫',
+                  theme: theme,
+                );
+              }).toList(),
+            ),
+          );
+        },
+      ),
     );
   }
 }

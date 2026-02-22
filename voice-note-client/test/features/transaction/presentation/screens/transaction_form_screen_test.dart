@@ -145,12 +145,16 @@ void main() {
       await tester.tap(find.text('转账'));
       await tester.pumpAndSettle();
 
-      // Enter amount via NumberPad
+      // Show number pad (hidden when type changed), then enter amount
+      await tester.tap(find.byType(AmountDisplay));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('4'));
       await tester.tap(find.text('2'));
       await tester.pumpAndSettle();
 
-      // Tap save
+      // Dismiss number pad with "完成", then tap save
+      await tester.tap(find.text('完成'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('保存'));
       await tester.pumpAndSettle();
 
