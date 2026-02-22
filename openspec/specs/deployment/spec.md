@@ -65,15 +65,7 @@ Server SHALL 对 `/api/**` 端点配置 CORS 策略。允许的来源域名 SHAL
 - **THEN** 系统 SHALL 忽略 `X-Forwarded-For`，使用直连 IP 作为限流维度（防止 IP 伪造）
 
 ### Requirement: Client Server 地址配置
-Client SHALL 支持运行时修改 Server 基础地址。默认地址 SHALL 通过 `_defaultBaseUrl` 常量定义。用户修改的地址 SHALL 持久化到 SharedPreferences。发布生产版本前 SHALL 将默认地址更新为生产域名。
-
-#### Scenario: 默认开发地址
-- **WHEN** App 首次安装且未修改 Server 地址
-- **THEN** Client SHALL 使用 `http://localhost:8080` 作为默认地址（开发版本）
-
-#### Scenario: 生产默认地址
-- **WHEN** 发布生产版本
-- **THEN** `_defaultBaseUrl` SHALL 更新为 `https://api.suikouji.com`（或实际生产域名）
+Client SHALL 支持运行时修改 Server 基础地址。默认地址 SHALL 通过 `_defaultBaseUrl` 常量定义。用户修改的地址 SHALL 持久化到 SharedPreferences。
 
 ### Requirement: Docker 容器化部署
 Server SHALL 提供 Dockerfile 支持容器化部署。Docker 镜像 SHALL 基于 JRE Alpine（最小化镜像体积）。SHALL 支持通过环境变量传入所有可配置参数。SHALL 内置健康检查端点。

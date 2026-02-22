@@ -19,10 +19,6 @@
 - **WHEN** 用户通过 processTextInput 提交文本
 - **THEN** 编排器 SHALL 跳过 AudioCapture/VAD/ASR，直接将文本交给 NLP 解析
 
-#### Scenario: Pre-buffer 防丢字
-- **WHEN** VAD 检测到语音开始事件
-- **THEN** 编排器 SHALL 将音频 ring buffer 中缓存的 500ms 预语音数据立即发送给 ASR，避免 VAD 触发延迟导致开头丢字
-
 ### Requirement: Delegate 模式解耦
 编排器 SHALL 通过 VoiceOrchestratorDelegate 接口向 UI 层报告事件。Delegate SHALL 包含以下回调：onSpeechDetected（语音检测到）、onPartialText（中间识别结果）、onFinalText（最终文本+解析结果）、onDraftBatchUpdated（DraftBatch 变更通知）、onError（错误信息）、onContinueRecording（连续记账继续监听）。
 
