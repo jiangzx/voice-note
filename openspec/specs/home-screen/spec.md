@@ -28,11 +28,11 @@
 - **THEN** 系统 SHALL 展示统一错误组件，包含重试入口
 
 ### Requirement: 首页最近交易列表
-系统 SHALL 在首页展示最近 5 条交易记录，按 date DESC、created_at DESC 排序。每条记录 SHALL 展示：分类名称/图标、金额（支出显示负号前缀、收入无前缀、转账标注方向）、日期。若 description 非空则展示 description，否则展示分类名称。加载时 SHALL 展示骨架屏。无数据时 SHALL 展示统一空状态组件。加载失败时 SHALL 展示统一错误组件。列表数据加载完成时 SHALL 以淡入动画展示。
+系统 SHALL 在首页展示最近交易记录，按 date DESC、created_at DESC 排序。首屏 SHALL 加载一页（当前实现为 20 条），支持「加载更多」分页。每条记录 SHALL 展示：分类名称/图标、金额（支出显示负号前缀、收入无前缀、转账标注方向）、日期。若 description 非空则展示 description，否则展示分类名称。加载时 SHALL 展示骨架屏。无数据时 SHALL 展示统一空状态组件。加载失败时 SHALL 展示统一错误组件。列表数据加载完成时 SHALL 以淡入动画展示。
 
 #### Scenario: 展示最近交易
 - **WHEN** 用户进入首页且存在交易记录
-- **THEN** 系统 SHALL 展示最多 5 条最近交易，每条包含分类信息、金额和日期
+- **THEN** 系统 SHALL 展示首屏一页最近交易（当前为 20 条），每条包含分类信息、金额和日期
 
 #### Scenario: 无交易时展示空状态
 - **WHEN** 用户首次使用 App 且无交易记录
@@ -75,7 +75,7 @@
 - **THEN** 系统 SHALL 导航至语音记账页，状态 SHALL 为 LISTENING
 
 #### Scenario: 触发手动记账
-- **WHEN** 用户点击首页右上角的记账图标按钮
+- **WHEN** 用户点击手动记账入口（当前实现为 Shell 层小号 FAB，位于语音 FAB 旁）
 - **THEN** 系统 SHALL 导航至记账流程，表单状态 SHALL 为初始状态
 
 #### Scenario: 语音 FAB 全局可见

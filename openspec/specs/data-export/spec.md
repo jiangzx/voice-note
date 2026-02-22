@@ -39,11 +39,11 @@
 - **THEN** 系统 SHALL 导出数据库中全部交易记录
 
 ### Requirement: 导出文件命名
-系统 SHALL 按规则自动生成导出文件名。文件名格式 SHALL 为 `随口记_YYYYMMDD_HHmmss.{csv|xlsx}`。文件名 SHALL 包含导出时的时间戳以避免重名。
+系统 SHALL 按规则自动生成导出文件名。文件名格式 SHALL 为 `{应用名}_YYYYMMDD_HHmmss.{csv|xlsx}`，应用名与时间戳由实现决定。文件名 SHALL 包含导出时的时间戳以避免重名。
 
 #### Scenario: 文件名格式
 - **WHEN** 用户于 2026-02-17 14:30:00 导出 CSV
-- **THEN** 文件名 SHALL 为 `随口记_20260217_143000.csv`
+- **THEN** 文件名 SHALL 为 `快记账_20260217_143000.csv`（当前实现见 ExportService.generateFileName，应用名前缀为「快记账」）
 
 ### Requirement: 导出进度反馈
 系统 SHALL 在导出过程中提供进度反馈。SHALL 展示已处理记录数和总记录数。导出完成后 SHALL 提供分享操作入口。用户 SHALL 可在导出过程中取消操作。

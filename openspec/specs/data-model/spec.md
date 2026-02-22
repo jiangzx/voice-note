@@ -67,16 +67,20 @@ accounts 表 SHALL 包含 initial_balance 字段（REAL 类型，默认 0.0）�
 - **WHEN** 系统尝试为同一分类同一月份创建第二条预算记录
 - **THEN** 系统 SHALL 拒绝创建或执行更新（upsert）
 
-### Requirement: 数据库迁移 v1 → v2
-系统 SHALL 支持从 schema version 1 平滑迁移到 version 2。迁移 SHALL 仅新增 budgets 表，SHALL NOT 修改或删除现有表。现有数据 SHALL 完整保留。
+### Requirement: 数据库迁移
+系统 SHALL 支持 schema 版本平滑升级。v1 → v2：仅新增 budgets 表；v2 → v3：仅新增统计与查询相关索引（如 date+type、category_id、account_id、is_draft），SHALL NOT 修改或删除现有表或数据。
 
-#### Scenario: 已有用户升级
+#### Scenario: v1 升级
 - **WHEN** schema version 1 的用户升级 App
 - **THEN** 系统 SHALL 自动创建 budgets 表，现有 accounts、categories、transactions 数据 SHALL 不受影响
 
+#### Scenario: v2 升级至 v3
+- **WHEN** schema version 2 的用户升级 App
+- **THEN** 系统 SHALL 创建缺失的索引以优化统计与列表查询，现有数据 SHALL 不受影响
+
 #### Scenario: 新用户安装
 - **WHEN** 新用户首次安装 App
-- **THEN** 系统 SHALL 创建 schema version 2 的完整数据库，包含 budgets 表
+- **THEN** 系统 SHALL 创建当前 schema 版本的完整数据库（含 budgets 表及索引）
 
 ### Requirement: 统计聚合查询
 系统 SHALL 提供高效的统计聚合查询能力。聚合 SHALL 在 SQLite 层通过 SQL 完成（非内存聚合）。SHALL 支持的查询类型：按分类汇总（饼图数据）、按时间段每日/每月趋势（折线/柱状图数据）、时间段内收支总额。所有统计和预算相关查询 SHALL 排除 `isDraft=true` 的交易记录。

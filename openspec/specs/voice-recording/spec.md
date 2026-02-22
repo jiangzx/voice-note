@@ -29,8 +29,8 @@
 - **NOTE**: 超时计时器在进入 LISTENING 后启动，任何语音交互（包括确认/取消/继续）重置计时
 
 #### Scenario: 超时预警
-- **WHEN** 状态为 LISTENING 且连续 2 分 30 秒无人声
-- **THEN** 系统 SHALL 通过 TtsService 播报"还在吗？30秒后我就先走啦"
+- **WHEN** 状态为 LISTENING 且连续 2 分 30 秒无人声（距 3 分钟超时前 30 秒）
+- **THEN** 系统 SHALL 通过 TtsService 播报「还在吗？暂时不用的话我会先休息哦，30秒后自动退出」（当前实现见 TtsTemplates.timeout / VoiceCopy.timeoutWarningMain+Sub）
 - **THEN** 若 TTS 不可用，SHALL 以系统消息文本形式展示
 
 ### Requirement: 本地 VAD 语音活动检测

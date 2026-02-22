@@ -76,7 +76,7 @@
 
 #### Scenario: 逐条取消
 - **WHEN** 用户说「删掉第二笔」
-- **THEN** 系统 SHALL 将 index 1 的 item 标记为 cancelled，TTS 播报「已取消第2笔（{description}{amount}元）。剩余{N}笔待确认。」
+- **THEN** 系统 SHALL 将 index 1 的 item 标记为 cancelled，TTS 播报「第2笔已取消。」（当前实现见 TtsTemplates.batchItemCancelled）
 
 #### Scenario: 取消最后一笔 pending 且有 confirmed
 - **WHEN** 用户取消了最后一个 pending item，且存在 confirmed items
@@ -118,11 +118,11 @@ DraftBatch 总笔数 SHALL NOT 超过 10。超限时 TTS 提示「已达上限�
 
 #### Scenario: 追加后播报
 - **WHEN** 新笔追加成功
-- **THEN** TTS SHALL 播报「已追加第{N}笔，{type}{amount}元，{category}。现在共{total}笔，请确认或修改。」
+- **THEN** TTS SHALL 播报「好的，已追加第{N}笔。」（当前实现见 TtsTemplates.batchAppended）
 
 #### Scenario: 超限拒绝追加
 - **WHEN** DraftBatch 已有 10 笔，用户尝试追加
-- **THEN** 系统 SHALL 拒绝追加，TTS 播报「已达上限，请先确认当前交易」
+- **THEN** 系统 SHALL 拒绝追加，TTS 播报「最多只能记10笔，请先确认当前交易」（当前实现见 TtsTemplates.batchLimitReached）
 
 ### Requirement: 多笔 TTS 播报
 
@@ -130,11 +130,11 @@ DraftBatch 总笔数 SHALL NOT 超过 10。超限时 TTS 提示「已达上限�
 
 - **单笔** (size == 1): 「记录{type}{amount}元，{category}，确认吗？」（与现有一致）
 - **2-5 笔**: 「识别到{N}笔交易：第1笔，{type}{amount}元，{category}；...。请确认或修改。」
-- **6-10 笔**: 「识别到{N}笔交易，共{totalExpense}元支出、{totalIncome}元收入。请查看详情后确认。」
+- **6-10 笔**: 「识别到{N}笔交易，合计{total}元，请逐笔确认。」（当前实现见 TtsTemplates.batchSummary）
 
 #### Scenario: 定点修正播报
 - **WHEN** 用户成功修正某笔
-- **THEN** TTS SHALL 播报「已将第{N}笔修改为{type}{amount}元，{category}。还需要修改吗？」
+- **THEN** TTS SHALL 播报「第{N}笔已修改。」（当前实现见 TtsTemplates.batchTargetedCorrection）
 
 #### Scenario: 保存成功播报
 - **WHEN** batch 提交成功

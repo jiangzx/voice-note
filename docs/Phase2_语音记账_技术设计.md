@@ -129,7 +129,11 @@ voice-note-server/src/main/kotlin/com/suikouji/server/
 2. Server 加载 Prompt 模板 + 拼接用户上下文（常用分类、自定义分类等）
 3. 调用 primary model（qwen-turbo）
 4. 若失败（超时/错误/解析不出 JSON）→ 自动降级到 fallback model（qwen-plus）
-5. 返回结构化 `TransactionParseResponse`
+5. 返回结构化 `TransactionParseResponse`（`transactions` 数组：单笔为 1 个元素，多笔按用户提及顺序）
+
+**批量解析与纠正：**
+- 解析接口支持一次输入多笔（如「吃饭60，奶茶15」），返回 `transactions` 数组，最多 10 笔。
+- 纠正接口 `POST /api/v1/llm/correct-transaction` 接收当前 batch（`currentBatch`）+ 用户纠正文本（`correctionText`），返回 `corrections[]`、`intent`（correction/confirm/cancel/append/unclear）、`confidence`；客户端 3 秒超时后降级为本地规则纠正。
 
 **Prompt 管理：**
 - Prompt 模板存储在 `resources/prompts/` 目录下
@@ -165,7 +169,8 @@ interface LlmProvider {
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/v1/asr/token` | 生成临时 ASR Token |
-| POST | `/api/v1/llm/parse-transaction` | 自然语言 → 结构化交易数据 |
+| POST | `/api/v1/llm/parse-transaction` | 自然语言 → 结构化交易数据（单笔/多笔，返回 `transactions` 数组） |
+| POST | `/api/v1/llm/correct-transaction` | 对话式纠正：batch 上下文 + 用户纠正文本 → `corrections[]`、`intent`、`confidence` |
 | GET | `/actuator/health` | 健康检查 |
 
 ---

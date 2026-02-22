@@ -91,8 +91,8 @@
 - **THEN** 今日收支汇总 SHALL 为：总收入=200、总支出=100（转入不计入）
 
 ### Requirement: 最近交易查询
-系统 SHALL 支持查询最近 N 条交易记录（默认 N=5），按 date DESC、created_at DESC 排序。
+系统 SHALL 支持分页查询最近交易记录（getRecentPage(limit, offset)），按 date DESC、created_at DESC 排序。N（每页条数）由调用方指定（如首页首屏 20 条、支持加载更多）。
 
-#### Scenario: 首页最近 5 条
-- **WHEN** 查询最近交易记录（N=5）
-- **THEN** 系统 SHALL 返回最多 5 条最新交易，包含所有类型（expense、income、transfer）
+#### Scenario: 首页首屏最近交易
+- **WHEN** 首页请求最近交易（如 limit=20、offset=0）
+- **THEN** 系统 SHALL 返回最多 20 条最新交易，包含所有类型（expense、income、transfer）

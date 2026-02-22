@@ -47,8 +47,8 @@
 - **THEN** 系统 SHALL 播报"记好了，还有吗？"
 
 #### Scenario: 超时预警
-- **WHEN** LISTENING 状态静默超过 2分30秒
-- **THEN** 系统 SHALL 播报"还在吗？30秒后我就先走啦"
+- **WHEN** LISTENING 状态静默超过 2分30秒（距 3 分钟超时前 30 秒）
+- **THEN** 系统 SHALL 播报「还在吗？暂时不用的话我会先休息哦，30秒后自动退出」（当前实现见 TtsTemplates.timeout）
 
 #### Scenario: 会话结束汇总
 - **WHEN** 用户退出语音会话，本次已保存 N 笔交易，合计 X 元

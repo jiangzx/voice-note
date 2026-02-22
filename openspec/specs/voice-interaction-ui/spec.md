@@ -61,7 +61,7 @@
 
 #### Scenario: 助手欢迎语
 - **WHEN** 用户进入语音记账页
-- **THEN** 系统 SHALL 在左侧展示助手气泡："我在听，请说..."
+- **THEN** 系统 SHALL 在左侧展示助手气泡，文案为监听态提示（当前实现为「我在听，你慢慢说～」，见 VoiceCopy.mainListening）
 
 #### Scenario: 用户语音文本
 - **WHEN** ASR 返回用户的识别文本"午饭花了35"
