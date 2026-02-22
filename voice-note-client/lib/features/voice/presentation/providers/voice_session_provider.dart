@@ -340,22 +340,30 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
 
     await _orchestrator?.stopTtsIfPlaying();
 
+    bool saved = false;
     try {
-      await _saveHelper?.saveOne(result);
-      HapticFeedback.heavyImpact();
-      final amountStr = result.amount != null
-          ? result.amount! == result.amount!.roundToDouble()
-                ? result.amount!.toInt().toString()
-                : result.amount!.toStringAsFixed(2)
-          : '--';
-      _addAssistantMessage(
-        VoiceCopy.successFeedback(
-          category: result.category,
-          typeLabel: _typeLabel(result.type),
-          amountStr: amountStr,
-        ),
-        type: ChatMessageType.success,
-      );
+      if (_saveHelper != null) {
+        await _saveHelper!.saveOne(result);
+        saved = true;
+      } else {
+        _addAssistantMessage('暂无法保存，请稍后重试', type: ChatMessageType.system);
+      }
+      if (saved) {
+        HapticFeedback.heavyImpact();
+        final amountStr = result.amount != null
+            ? result.amount! == result.amount!.roundToDouble()
+                  ? result.amount!.toInt().toString()
+                  : result.amount!.toStringAsFixed(2)
+            : '--';
+        _addAssistantMessage(
+          VoiceCopy.successFeedback(
+            category: result.category,
+            typeLabel: _typeLabel(result.type),
+            amountStr: amountStr,
+          ),
+          type: ChatMessageType.success,
+        );
+      }
     } catch (e) {
       HapticFeedback.vibrate();
       _addAssistantMessage('保存失败：$e', type: ChatMessageType.error);
@@ -368,7 +376,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       clearParseResult: true,
     );
     final inputMode = ref.read(voiceSettingsProvider).inputMode;
-    if (inputMode == VoiceInputMode.auto) {
+    if (inputMode == VoiceInputMode.auto && saved) {
       _orchestrator?.speakAndResumeTimer(TtsTemplates.saved());
     } else {
       _orchestrator?.resumeTimer();
@@ -593,16 +601,23 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
   }
 
   @override
-  void onBatchSaved(List<DraftTransaction> confirmedItems) {
-    if (!_sessionActive) return;
-    _saveBatch(confirmedItems);
-    // 显示成功提示
+  Future<bool> onBatchSaved(List<DraftTransaction> confirmedItems) async {
+    if (!_sessionActive) return false;
+    final result = await _saveBatch(confirmedItems);
+    if (result == null) return false;
+    if (result.hasErrors) {
+      _addAssistantMessage(
+        '批量保存部分失败：${result.errors.first}',
+        type: ChatMessageType.error,
+      );
+      return false;
+    }
     if (confirmedItems.length == 1) {
-      final result = confirmedItems.first.result;
+      final res = confirmedItems.first.result;
       HapticFeedback.heavyImpact();
       _addAssistantMessage(
-        '已记录 ¥${result.amount?.toStringAsFixed(2) ?? "--"}'
-        '${result.category != null ? " · ${result.category}" : ""}',
+        '已记录 ¥${res.amount?.toStringAsFixed(2) ?? "--"}'
+        '${res.category != null ? " · ${res.category}" : ""}',
         type: ChatMessageType.success,
       );
     } else if (confirmedItems.length > 1) {
@@ -612,16 +627,11 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         type: ChatMessageType.success,
       );
     }
+    return true;
   }
 
-  Future<void> _saveBatch(List<DraftTransaction> items) async {
-    final result = await _saveHelper?.saveBatch(items);
-    if (result != null && result.hasErrors) {
-      _addAssistantMessage(
-        '批量保存部分失败：${result.errors.first}',
-        type: ChatMessageType.error,
-      );
-    }
+  Future<BatchSaveResult?> _saveBatch(List<DraftTransaction> items) async {
+    return await _saveHelper?.saveBatch(items);
   }
 
   void onParseResultUpdated(ParseResult result) {
@@ -643,6 +653,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         type: ChatMessageType.success,
       );
     }
+    // clearParseResult also clears draftBatch so confirmation UI is dismissed (including after failed batch save).
     state = state.copyWith(
       voiceState: VoiceState.listening,
       clearParseResult: true,
