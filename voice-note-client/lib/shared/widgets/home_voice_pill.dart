@@ -1,17 +1,42 @@
-import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart' as handler;
 
-import '../../app/design_tokens.dart';
+import '../../app/theme.dart';
 import '../../core/permissions/permission_service.dart';
-import '../../features/transaction/presentation/screens/transaction_form_screen.dart';
 
-/// 合并悬浮胶囊：80% 宽、16dp 圆角、渐变、左 + / 中「按住语音记录」/ 右键盘图标；底部距导航栏 20dp 由父级定位。
-const _kPillHeight = 56.0;
-const _kPillRadius = 16.0;
-const _kInnerSpacing = 8.0;
-const _kMinTouchSize = 44.0;
+/// Enterprise-style floating pill: elevated surface, two actions (voice / manual add).
+const kHomePillHeight = 52.0;
+const _kPillHeight = 52.0;
+const _kPillRadius = 12.0;
+const _kPillMaxWidth = 280.0;
+
+/// Pill width for a given screen width; used by draggable overlay for clamp.
+double homePillWidthForScreen(double screenWidth) =>
+    (screenWidth * 0.72).clamp(200.0, _kPillMaxWidth);
+
+abstract final class _PillSpec {
+  /// White surface so pill stands out from list (backgroundSecondary/tertiary).
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color border = Color(0xFFD1D5DB);
+  static const Color labelPrimary = Color(0xFF1D2129);
+  static const Color iconPrimary = Color(0xFF374151);
+  /// Stronger shadow so pill reads as floating above content.
+  static const List<BoxShadow> shadows = [
+    BoxShadow(
+      color: Color(0x1A000000),
+      offset: Offset(0, 2),
+      blurRadius: 8,
+      spreadRadius: 0,
+    ),
+    BoxShadow(
+      color: Color(0x0D000000),
+      offset: Offset(0, 4),
+      blurRadius: 12,
+      spreadRadius: 0,
+    ),
+  ];
+}
 
 class HomeVoicePill extends StatefulWidget {
   const HomeVoicePill({super.key});
@@ -70,90 +95,99 @@ class _HomeVoicePillState extends State<HomeVoicePill> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    final pillWidth = width * 0.8;
+    final pillWidth = (width * 0.72).clamp(200.0, _kPillMaxWidth);
 
-    return Center(
+    return SizedBox(
+      width: pillWidth,
+      height: _kPillHeight,
       child: Container(
-        width: pillWidth,
-        height: _kPillHeight,
         decoration: BoxDecoration(
+          color: _PillSpec.surface,
           borderRadius: BorderRadius.circular(_kPillRadius),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1677FF), Color(0xFF4096FF)],
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x26000000),
-              offset: Offset(0, 2),
-              blurRadius: 8,
-            ),
-          ],
+          border: Border.all(color: _PillSpec.border, width: 1),
+          boxShadow: _PillSpec.shadows,
         ),
         child: Material(
           color: Colors.transparent,
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                Container(
+                  width: 3,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandPrimary,
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(_kPillRadius),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _ActionSegment(
+                          icon: Icons.mic_none_outlined,
+                          label: '语音记账',
+                          onTap: _openVoiceRecording,
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 24,
+                        color: _PillSpec.border,
+                      ),
+                      Expanded(
+                        child: _ActionSegment(
+                          icon: Icons.add_circle_outline,
+                          label: '手动添加',
+                          onTap: () => context.push('/record'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionSegment extends StatelessWidget {
+  const _ActionSegment({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(_kPillRadius - 2),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                width: _kMinTouchSize,
-                height: _kMinTouchSize,
-                child: Center(
-                  child: OpenContainer<void>(
-                    transitionDuration: AppDuration.pageTransition,
-                    openBuilder: (_, __) => const TransactionFormScreen(),
-                    closedElevation: 0,
-                    closedColor: Colors.transparent,
-                    closedBuilder: (_, openContainer) => IconButton(
-                      onPressed: openContainer,
-                      icon: const Icon(Icons.add, color: Colors.white, size: 24),
-                      style: IconButton.styleFrom(
-                        minimumSize: const Size(_kMinTouchSize, _kMinTouchSize),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: _kInnerSpacing),
-              Expanded(
-                child: InkWell(
-                  onTap: _openVoiceRecording,
-                  borderRadius: BorderRadius.circular(8),
-                  child: const Center(
-                    child: Text(
-                      '按住语音记录',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: _kInnerSpacing),
-              SizedBox(
-                width: _kMinTouchSize,
-                height: _kMinTouchSize,
-                child: Center(
-                  child: OpenContainer<void>(
-                    transitionDuration: AppDuration.pageTransition,
-                    openBuilder: (_, __) => const TransactionFormScreen(),
-                    closedElevation: 0,
-                    closedColor: Colors.transparent,
-                    closedBuilder: (_, openContainer) => IconButton(
-                      onPressed: openContainer,
-                      icon: const Icon(
-                        Icons.keyboard_alt_outlined,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                      style: IconButton.styleFrom(
-                        minimumSize: const Size(_kMinTouchSize, _kMinTouchSize),
-                      ),
-                    ),
-                  ),
+              Icon(icon, size: 20, color: _PillSpec.iconPrimary),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: _PillSpec.labelPrimary,
+                  letterSpacing: 0.2,
                 ),
               ),
             ],
@@ -162,5 +196,4 @@ class _HomeVoicePillState extends State<HomeVoicePill> {
       ),
     );
   }
-
 }

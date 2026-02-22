@@ -132,7 +132,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
                     if (pagedState.isLoading && pagedState.list.isEmpty)
                       SliverToBoxAdapter(
                         child: ShimmerPlaceholder.listPlaceholder(itemCount: 3),
@@ -246,8 +246,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (i < groups.length - 1) itemCount += 1; // 16dp spacer between groups
     }
     const horizontalPadding = 16.0;
-    const bottomPadding = 20.0;
-    const dividerColor = Color(0xFFF0F2F5);
+    const bottomPadding = 16.0;
+    const dividerColor = Color(0xFFE5E7EB);
     final dividerIndent = horizontalPadding + RecentTransactionTile.dividerIndentLeftCol;
     const dividerEndIndent = horizontalPadding;
 
@@ -273,7 +273,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     );
                   }
                   if (!isLastGroup && local == 1 + 2 * n - 1) {
-                    return const SizedBox(height: 16);
+                    return const SizedBox(height: 12);
                   }
                   final tileIndex = (local - 1) ~/ 2;
                   final isDivider = (local - 1) % 2 == 1;

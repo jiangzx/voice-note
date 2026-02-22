@@ -7,25 +7,26 @@ import '../../../../app/theme.dart';
 import '../../../../core/utils/icon_utils.dart';
 import '../../../transaction/domain/entities/transaction_entity.dart';
 
-/// 单条 item：左中右三栏，垂直 12dp；左栏仅 8dp 圆角分类图标，中栏备注+辅助，右栏金额。
-const _kItemPaddingV = 12.0;
-const _kLeftColWidth = 44.0;
-const _kGapLeftCenter = 12.0;
-const _kChipRadius = 8.0;
-const _kChipIconSize = 14.0;
-const _kNoteFontSize = 16.0;
+/// Enterprise-style: compact row, clear typography hierarchy, 4px grid.
+const _kItemPaddingV = 10.0;
+const _kLeftColWidth = 40.0;
+const _kGapLeftCenter = 10.0;
+const _kChipRadius = 6.0;
+const _kChipIconSize = 16.0;
+const _kChipPadding = 6.0;
+const _kNoteFontSize = 14.0;
 const _kNoteFontWeight = FontWeight.w500;
-const _kNoteColor = Color(0xFF333333);
-const _kAuxFontSize = 12.0;
+const _kNoteColor = Color(0xFF111827);
+const _kNoteLetterSpacing = 0.1;
+const _kAuxFontSize = 11.0;
 const _kAuxFontWeight = FontWeight.w400;
-const _kAuxColor = Color(0xFF999999);
+const _kAuxColor = Color(0xFF6B7280);
 const _kAuxNoteGap = 2.0;
-const _kAmountFontSize = 18.0;
+const _kAmountFontSize = 15.0;
 const _kAmountFontWeight = FontWeight.w600;
-const _kIncomeAmountColor = Color(0xFFFF9500);
-const _kExpenseAmountColor = Color(0xFF1677FF);
-const _kTransferChipBg = Color(0xFFF5F7FA);
-const _kTransferChipFg = Color(0xFF666666);
+const _kAmountLetterSpacing = -0.2;
+const _kTransferChipBg = Color(0xFFF3F4F6);
+const _kTransferChipFg = Color(0xFF6B7280);
 
 /// List tile for a recent transaction: 3-col layout, category chip (icon+name), note+aux, amount.
 class RecentTransactionTile extends StatelessWidget {
@@ -61,6 +62,7 @@ class RecentTransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final txColors = Theme.of(context).extension<TransactionColors>()!;
     final displayName = transaction.description ?? categoryName ?? '未分类';
     final subtitleText = categoryName ??
         (transaction.type == TransactionType.transfer ? '转账' : '未分类');
@@ -69,15 +71,15 @@ class RecentTransactionTile extends StatelessWidget {
     String amountPrefix;
     switch (transaction.type) {
       case TransactionType.expense:
-        amountColor = _kExpenseAmountColor;
+        amountColor = txColors.expense;
         amountPrefix = '-';
       case TransactionType.income:
-        amountColor = _kIncomeAmountColor;
+        amountColor = txColors.income;
         amountPrefix = '+';
       case TransactionType.transfer:
         amountColor = transaction.transferDirection == TransferDirection.outbound
-            ? _kExpenseAmountColor
-            : _kIncomeAmountColor;
+            ? txColors.expense
+            : txColors.income;
         amountPrefix = transaction.transferDirection == TransferDirection.outbound
             ? '-'
             : '+';
@@ -131,7 +133,7 @@ class RecentTransactionTile extends StatelessWidget {
         width: _kLeftColWidth,
         child: Center(
           child: Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(_kChipPadding),
             decoration: BoxDecoration(
               color: chipBg,
               borderRadius: BorderRadius.circular(_kChipRadius),
@@ -156,6 +158,7 @@ class RecentTransactionTile extends StatelessWidget {
               fontSize: _kNoteFontSize,
               fontWeight: _kNoteFontWeight,
               color: _kNoteColor,
+              letterSpacing: _kNoteLetterSpacing,
             ),
           ),
           const SizedBox(height: _kAuxNoteGap),
@@ -177,6 +180,7 @@ class RecentTransactionTile extends StatelessWidget {
         fontSize: _kAmountFontSize,
         fontWeight: _kAmountFontWeight,
         color: amountColor,
+        letterSpacing: _kAmountLetterSpacing,
       ),
     );
 
@@ -223,18 +227,36 @@ class RecentTransactionTile extends StatelessWidget {
       groupTag: 'recent-transactions',
       endActionPane: ActionPane(
         motion: const DrawerMotion(),
-        extentRatio: 0.25,
+        extentRatio: 0.2,
         children: [
-          SlidableAction(
-            onPressed: (_) {
-              HapticFeedback.mediumImpact();
-              onDelete?.call();
-            },
-            backgroundColor: AppColors.expense,
-            foregroundColor: Colors.white,
-            icon: Icons.delete,
-            label: '删除',
-            borderRadius: BorderRadius.zero,
+          Flexible(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Material(
+                  color: AppColors.expense,
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      onDelete?.call();
+                    },
+                    child: const SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Icon(
+                        Icons.delete_outline,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

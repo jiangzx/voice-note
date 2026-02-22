@@ -4,17 +4,17 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/extensions/date_extensions.dart';
 
-// 与参考图一致：两行（日期+箭头 / 支出|收入），右侧装饰图标；可点击进入当日明细。
-const _kPaddingV = 12.0;
-const _kDateFontSize = 16.0;
-const _kDateColor = Color(0xFF333333);
-const _kDateFontWeight = FontWeight.w600;
-const _kAmountFontSize = 13.0;
-const _kAmountColor = Color(0xFF666666);
-const _kArrowColor = Color(0xFF999999);
-const _kReceiptBg = Color(0xFFFFF8E1);
-const _kReceiptRed = Color(0xFFE53935);
-const _kSparkleColor = Color(0xFFFF7043);
+// Enterprise-style: compact date header, neutral palette, clear hierarchy.
+const _kPaddingV = 8.0;
+const _kDateFontSize = 13.0;
+const _kDateColor = Color(0xFF374151);
+const _kDateFontWeight = FontWeight.w500;
+const _kDateLetterSpacing = 0.2;
+const _kAmountFontSize = 11.0;
+const _kAmountColor = Color(0xFF6B7280);
+const _kArrowColor = Color(0xFF9CA3AF);
+const _kReceiptBg = Color(0xFFF3F4F6);
+const _kReceiptFg = Color(0xFF6B7280);
 
 const _weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -68,9 +68,9 @@ class DailyGroupHeader extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _onTap(context),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(vertical: 2),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -88,19 +88,20 @@ class DailyGroupHeader extends StatelessWidget {
                               fontSize: _kDateFontSize,
                               fontWeight: _kDateFontWeight,
                               color: _kDateColor,
+                              letterSpacing: _kDateLetterSpacing,
                             ),
                           ),
                           const SizedBox(width: 4),
                           Icon(
                             Icons.chevron_right,
-                            size: 20,
+                            size: 18,
                             color: _kArrowColor,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
-                        '支出$expenseStr | 收入$incomeStr',
+                        '支出$expenseStr · 收入$incomeStr',
                         style: const TextStyle(
                           fontSize: _kAmountFontSize,
                           fontWeight: FontWeight.w400,
@@ -121,65 +122,18 @@ class DailyGroupHeader extends StatelessWidget {
   }
 }
 
-/// 右侧装饰：浅黄圆角底 + 红色收据¥图标 + 红橙星爆。
+/// Right decoration: subtle chip with receipt icon (enterprise-style).
 class _DailyReceiptDecoration extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 48,
-      height: 48,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            right: 0,
-            top: 0,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: _kReceiptBg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: _kReceiptRed,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '¥',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            top: 2,
-            child: Icon(Icons.auto_awesome, size: 12, color: _kSparkleColor),
-          ),
-          Positioned(
-            left: 6,
-            top: 0,
-            child: Icon(Icons.auto_awesome, size: 8, color: _kSparkleColor),
-          ),
-          Positioned(
-            right: 4,
-            bottom: 8,
-            child: Icon(Icons.auto_awesome, size: 10, color: _kSparkleColor),
-          ),
-        ],
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: _kReceiptBg,
+        borderRadius: BorderRadius.circular(8),
       ),
+      child: Icon(Icons.receipt_long_outlined, size: 18, color: _kReceiptFg),
     );
   }
 }

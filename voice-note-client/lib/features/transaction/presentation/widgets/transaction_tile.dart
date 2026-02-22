@@ -121,18 +121,36 @@ class TransactionTile extends StatelessWidget {
       groupTag: 'transaction-list',
       endActionPane: ActionPane(
         motion: const DrawerMotion(),
-        extentRatio: 0.25,
+        extentRatio: 0.2,
         children: [
-          SlidableAction(
-            onPressed: (_) {
-              HapticFeedback.mediumImpact();
-              onDelete();
-            },
-            backgroundColor: AppColors.expense,
-            foregroundColor: Colors.white,
-            icon: Icons.delete,
-            label: '删除',
-            borderRadius: BorderRadius.zero,
+          Flexible(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Material(
+                  color: AppColors.expense,
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      onDelete();
+                    },
+                    child: const SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Icon(
+                        Icons.delete_outline,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

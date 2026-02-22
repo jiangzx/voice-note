@@ -14,6 +14,102 @@ import 'home_voice_pill.dart';
 /// FAB group size: width 56, height 56+8+56=120.
 const Size kFabGroupSize = Size(56, 120);
 
+/// Bottom offset for home pill (dp from safe bottom).
+const double kHomePillBottomDp = 20.0;
+
+/// Draggable overlay for home pill: free position, clamp in bounds, persist on drag end.
+class _DraggablePillOverlay extends StatefulWidget {
+  const _DraggablePillOverlay({
+    required this.initialOffset,
+    required this.pillBottomWithSafe,
+    required this.onDragEnd,
+  });
+
+  final Offset? initialOffset;
+  final double pillBottomWithSafe;
+  final void Function(Offset) onDragEnd;
+
+  @override
+  State<_DraggablePillOverlay> createState() => _DraggablePillOverlayState();
+}
+
+class _DraggablePillOverlayState extends State<_DraggablePillOverlay> {
+  Offset? _offset;
+
+  @override
+  void initState() {
+    super.initState();
+    _offset = widget.initialOffset;
+  }
+
+  @override
+  void didUpdateWidget(_DraggablePillOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialOffset != widget.initialOffset) {
+      _offset = widget.initialOffset;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final pillWidth = homePillWidthForScreen(w);
+        final pillHeight = kHomePillHeight;
+        const minX = 0.0;
+        final maxX = (w - pillWidth).clamp(0.0, double.infinity);
+        const minY = 0.0;
+        final maxY = (h - pillHeight).clamp(0.0, double.infinity);
+        final defaultOffset = Offset(
+          (w - pillWidth) / 2,
+          h - widget.pillBottomWithSafe - pillHeight,
+        );
+        final raw = _offset ?? defaultOffset;
+        final clamped = Offset(
+          raw.dx.clamp(minX, maxX),
+          raw.dy.clamp(minY, maxY),
+        );
+        void onOffsetChanged(Offset value) {
+          setState(() => _offset = Offset(
+                value.dx.clamp(minX, maxX),
+                value.dy.clamp(minY, maxY),
+              ));
+        }
+        void onSnapEnd(Offset value) {
+          final c = Offset(
+            value.dx.clamp(minX, maxX),
+            value.dy.clamp(minY, maxY),
+          );
+          widget.onDragEnd(c);
+        }
+        return SizedBox(
+          width: w,
+          height: h,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: clamped.dx,
+                top: clamped.dy,
+                child: DraggableFabGroup(
+                  offset: clamped,
+                  onOffsetChanged: onOffsetChanged,
+                  snapLeftX: null,
+                  snapRightX: null,
+                  onSnapEnd: onSnapEnd,
+                  child: const HomeVoicePill(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Holds FAB offset in local state so drag/snap only rebuild this subtree, not [child].
 class _DraggableFabOverlay extends StatefulWidget {
   const _DraggableFabOverlay({
@@ -182,21 +278,24 @@ class _AppShellState extends ConsumerState<AppShell> {
         !(_isHomeOrStatistics && hideOnHomeAndStats);
     final useDraggableFab = showFab && _isHomeOrStatistics;
 
-    // Home: 悬浮胶囊距底部 20dp（底部导航已移除）。
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    const pillBottom = 20.0 + 0.0; // 20dp + no nav
-    final pillBottomWithSafe = bottomPadding + pillBottom;
+    final pillBottomWithSafe = bottomPadding + kHomePillBottomDp;
+    final savedPillOffset = useDraggableFab
+        ? ref.watch(homePillOffsetProvider)
+        : null;
 
     final body = useDraggableFab
         ? Stack(
             clipBehavior: Clip.none,
             children: [
               widget.child,
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: pillBottomWithSafe,
-                child: const HomeVoicePill(),
+              Positioned.fill(
+                child: _DraggablePillOverlay(
+                  initialOffset: savedPillOffset,
+                  pillBottomWithSafe: pillBottomWithSafe,
+                  onDragEnd: (offset) =>
+                      ref.read(homePillOffsetProvider.notifier).setOffset(offset),
+                ),
               ),
             ],
           )
