@@ -41,7 +41,7 @@ final themeColorProvider = NotifierProvider<ThemeColorNotifier, Color>(
 
 class ThemeColorNotifier extends Notifier<Color> {
   @override
-  Color build() => AppThemeColors.teal;
+  Color build() => AppThemeColors.brand;
 
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();

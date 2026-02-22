@@ -36,7 +36,7 @@ class SettingsScreen extends ConsumerWidget {
           // Dark mode toggle
           ListTile(
             leading: const Icon(Icons.brightness_6),
-            title: const Text('深色模式'),
+            title: const Text('主题'),
             subtitle: Text(_themeModeLabel(currentMode)),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showThemeModeDialog(context, ref, currentMode),
@@ -279,7 +279,7 @@ class SettingsScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('选择深色模式'),
+        title: const Text('选择主题'),
         children: ThemeMode.values.map((mode) {
           final isSelected = mode == current;
           return ListTile(

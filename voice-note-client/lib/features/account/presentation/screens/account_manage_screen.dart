@@ -95,6 +95,14 @@ class AccountManageScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
                 initialValue: selectedType,
+                style: (Theme.of(ctx).textTheme.titleMedium ??
+                        const TextStyle(fontSize: 16))
+                    .copyWith(
+                        fontSize:
+                            Theme.of(ctx).textTheme.titleMedium?.fontSize ??
+                                16,
+                        height:
+                            Theme.of(ctx).textTheme.titleMedium?.height ?? 1.0),
                 decoration: const InputDecoration(
                   labelText: '账户类型',
                   border: OutlineInputBorder(),

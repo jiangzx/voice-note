@@ -36,10 +36,10 @@ void main() {
   });
 
   group('ThemeColorNotifier', () {
-    test('defaults to teal', () {
+    test('defaults to brand (亮蓝)', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
-      expect(container.read(themeColorProvider), AppThemeColors.teal);
+      expect(container.read(themeColorProvider), AppThemeColors.brand);
     });
 
     test('initialize reads from SharedPreferences', () async {

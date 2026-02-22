@@ -3,7 +3,7 @@
 ## 主题与模式
 
 - **亮色主题**：`lib/app/theme.dart` 中 `buildLightTheme()` 实现规范中的全量颜色、圆角、组件主题；`app.dart` 使用 `theme: buildLightTheme()`。
-- **深色模式**：仍通过设置页的「深色模式」切换；`darkTheme` 使用原有 `buildTheme(seedColor, Brightness.dark)`，未按亮白规范重做。
+- **主题**：仍通过设置页的「主题」切换；`darkTheme` 使用原有 `buildTheme(seedColor, Brightness.dark)`，未按亮白规范重做。
 - **主题色**：设置页「主题色」仍可切换 seed，仅影响深色主题；亮色主题固定使用规范色（#1677FF 等）。
 
 ## 设计令牌与组件
