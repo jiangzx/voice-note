@@ -90,7 +90,7 @@ void main() {
       expect(results.length, 2);
     });
 
-    test('sorts by date DESC then createdAt DESC', () async {
+    test('sorts by createdAt DESC then date DESC (newest first)', () async {
       await insertTx(
         id: 'old',
         type: 'expense',
@@ -107,7 +107,7 @@ void main() {
       );
 
       final results = await repo.getFiltered(const TransactionFilter());
-      expect(results.first.id, 'new');
+      expect(results.first.id, 'new'); // last inserted = newest createdAt
     });
 
     test('filters by date range', () async {

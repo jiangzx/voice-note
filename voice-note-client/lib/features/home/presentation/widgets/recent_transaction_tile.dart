@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
@@ -38,7 +37,9 @@ class RecentTransactionTile extends StatelessWidget {
     final txColors = theme.extension<TransactionColors>()!;
 
     final displayName = transaction.description ?? categoryName ?? '未分类';
-    final dateText = DateFormat('M/d').format(transaction.date);
+    // 首页已按日期分组，副标题显示分类更实用
+    final subtitleText = categoryName ??
+        (transaction.type == TransactionType.transfer ? '转账' : '未分类');
 
     Color amountColor;
     String amountPrefix;
@@ -85,8 +86,10 @@ class RecentTransactionTile extends StatelessWidget {
         style: theme.textTheme.bodyLarge?.copyWith(color: AppColors.textPrimary),
       ),
       subtitle: Text(
-        dateText,
-        style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+        subtitleText,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
       ),
       trailing: Text(
         '$amountPrefix¥${transaction.amount.toStringAsFixed(2)}',

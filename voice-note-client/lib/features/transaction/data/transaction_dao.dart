@@ -11,15 +11,15 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
 
   Future<List<Transaction>> getAll() =>
       (select(transactions)..orderBy([
-            (t) => OrderingTerm.desc(t.date),
             (t) => OrderingTerm.desc(t.createdAt),
+            (t) => OrderingTerm.desc(t.date),
           ]))
           .get();
 
   Stream<List<Transaction>> watchAll() =>
       (select(transactions)..orderBy([
-            (t) => OrderingTerm.desc(t.date),
             (t) => OrderingTerm.desc(t.createdAt),
+            (t) => OrderingTerm.desc(t.date),
           ]))
           .watch();
 
@@ -70,8 +70,8 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   }) {
     final query = select(transactions)
       ..orderBy([
-        (t) => OrderingTerm.desc(t.date),
         (t) => OrderingTerm.desc(t.createdAt),
+        (t) => OrderingTerm.desc(t.date),
       ]);
 
     query.where((t) {
