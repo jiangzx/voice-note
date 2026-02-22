@@ -13,8 +13,11 @@ import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../../budget/presentation/providers/budget_providers.dart';
 import '../../../category/presentation/providers/category_providers.dart';
 import '../../../transaction/domain/entities/transaction_entity.dart';
+import '../../../transaction/presentation/providers/recent_transactions_paged_provider.dart';
 import '../../../transaction/presentation/providers/transaction_form_providers.dart';
 import '../../../transaction/presentation/providers/transaction_query_providers.dart';
+import '../../../transaction/presentation/utils/group_transactions_by_day.dart';
+import '../../../transaction/presentation/widgets/daily_group_header.dart';
 import '../widgets/recent_transaction_tile.dart';
 import '../widgets/summary_card.dart';
 import '../widgets/voice_feature_card.dart';
@@ -31,6 +34,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _swipeDeleteHintShown = false;
   static const _keySwipeDeleteHintDismissed = 'home_swipe_delete_hint_dismissed';
+  bool _didRequestInitialLoad = false;
+  static const double _loadMoreScrollThreshold = 200;
+
+  final ScrollController _scrollController = ScrollController();
 
   // Selection mode state
   bool _isSelectionMode = false;
@@ -40,6 +47,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _checkAndShowSwipeDeleteHint();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final position = _scrollController.position;
+    if (!position.isScrollingNotifier.value) return;
+    if (position.pixels < position.maxScrollExtent - _loadMoreScrollThreshold) return;
+    final paged = ref.read(recentTransactionsPagedProvider);
+    if (paged.hasMore && !paged.isLoadingMore) {
+      ref.read(recentTransactionsPagedProvider.notifier).loadMore();
+    }
   }
 
   Future<void> _checkAndShowSwipeDeleteHint() async {
@@ -58,7 +83,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final summaryAsync = ref.watch(
       summaryProvider(monthRange.from, monthRange.to),
     );
-    final recentAsync = ref.watch(recentTransactionsProvider);
+    final pagedState = ref.watch(recentTransactionsPagedProvider);
+    final incomeCategoriesAsync = ref.watch(visibleCategoriesProvider('income'));
+    final expenseCategoriesAsync = ref.watch(visibleCategoriesProvider('expense'));
+    final categoryNameMap = <String, String>{};
+    incomeCategoriesAsync.whenData((cats) {
+      for (final cat in cats) {
+        categoryNameMap[cat.id] = cat.name;
+      }
+    });
+    expenseCategoriesAsync.whenData((cats) {
+      for (final cat in cats) {
+        categoryNameMap[cat.id] = cat.name;
+      }
+    });
+
+    if (!_didRequestInitialLoad &&
+        pagedState.list.isEmpty &&
+        !pagedState.isLoading &&
+        pagedState.error == null) {
+      _didRequestInitialLoad = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(recentTransactionsPagedProvider.notifier).refresh();
+      });
+    }
 
     return PopScope(
       canPop: false,
@@ -75,145 +124,248 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         body: Stack(
           children: [
             SlidableAutoCloseBehavior(
-              child: ListView(
-                children: [
-            // Voice feature promotion card
-            const VoiceFeatureCard(),
-
-            // Monthly summary card
-            summaryAsync.when(
-              data: (summary) => SummaryCard(
-                totalIncome: summary.totalIncome,
-                totalExpense: summary.totalExpense,
-              ),
-              loading: () => ShimmerPlaceholder.card(height: 100),
-              error: (e, st) => ErrorStateWidget(
-                message: '汇总加载失败: $e',
-                onRetry: () => ref.invalidate(
-                  summaryProvider(monthRange.from, monthRange.to),
-                ),
-              ),
-            ),
-
-            // Budget progress summary card
-            _BudgetSummaryCard(),
-
-            // Recent transactions header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Text(
-                '最近交易',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            if (_swipeDeleteHintShown && !_isSelectionMode)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundTertiary.withValues(alpha: 0.8),
-                  borderRadius: AppRadius.smAll,
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.swipe_left,
-                      size: AppIconSize.sm,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        '左滑可删除',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColors.textSecondary,
+              child: RefreshIndicator(
+                onRefresh: () =>
+                    ref.read(recentTransactionsPagedProvider.notifier).refresh(),
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  slivers: [
+                    const SliverToBoxAdapter(child: VoiceFeatureCard()),
+                    SliverToBoxAdapter(
+                      child: summaryAsync.when(
+                        data: (summary) => SummaryCard(
+                          totalIncome: summary.totalIncome,
+                          totalExpense: summary.totalExpense,
+                        ),
+                        loading: () => ShimmerPlaceholder.card(height: 100),
+                        error: (e, st) => ErrorStateWidget(
+                          message: '汇总加载失败: $e',
+                          onRetry: () => ref.invalidate(
+                            summaryProvider(monthRange.from, monthRange.to),
+                          ),
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: AppIconSize.sm),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () {
-                        setState(() {
-                          _swipeDeleteHintShown = false;
-                        });
-                        SharedPreferences.getInstance().then((prefs) {
-                          prefs.setBool(_keySwipeDeleteHintDismissed, true);
-                        });
-                      },
-                      tooltip: '关闭',
+                    SliverToBoxAdapter(child: _BudgetSummaryCard()),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                        child: Text(
+                          '最近交易',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
                     ),
+                    if (_swipeDeleteHintShown && !_isSelectionMode)
+                      SliverToBoxAdapter(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: AppSpacing.xs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.backgroundTertiary.withValues(alpha: 0.8),
+                                borderRadius: AppRadius.smAll,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.swipe_left,
+                                    size: AppIconSize.sm,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: Text(
+                                      '左滑可删除',
+                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.close, size: AppIconSize.sm),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () {
+                                      setState(() {
+                                        _swipeDeleteHintShown = false;
+                                      });
+                                      SharedPreferences.getInstance().then((prefs) {
+                                        prefs.setBool(_keySwipeDeleteHintDismissed, true);
+                                      });
+                                    },
+                                    tooltip: '关闭',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                          ],
+                        ),
+                      ),
+                    if (pagedState.isLoading && pagedState.list.isEmpty)
+                      SliverToBoxAdapter(
+                        child: ShimmerPlaceholder.listPlaceholder(itemCount: 3),
+                      )
+                    else if (pagedState.error != null && pagedState.list.isEmpty)
+                      SliverToBoxAdapter(
+                        child: ErrorStateWidget(
+                          message: '加载失败: ${pagedState.error}',
+                          onRetry: () =>
+                              ref.read(recentTransactionsPagedProvider.notifier).refresh(),
+                        ),
+                      )
+                    else if (pagedState.list.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: EmptyStateWidget(
+                          icon: Icons.receipt_long_outlined,
+                          title: '暂无交易记录',
+                          description: '点击右下角 + 开始记账',
+                        ),
+                      )
+                    else
+                      ..._buildRecentTransactionsSlivers(
+                        pagedState,
+                        categoryNameMap,
+                      ),
+                    if (pagedState.hasMore && pagedState.isLoadingMore)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      ),
+                    if (pagedState.hasMore &&
+                        !pagedState.isLoadingMore &&
+                        pagedState.error != null &&
+                        pagedState.list.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.lg,
+                            vertical: AppSpacing.sm,
+                          ),
+                          child: Material(
+                            color: AppColors.backgroundTertiary,
+                            borderRadius: AppRadius.smAll,
+                            child: InkWell(
+                              onTap: () =>
+                                  ref.read(recentTransactionsPagedProvider.notifier).loadMore(),
+                              borderRadius: AppRadius.smAll,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.md,
+                                  vertical: AppSpacing.sm,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      size: AppIconSize.sm,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Text(
+                                      '加载更多失败，点击重试',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppColors.textSecondary,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-              ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // Recent transactions list
-            recentAsync.when(
-              data: (transactions) {
-                if (transactions.isEmpty) {
-                  return const EmptyStateWidget(
-                    icon: Icons.receipt_long_outlined,
-                    title: '暂无交易记录',
-                    description: '点击右下角 + 开始记账',
-                  );
-                }
-
-                return AnimatedSwitcher(
-                  duration: AppDuration.normal,
-                  child: Column(
-                    key: ValueKey(transactions.length),
-                    children: transactions.map((tx) {
-                      return _TxTileWithCategory(
-                        key: ValueKey(tx.id),
-                        transaction: tx,
-                        isSelectionMode: _isSelectionMode,
-                        isSelected: _selectedIds.contains(tx.id),
-                        onTap: () => context.push('/record/${tx.id}'),
-                        onSelectionChanged: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _selectedIds.add(tx.id);
-                            } else {
-                              _selectedIds.remove(tx.id);
-                            }
-                          });
-                        },
-                        onLongPress: () {
-                          if (!_isSelectionMode) {
-                            setState(() {
-                              _isSelectionMode = true;
-                              _selectedIds.add(tx.id);
-                            });
-                          }
-                        },
-                      );
-                    }).toList(),
-                  ),
-                );
-              },
-              loading: () => ShimmerPlaceholder.listPlaceholder(itemCount: 3),
-              error: (e, st) => ErrorStateWidget(
-                message: '加载失败: $e',
-                onRetry: () => ref.invalidate(recentTransactionsProvider),
-              ),
-            ),
-                ],
               ),
             ),
             const VoiceOnboardingTooltip(),
           ],
         ),
-        bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar(recentAsync) : null,
+        bottomNavigationBar:
+            _isSelectionMode ? _buildSelectionBottomBar(pagedState) : null,
       ),
     );
+  }
+
+  List<Widget> _buildRecentTransactionsSlivers(
+    RecentTransactionsPagedState pagedState,
+    Map<String, String> categoryNameMap,
+  ) {
+    final groups = groupTransactionsByDay(pagedState.list);
+    var itemCount = 0;
+    for (final g in groups) {
+      itemCount += 1 + g.transactions.length;
+    }
+    return [
+      SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            var offset = 0;
+            for (final group in groups) {
+              if (index == offset) {
+                return DailyGroupHeader(
+                  date: group.date,
+                  dailyIncome: group.dailyIncome,
+                  dailyExpense: group.dailyExpense,
+                );
+              }
+              offset++;
+              if (index < offset + group.transactions.length) {
+                final tx = group.transactions[index - offset] as TransactionEntity;
+                final categoryName = tx.categoryId != null
+                    ? categoryNameMap[tx.categoryId]
+                    : null;
+                return _TxTileWithCategory(
+                  key: ValueKey(tx.id),
+                  transaction: tx,
+                  isSelectionMode: _isSelectionMode,
+                  isSelected: _selectedIds.contains(tx.id),
+                  onTap: () => context.push('/record/${tx.id}'),
+                  onSelectionChanged: (selected) {
+                    setState(() {
+                      if (selected) {
+                        _selectedIds.add(tx.id);
+                      } else {
+                        _selectedIds.remove(tx.id);
+                      }
+                    });
+                  },
+                  onLongPress: () {
+                    if (!_isSelectionMode) {
+                      setState(() {
+                        _isSelectionMode = true;
+                        _selectedIds.add(tx.id);
+                      });
+                    }
+                  },
+                  categoryName: categoryName,
+                );
+              }
+              offset += group.transactions.length;
+            }
+            return const SizedBox.shrink();
+          },
+          childCount: itemCount,
+        ),
+      ),
+    ];
   }
 
   PreferredSizeWidget _buildSelectionAppBar() {
@@ -238,15 +390,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget? _buildSelectionBottomBar(AsyncValue<List<TransactionEntity>> recentAsync) {
+  Widget? _buildSelectionBottomBar(RecentTransactionsPagedState pagedState) {
     final count = _selectedIds.length;
-    
-    // 计算总数量以判断是否全选
-    final int totalCount = recentAsync.maybeWhen(
-      data: (transactions) => transactions.length,
-      orElse: () => 0,
-    );
-    
+    final int totalCount = pagedState.list.length;
     final allSelected = totalCount > 0 && count == totalCount;
     final theme = Theme.of(context);
     
@@ -319,18 +465,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _toggleSelectAll() {
-    final recentAsync = ref.read(recentTransactionsProvider);
-    
-    recentAsync.whenData((transactions) {
-      final allIds = transactions.map((tx) => tx.id).toSet();
-      
-      setState(() {
-        if (_selectedIds.length == allIds.length) {
-          _selectedIds.clear();
-        } else {
-          _selectedIds.addAll(allIds);
-        }
-      });
+    final list = ref.read(recentTransactionsPagedProvider).list;
+    final allIds = list.map((tx) => tx.id).toSet();
+    setState(() {
+      if (_selectedIds.length == allIds.length) {
+        _selectedIds.clear();
+      } else {
+        _selectedIds.addAll(allIds);
+      }
     });
   }
 
@@ -502,6 +644,7 @@ class _TxTileWithCategory extends ConsumerWidget {
   const _TxTileWithCategory({
     super.key,
     required this.transaction,
+    this.categoryName,
     this.isSelectionMode = false,
     this.isSelected = false,
     this.onTap,
@@ -510,6 +653,7 @@ class _TxTileWithCategory extends ConsumerWidget {
   });
 
   final TransactionEntity transaction;
+  final String? categoryName;
   final bool isSelectionMode;
   final bool isSelected;
   final VoidCallback? onTap;
@@ -518,8 +662,8 @@ class _TxTileWithCategory extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    String? catName;
-    if (transaction.categoryId != null) {
+    String? catName = categoryName;
+    if (catName == null && transaction.categoryId != null) {
       final type = transaction.type == TransactionType.income
           ? 'income'
           : 'expense';

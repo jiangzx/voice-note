@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../domain/entities/transaction_entity.dart';
 import '../../domain/entities/transaction_filter.dart';
+import 'recent_transactions_paged_provider.dart';
 import 'transaction_form_providers.dart';
 
 part 'transaction_query_providers.g.dart';
@@ -12,6 +13,7 @@ void invalidateTransactionQueries(dynamic ref) {
   ref.invalidate(summaryProvider);
   ref.invalidate(dailyGroupedProvider);
   ref.invalidate(transactionListProvider);
+  ref.read(recentTransactionsPagedProvider.notifier).refresh();
 }
 
 @riverpod

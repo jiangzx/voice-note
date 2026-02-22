@@ -148,6 +148,16 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit))
           .get();
 
+  /// Get a page of recent transactions (date desc, then createdAt desc).
+  Future<List<Transaction>> getRecentPage(int limit, int offset) =>
+      (select(transactions)
+            ..orderBy([
+              (t) => OrderingTerm.desc(t.date),
+              (t) => OrderingTerm.desc(t.createdAt),
+            ])
+            ..limit(limit, offset: offset))
+          .get();
+
   /// Get recently used category IDs (distinct, up to [limit]).
   Future<List<String>> getRecentCategoryIds(int limit) async {
     final query = selectOnly(transactions, distinct: true)

@@ -220,6 +220,9 @@ class _FailingTransactionRepository implements TransactionRepository {
       const TransactionSummary(totalIncome: 0, totalExpense: 0);
   @override
   Future<List<TransactionEntity>> getRecent(int limit) async => [];
+  @override
+  Future<List<TransactionEntity>> getRecentPage(int limit, int offset) async =>
+      [];
 }
 
 class _EmptyCategoryRepository implements CategoryRepository {

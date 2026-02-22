@@ -106,6 +106,12 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  Future<List<TransactionEntity>> getRecentPage(int limit, int offset) async {
+    final rows = await _dao.getRecentPage(limit, offset);
+    return rows.map(_toEntity).toList();
+  }
+
+  @override
   Future<List<DailyTransactionGroup>> getDailyGrouped(
     DateTime dateFrom,
     DateTime dateTo,

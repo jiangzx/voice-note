@@ -194,6 +194,9 @@ class _FailingSaveTransactionRepository implements TransactionRepository {
   @override
   Future<List<TransactionEntity>> getRecent(int limit) async => [];
   @override
+  Future<List<TransactionEntity>> getRecentPage(int limit, int offset) async =>
+      [];
+  @override
   Future<List<DailyTransactionGroup>> getDailyGrouped(
     DateTime f,
     DateTime t,

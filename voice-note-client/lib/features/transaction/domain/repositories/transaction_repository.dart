@@ -24,6 +24,7 @@ abstract class TransactionRepository {
   });
   Future<TransactionSummary> getSummary(DateTime dateFrom, DateTime dateTo);
   Future<List<TransactionEntity>> getRecent(int limit);
+  Future<List<TransactionEntity>> getRecentPage(int limit, int offset);
   Future<List<DailyTransactionGroup>> getDailyGrouped(
     DateTime dateFrom,
     DateTime dateTo,
