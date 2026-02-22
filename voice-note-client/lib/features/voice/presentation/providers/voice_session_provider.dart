@@ -266,7 +266,9 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       try {
         await _orchestrator?.startListening(
           newMode,
-          vadSilenceDurationMs: ref.read(voiceSettingsProvider).vadSilenceDurationMs,
+          vadSilenceDurationMs: ref
+              .read(voiceSettingsProvider)
+              .vadSilenceDurationMs,
         );
         state = state.copyWith(voiceState: VoiceState.listening);
         if (_sessionActive) {
@@ -288,7 +290,9 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         await _orchestrator?.switchInputMode(
           newMode,
           previousMode: oldMode,
-          vadSilenceDurationMs: ref.read(voiceSettingsProvider).vadSilenceDurationMs,
+          vadSilenceDurationMs: ref
+              .read(voiceSettingsProvider)
+              .vadSilenceDurationMs,
         );
         if (_sessionActive) {
           _addAssistantMessage(
@@ -732,7 +736,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     HapticFeedback.vibrate();
     final isNoVoice = message.contains('未检测到语音');
     _addAssistantMessage(
-      isNoVoice ? VoiceCopy.feedbackNoBill : '出了点问题：$message',
+      isNoVoice ? VoiceCopy.feedbackNoBill : message,
       type: isNoVoice ? ChatMessageType.normal : ChatMessageType.error,
     );
   }

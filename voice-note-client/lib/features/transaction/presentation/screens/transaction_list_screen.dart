@@ -10,6 +10,7 @@ import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../export/presentation/widgets/export_options_sheet.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
+import '../../../../core/utils/icon_utils.dart';
 import '../../domain/entities/transaction_entity.dart';
 import '../../domain/entities/transaction_filter.dart';
 import '../../../category/presentation/providers/category_providers.dart';
@@ -149,16 +150,19 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     final incomeCategoriesAsync = ref.watch(visibleCategoriesProvider('income'));
     final expenseCategoriesAsync = ref.watch(visibleCategoriesProvider('expense'));
     
-    // Build category name map for efficient lookup
+    // Build category name and icon maps for efficient lookup (与首页一致，图标参考明细页)
     final categoryNameMap = <String, String>{};
+    final categoryIconMap = <String, String>{};
     incomeCategoriesAsync.whenData((cats) {
       for (final cat in cats) {
         categoryNameMap[cat.id] = cat.name;
+        categoryIconMap[cat.id] = cat.icon;
       }
     });
     expenseCategoriesAsync.whenData((cats) {
       for (final cat in cats) {
         categoryNameMap[cat.id] = cat.name;
+        categoryIconMap[cat.id] = cat.icon;
       }
     });
 
@@ -199,7 +203,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                 onAdvancedFilter: () => _showAdvancedFilter(context),
               ),
               const Divider(height: 1),
-              Expanded(child: _buildList(groupsAsync, categoryNameMap)),
+              Expanded(child: _buildList(groupsAsync, categoryNameMap, categoryIconMap)),
             ],
           ),
         ],
@@ -380,6 +384,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   Widget _buildList(
     AsyncValue<List<DailyTransactionGroup>> groupsAsync,
     Map<String, String> categoryNameMap,
+    Map<String, String> categoryIconMap,
   ) {
     return groupsAsync.when(
       data: (groups) {
@@ -399,7 +404,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
               key: ValueKey(filtered.hashCode),
               itemCount: _countItems(filtered),
               itemBuilder: (context, index) =>
-                  _buildItem(context, filtered, index, categoryNameMap),
+                  _buildItem(context, filtered, index, categoryNameMap, categoryIconMap),
             ),
           ),
         );
@@ -471,6 +476,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     List<DailyTransactionGroup> groups,
     int index,
     Map<String, String> categoryNameMap,
+    Map<String, String> categoryIconMap,
   ) {
     var offset = 0;
     for (final group in groups) {
@@ -487,9 +493,13 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
         final categoryName = tx.categoryId != null
             ? categoryNameMap[tx.categoryId]
             : null;
+        final categoryIconStr = tx.categoryId != null
+            ? categoryIconMap[tx.categoryId]
+            : null;
         return _TransactionTileWithCategory(
           transaction: tx,
           categoryName: categoryName,
+          categoryIconStr: categoryIconStr,
           isSelectionMode: _isSelectionMode,
           isSelected: _selectedIds.contains(tx.id),
           onEdit: () => context.push('/record/${tx.id}'),
@@ -612,12 +622,12 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
 
 }
 
-/// Transaction tile with category name resolved at parent level.
-/// No longer watches category provider to avoid per-tile rebuilds.
+/// Transaction tile with category name and icon resolved at parent level (与首页图标一致).
 class _TransactionTileWithCategory extends StatelessWidget {
   const _TransactionTileWithCategory({
     required this.transaction,
     this.categoryName,
+    this.categoryIconStr,
     this.isSelectionMode = false,
     this.isSelected = false,
     required this.onEdit,
@@ -628,6 +638,7 @@ class _TransactionTileWithCategory extends StatelessWidget {
 
   final TransactionEntity transaction;
   final String? categoryName;
+  final String? categoryIconStr;
   final bool isSelectionMode;
   final bool isSelected;
   final VoidCallback onEdit;
@@ -637,9 +648,19 @@ class _TransactionTileWithCategory extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final categoryIcon = categoryIconStr != null && categoryIconStr!.isNotEmpty
+        ? IconTheme(
+            data: IconThemeData(
+              size: AppIconSize.sm,
+              color: AppColors.textSecondary,
+            ),
+            child: iconFromString(categoryIconStr!, size: AppIconSize.sm),
+          )
+        : null;
     return TransactionTile(
       transaction: transaction,
       categoryName: categoryName,
+      categoryIcon: categoryIcon,
       isSelectionMode: isSelectionMode,
       isSelected: isSelected,
       onEdit: onEdit,

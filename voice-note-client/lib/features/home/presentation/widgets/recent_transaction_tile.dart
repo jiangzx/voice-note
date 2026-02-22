@@ -1,17 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:intl/intl.dart';
 
-import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
+import '../../../../core/utils/icon_utils.dart';
 import '../../../transaction/domain/entities/transaction_entity.dart';
 
-/// List tile for a recent transaction on the home screen.
+/// 单条 item：左中右三栏，垂直 12dp；左栏仅 8dp 圆角分类图标，中栏备注+辅助，右栏金额。
+const _kItemPaddingV = 12.0;
+const _kLeftColWidth = 44.0;
+const _kGapLeftCenter = 12.0;
+const _kChipRadius = 8.0;
+const _kChipIconSize = 14.0;
+const _kNoteFontSize = 16.0;
+const _kNoteFontWeight = FontWeight.w500;
+const _kNoteColor = Color(0xFF333333);
+const _kAuxFontSize = 12.0;
+const _kAuxFontWeight = FontWeight.w400;
+const _kAuxColor = Color(0xFF999999);
+const _kAuxNoteGap = 2.0;
+const _kAmountFontSize = 18.0;
+const _kAmountFontWeight = FontWeight.w600;
+const _kIncomeAmountColor = Color(0xFFFF9500);
+const _kExpenseAmountColor = Color(0xFF1677FF);
+const _kTransferChipBg = Color(0xFFF5F7FA);
+const _kTransferChipFg = Color(0xFF666666);
+
+/// List tile for a recent transaction: 3-col layout, category chip (icon+name), note+aux, amount.
 class RecentTransactionTile extends StatelessWidget {
   const RecentTransactionTile({
     super.key,
     required this.transaction,
     this.categoryName,
+    this.categoryColor,
+    this.categoryIconStr,
     this.categoryIcon,
     this.isSelectionMode = false,
     this.isSelected = false,
@@ -23,6 +46,8 @@ class RecentTransactionTile extends StatelessWidget {
 
   final TransactionEntity transaction;
   final String? categoryName;
+  final Color? categoryColor;
+  final String? categoryIconStr;
   final Widget? categoryIcon;
   final bool isSelectionMode;
   final bool isSelected;
@@ -31,94 +56,164 @@ class RecentTransactionTile extends StatelessWidget {
   final ValueChanged<bool>? onSelectionChanged;
   final VoidCallback? onLongPress;
 
+  /// Left column width + gap used by home list for divider indent.
+  static double get dividerIndentLeftCol => _kLeftColWidth + _kGapLeftCenter;
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final txColors = theme.extension<TransactionColors>()!;
-
     final displayName = transaction.description ?? categoryName ?? '未分类';
-    // 首页已按日期分组，副标题显示分类更实用
     final subtitleText = categoryName ??
         (transaction.type == TransactionType.transfer ? '转账' : '未分类');
 
-    // 统一两种颜色：支出/转出用 expense，收入/转入用 income
     Color amountColor;
     String amountPrefix;
-
     switch (transaction.type) {
       case TransactionType.expense:
-        amountColor = txColors.expense;
+        amountColor = _kExpenseAmountColor;
         amountPrefix = '-';
       case TransactionType.income:
-        amountColor = txColors.income;
+        amountColor = _kIncomeAmountColor;
         amountPrefix = '+';
       case TransactionType.transfer:
-        amountColor =
-            transaction.transferDirection == TransferDirection.outbound
-            ? txColors.expense
-            : txColors.income;
-        amountPrefix =
-            transaction.transferDirection == TransferDirection.outbound
+        amountColor = transaction.transferDirection == TransferDirection.outbound
+            ? _kExpenseAmountColor
+            : _kIncomeAmountColor;
+        amountPrefix = transaction.transferDirection == TransferDirection.outbound
             ? '-'
             : '+';
     }
 
-    final tile = ListTile(
-      leading: isSelectionMode
-          ? Checkbox(
-              value: isSelected,
-              onChanged: onSelectionChanged != null
-                  ? (value) => onSelectionChanged!(value ?? false)
-                  : null,
-            )
-          : (categoryIcon ??
-              CircleAvatar(
-                backgroundColor: AppColors.backgroundTertiary,
-                radius: AppIconSize.md / 2,
-                child: Icon(
+    final timeStr = DateFormat('HH:mm').format(transaction.date);
+    final auxLine = subtitleText != '未分类' && subtitleText != '转账'
+        ? '$timeStr · $subtitleText'
+        : timeStr;
+
+    final isTransfer = transaction.type == TransactionType.transfer;
+    final chipBg = isTransfer || categoryColor == null
+        ? _kTransferChipBg
+        : categoryColor!.withValues(alpha: 0.15);
+    final chipFg = isTransfer || categoryColor == null
+        ? _kTransferChipFg
+        : categoryColor!;
+
+    Widget leftCol;
+    if (isSelectionMode) {
+      leftCol = SizedBox(
+        width: _kLeftColWidth,
+        child: Center(
+          child: Checkbox(
+            value: isSelected,
+            onChanged: onSelectionChanged != null
+                ? (value) => onSelectionChanged!(value ?? false)
+                : null,
+          ),
+        ),
+      );
+    } else {
+      final hasIconStr = categoryIconStr != null && categoryIconStr!.isNotEmpty;
+      final leadingIcon = categoryIcon ??
+          (hasIconStr
+              ? IconTheme(
+                  data: IconThemeData(
+                    size: _kChipIconSize,
+                    color: chipFg,
+                  ),
+                  child: iconFromString(categoryIconStr!, size: _kChipIconSize),
+                )
+              : Icon(
                   transaction.type == TransactionType.transfer
                       ? Icons.swap_horiz
                       : Icons.receipt_long_outlined,
-                  size: AppIconSize.sm,
-                  color: AppColors.textSecondary,
-                ),
-              )),
-      title: Text(
-        displayName,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyLarge?.copyWith(color: AppColors.textPrimary),
-      ),
-      subtitle: Text(
-        subtitleText,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
-      ),
-      trailing: Text(
-        '$amountPrefix¥${transaction.amount.toStringAsFixed(2)}',
-        style: theme.textTheme.titleMedium?.copyWith(
-          color: amountColor,
-          fontWeight: FontWeight.w600,
+                  size: _kChipIconSize,
+                  color: chipFg,
+                ));
+      leftCol = SizedBox(
+        width: _kLeftColWidth,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: chipBg,
+              borderRadius: BorderRadius.circular(_kChipRadius),
+            ),
+            child: leadingIcon,
+          ),
         ),
+      );
+    }
+
+    final centerCol = Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: _kNoteFontSize,
+              fontWeight: _kNoteFontWeight,
+              color: _kNoteColor,
+            ),
+          ),
+          const SizedBox(height: _kAuxNoteGap),
+          Text(
+            auxLine,
+            style: const TextStyle(
+              fontSize: _kAuxFontSize,
+              fontWeight: _kAuxFontWeight,
+              color: _kAuxColor,
+            ),
+          ),
+        ],
       ),
-      onTap: isSelectionMode
-          ? () {
-              if (onSelectionChanged != null) {
-                onSelectionChanged!(!isSelected);
-              }
-            }
-          : onTap,
-      onLongPress: isSelectionMode ? null : onLongPress,
-      tileColor: isSelectionMode && isSelected
+    );
+
+    final rightCol = Text(
+      '$amountPrefix¥${transaction.amount.toStringAsFixed(2)}',
+      style: TextStyle(
+        fontSize: _kAmountFontSize,
+        fontWeight: _kAmountFontWeight,
+        color: amountColor,
+      ),
+    );
+
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(vertical: _kItemPaddingV),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          leftCol,
+          const SizedBox(width: _kGapLeftCenter),
+          centerCol,
+          const SizedBox(width: _kGapLeftCenter),
+          rightCol,
+        ],
+      ),
+    );
+
+    final tile = Material(
+      color: isSelectionMode && isSelected
           ? AppColors.brandPrimary.withValues(alpha: 0.12)
           : null,
+      child: InkWell(
+        onTap: isSelectionMode
+            ? () {
+                if (onSelectionChanged != null) {
+                  onSelectionChanged!(!isSelected);
+                }
+              }
+            : onTap,
+        onLongPress: isSelectionMode ? null : onLongPress,
+        child: row,
+      ),
     );
 
     if (isSelectionMode) {
       return tile;
     }
-
     if (onDelete == null) {
       return tile;
     }

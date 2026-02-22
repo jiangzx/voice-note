@@ -11,6 +11,15 @@ extension DateExtensions on DateTime {
   bool isSameMonth(DateTime other) =>
       year == other.year && month == other.month;
 
+  /// Whether this date is in the same ISO week (Mon–Sun) as [other].
+  bool isSameWeek(DateTime other) {
+    final thisMonday = subtract(Duration(days: weekday - 1));
+    final otherMonday = other.subtract(Duration(days: other.weekday - 1));
+    return thisMonday.year == otherMonday.year &&
+        thisMonday.month == otherMonday.month &&
+        thisMonday.day == otherMonday.day;
+  }
+
   /// Yesterday relative to this date.
   DateTime get yesterday => subtract(const Duration(days: 1)).toDateOnly;
 

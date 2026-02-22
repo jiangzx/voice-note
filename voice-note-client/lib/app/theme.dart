@@ -200,19 +200,27 @@ ThemeData buildLightTheme() {
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.backgroundPrimary,
       elevation: 0,
-      height: 80,
+      height: 56,
       indicatorColor: AppColors.brandPrimary.withValues(alpha: 0.12),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const IconThemeData(color: AppColors.brandPrimary, size: AppIconSize.md);
+          return const IconThemeData(color: Color(0xFF1677FF), size: 24);
         }
-        return const IconThemeData(color: AppColors.textPlaceholder, size: AppIconSize.md);
+        return const IconThemeData(color: Color(0xFF666666), size: 24);
       }),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return textTheme.labelMedium?.copyWith(color: AppColors.brandPrimary);
+          return textTheme.labelMedium?.copyWith(
+            color: const Color(0xFF1677FF),
+            fontSize: 24,
+            fontWeight: FontWeight.w500,
+          );
         }
-        return textTheme.labelMedium?.copyWith(color: AppColors.textPlaceholder);
+        return textTheme.labelMedium?.copyWith(
+          color: const Color(0xFF666666),
+          fontSize: 22,
+          fontWeight: FontWeight.w400,
+        );
       }),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(

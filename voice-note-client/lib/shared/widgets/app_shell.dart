@@ -2,7 +2,6 @@ import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/design_tokens.dart';
 import '../../app/theme.dart';
@@ -10,12 +9,10 @@ import '../../features/settings/presentation/providers/home_fab_preference_provi
 import '../../features/transaction/presentation/screens/transaction_form_screen.dart';
 import 'animated_voice_fab.dart';
 import 'draggable_fab_group.dart';
+import 'home_voice_pill.dart';
 
 /// FAB group size: width 56, height 56+8+56=120.
 const Size kFabGroupSize = Size(56, 120);
-
-const String _keyFabGroupDx = 'fab_group_offset_dx';
-const String _keyFabGroupDy = 'fab_group_offset_dy';
 
 /// Holds FAB offset in local state so drag/snap only rebuild this subtree, not [child].
 class _DraggableFabOverlay extends StatefulWidget {
@@ -113,24 +110,17 @@ class _TransactionPageFabLocation extends FloatingActionButtonLocation {
   static const double _fabWidth = 56.0;
   static const double _fabSpacing = 8.0; // AppSpacing.sm
   
-  // 底部导航栏和操作栏高度常量
-  static const double _bottomNavBarHeight = 80.0; // NavigationBar高度（约80px，包含SafeArea）
-  static const double _actionBarHeight = 100.0; // 操作栏高度（padding 24px + SafeArea 20-30px + 内容48px）
+  // 操作栏高度常量（底部导航已移除）
+  static const double _actionBarHeight = 100.0; // 操作栏高度（padding 24px + SafeArea + 内容48px）
 
   @override
   Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
-    // X坐标：右侧对齐，考虑SafeArea和边距
     final double endX = scaffoldGeometry.scaffoldSize.width -
         scaffoldGeometry.minInsets.right -
         kFloatingActionButtonMargin -
         _fabWidth;
 
-    // Y坐标计算：
-    // contentBottom是AppShell底部导航栏的顶部位置
-    // 操作栏显示在TransactionListScreen的Scaffold中，位于底部导航栏上方
-    // 需要减去底部导航栏高度和操作栏高度，得到操作栏顶部位置（border线位置）
-    final double borderLineY = scaffoldGeometry.contentBottom - 
-        _bottomNavBarHeight - 
+    final double borderLineY = scaffoldGeometry.contentBottom -
         _actionBarHeight;
 
     // FAB Column结构：语音FAB + 间距 + +号FAB
@@ -165,44 +155,18 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  static const _tabs = ['/home', '/transactions', '/statistics', '/settings'];
-
   int _currentIndex(BuildContext context) {
-    final location = GoRouterState.of(context).uri.path;
-    for (var i = 0; i < _tabs.length; i++) {
-      if (location.startsWith(_tabs[i])) return i;
-    }
+    final path = GoRouterState.of(context).uri.path;
+    if (path.startsWith('/home')) return 0;
+    if (path.startsWith('/transactions')) return 1;
+    if (path.startsWith('/statistics')) return 2;
+    if (path.startsWith('/settings')) return 3;
     return 0;
   }
-
-  Offset? _fabOffset;
 
   bool get _isHomeOrStatistics {
     final index = _currentIndex(context);
     return index == 0 || index == 2;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadFabOffset();
-  }
-
-  Future<void> _loadFabOffset() async {
-    final prefs = await SharedPreferences.getInstance();
-    final dx = prefs.getDouble(_keyFabGroupDx);
-    final dy = prefs.getDouble(_keyFabGroupDy);
-    if (mounted && dx != null && dy != null) {
-      setState(() => _fabOffset = Offset(dx, dy));
-    }
-  }
-
-  void _onFabSnapEnd(Offset finalOffset) {
-    setState(() => _fabOffset = finalOffset);
-    SharedPreferences.getInstance().then((prefs) {
-      prefs.setDouble(_keyFabGroupDx, finalOffset.dx);
-      prefs.setDouble(_keyFabGroupDy, finalOffset.dy);
-    });
   }
 
   @override
@@ -218,44 +182,21 @@ class _AppShellState extends ConsumerState<AppShell> {
         !(_isHomeOrStatistics && hideOnHomeAndStats);
     final useDraggableFab = showFab && _isHomeOrStatistics;
 
-    // Draggable FAB: overlay holds offset so setState during drag only rebuilds overlay, not page.
+    // Home: 悬浮胶囊距底部 20dp（底部导航已移除）。
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    const pillBottom = 20.0 + 0.0; // 20dp + no nav
+    final pillBottomWithSafe = bottomPadding + pillBottom;
+
     final body = useDraggableFab
         ? Stack(
             clipBehavior: Clip.none,
             children: [
               widget.child,
-              _DraggableFabOverlay(
-                initialOffset: _fabOffset,
-                onSnapEnd: _onFabSnapEnd,
-                fabChild: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const AnimatedVoiceFab(),
-                    const SizedBox(height: AppSpacing.sm),
-                    OpenContainer<void>(
-                      transitionDuration: AppDuration.pageTransition,
-                      openBuilder: (context, _) =>
-                          const TransactionFormScreen(),
-                      closedElevation: 2,
-                      closedShape: const RoundedRectangleBorder(
-                        borderRadius: AppRadius.cardAll,
-                      ),
-                      closedColor: AppColors.brandPrimary,
-                      closedBuilder: (context, openContainer) {
-                        return const SizedBox(
-                          height: 56,
-                          width: 56,
-                          child: Center(
-                            child: Icon(
-                              Icons.add,
-                              color: Colors.white,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: pillBottomWithSafe,
+                child: const HomeVoicePill(),
               ),
             ],
           )
@@ -297,32 +238,6 @@ class _AppShellState extends ConsumerState<AppShell> {
       floatingActionButtonLocation: isTransactionPage
           ? const _TransactionPageFabLocation()
           : FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) => context.go(_tabs[i]),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: '首页',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: '明细',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.pie_chart_outline),
-            selectedIcon: Icon(Icons.pie_chart),
-            label: '统计',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: '设置',
-          ),
-        ],
-      ),
     );
   }
 }

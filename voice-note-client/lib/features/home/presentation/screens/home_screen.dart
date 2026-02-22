@@ -9,8 +9,8 @@ import '../../../../core/extensions/date_extensions.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
-import '../../../budget/presentation/providers/budget_providers.dart';
 import '../../../category/presentation/providers/category_providers.dart';
+import '../../../category/domain/entities/category_entity.dart';
 import '../../../transaction/domain/entities/transaction_entity.dart';
 import '../../../transaction/presentation/providers/recent_transactions_paged_provider.dart';
 import '../../../transaction/presentation/providers/transaction_form_providers.dart';
@@ -19,7 +19,6 @@ import '../../../transaction/presentation/utils/group_transactions_by_day.dart';
 import '../../../transaction/presentation/widgets/daily_group_header.dart';
 import '../widgets/recent_transaction_tile.dart';
 import '../widgets/summary_card.dart';
-import '../widgets/voice_feature_card.dart';
 import '../widgets/voice_onboarding_tooltip.dart';
 
 /// Home screen showing monthly summary and recent transactions.
@@ -73,16 +72,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final incomeCategoriesAsync = ref.watch(visibleCategoriesProvider('income'));
     final expenseCategoriesAsync = ref.watch(visibleCategoriesProvider('expense'));
     final categoryNameMap = <String, String>{};
-    incomeCategoriesAsync.whenData((cats) {
+    final categoryColorMap = <String, Color>{};
+    final categoryIconMap = <String, String>{};
+    void fillMaps(List<CategoryEntity> cats) {
       for (final cat in cats) {
         categoryNameMap[cat.id] = cat.name;
+        categoryColorMap[cat.id] = _parseCategoryColor(cat.color);
+        categoryIconMap[cat.id] = cat.icon;
       }
-    });
-    expenseCategoriesAsync.whenData((cats) {
-      for (final cat in cats) {
-        categoryNameMap[cat.id] = cat.name;
-      }
-    });
+    }
+    incomeCategoriesAsync.whenData(fillMaps);
+    expenseCategoriesAsync.whenData(fillMaps);
 
     if (!_didRequestInitialLoad &&
         pagedState.list.isEmpty &&
@@ -116,10 +116,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: CustomScrollView(
                   controller: _scrollController,
                   slivers: [
-                    const SliverToBoxAdapter(child: VoiceFeatureCard()),
                     SliverToBoxAdapter(
                       child: summaryAsync.when(
                         data: (summary) => SummaryCard(
+                          monthLabel: '${monthRange.from.month}月',
                           totalIncome: summary.totalIncome,
                           totalExpense: summary.totalExpense,
                         ),
@@ -132,18 +132,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                     ),
-                    SliverToBoxAdapter(child: _BudgetSummaryCard()),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                        child: Text(
-                          '最近交易',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
                     if (pagedState.isLoading && pagedState.list.isEmpty)
                       SliverToBoxAdapter(
                         child: ShimmerPlaceholder.listPlaceholder(itemCount: 3),
@@ -167,8 +156,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       )
                     else
                       ..._buildRecentTransactionsSlivers(
+                        context,
                         pagedState,
                         categoryNameMap,
+                        categoryColorMap,
+                        categoryIconMap,
+                        ref,
                       ),
                     if (pagedState.hasMore && pagedState.isLoadingMore)
                       SliverToBoxAdapter(
@@ -238,67 +231,114 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   List<Widget> _buildRecentTransactionsSlivers(
+    BuildContext context,
     RecentTransactionsPagedState pagedState,
     Map<String, String> categoryNameMap,
+    Map<String, Color> categoryColorMap,
+    Map<String, String> categoryIconMap,
+    WidgetRef ref,
   ) {
     final groups = groupTransactionsByDay(pagedState.list);
     var itemCount = 0;
-    for (final g in groups) {
-      itemCount += 1 + g.transactions.length;
+    for (var i = 0; i < groups.length; i++) {
+      final n = groups[i].transactions.length;
+      itemCount += 1 + 2 * n - 1; // header + n tiles + (n-1) dividers
+      if (i < groups.length - 1) itemCount += 1; // 16dp spacer between groups
     }
+    const horizontalPadding = 16.0;
+    const bottomPadding = 20.0;
+    const dividerColor = Color(0xFFF0F2F5);
+    final dividerIndent = horizontalPadding + RecentTransactionTile.dividerIndentLeftCol;
+    const dividerEndIndent = horizontalPadding;
+
     return [
-      SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            var offset = 0;
-            for (final group in groups) {
-              if (index == offset) {
-                return DailyGroupHeader(
-                  date: group.date,
-                  dailyIncome: group.dailyIncome,
-                  dailyExpense: group.dailyExpense,
-                );
-              }
-              offset++;
-              if (index < offset + group.transactions.length) {
-                final tx = group.transactions[index - offset] as TransactionEntity;
-                final categoryName = tx.categoryId != null
-                    ? categoryNameMap[tx.categoryId]
-                    : null;
-                return _TxTileWithCategory(
-                  key: ValueKey(tx.id),
-                  transaction: tx,
-                  isSelectionMode: _isSelectionMode,
-                  isSelected: _selectedIds.contains(tx.id),
-                  onTap: () => context.push('/record/${tx.id}'),
-                  onSelectionChanged: (selected) {
-                    setState(() {
-                      if (selected) {
-                        _selectedIds.add(tx.id);
-                      } else {
-                        _selectedIds.remove(tx.id);
-                      }
-                    });
-                  },
-                  onLongPress: () {
-                    if (!_isSelectionMode) {
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, bottomPadding),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              var offset = 0;
+              for (var gi = 0; gi < groups.length; gi++) {
+                final group = groups[gi];
+                final n = group.transactions.length;
+                final isLastGroup = gi == groups.length - 1;
+                final groupItemCount = 1 + 2 * n - 1 + (isLastGroup ? 0 : 1); // + spacer
+                if (index < offset + groupItemCount) {
+                  final local = index - offset;
+                  if (local == 0) {
+                    return DailyGroupHeader(
+                      date: group.date,
+                      dailyIncome: group.dailyIncome,
+                      dailyExpense: group.dailyExpense,
+                    );
+                  }
+                  if (!isLastGroup && local == 1 + 2 * n - 1) {
+                    return const SizedBox(height: 16);
+                  }
+                  final tileIndex = (local - 1) ~/ 2;
+                  final isDivider = (local - 1) % 2 == 1;
+                  if (isDivider) {
+                    return Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: dividerColor,
+                      indent: dividerIndent,
+                      endIndent: dividerEndIndent,
+                    );
+                  }
+                  final tx = group.transactions[tileIndex] as TransactionEntity;
+                  final categoryName = tx.categoryId != null
+                      ? categoryNameMap[tx.categoryId]
+                      : null;
+                  final categoryColor = tx.categoryId != null
+                      ? categoryColorMap[tx.categoryId]
+                      : null;
+                  final categoryIconStr = tx.categoryId != null
+                      ? categoryIconMap[tx.categoryId]
+                      : null;
+                  return _TxTileWithCategory(
+                    key: ValueKey(tx.id),
+                    transaction: tx,
+                    isSelectionMode: _isSelectionMode,
+                    isSelected: _selectedIds.contains(tx.id),
+                    onTap: () => context.push('/record/${tx.id}'),
+                    onSelectionChanged: (selected) {
                       setState(() {
-                        _isSelectionMode = true;
-                        _selectedIds.add(tx.id);
+                        if (selected) {
+                          _selectedIds.add(tx.id);
+                        } else {
+                          _selectedIds.remove(tx.id);
+                        }
                       });
-                    }
-                  },
-                  categoryName: categoryName,
-                );
+                    },
+                    onLongPress: () {
+                      if (!_isSelectionMode) {
+                        setState(() {
+                          _isSelectionMode = true;
+                          _selectedIds.add(tx.id);
+                        });
+                      }
+                    },
+                    categoryName: categoryName,
+                    categoryColor: categoryColor,
+                    categoryIconStr: categoryIconStr,
+                  );
+                }
+                offset += groupItemCount;
               }
-              offset += group.transactions.length;
-            }
-            return const SizedBox.shrink();
-          },
-          childCount: itemCount,
+              return const SizedBox.shrink();
+            },
+            childCount: itemCount,
+          ),
         ),
       ),
     ];
+  }
+
+  static Color _parseCategoryColor(String hex) {
+    final s = hex.replaceFirst(RegExp(r'^#'), '');
+    final full = s.length == 6 ? 'FF$s' : s;
+    return Color(int.parse(full, radix: 16));
   }
 
   PreferredSizeWidget _buildSelectionAppBar() {
@@ -463,121 +503,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-/// Budget progress summary for the home screen.
-class _BudgetSummaryCard extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(budgetSummaryProvider);
-
-    return summaryAsync.when(
-      data: (summary) {
-        if (summary.totalBudget <= 0) return const SizedBox.shrink();
-
-        final pct = (summary.totalSpent / summary.totalBudget * 100)
-            .clamp(0.0, 999.9);
-        final remaining = summary.totalRemaining;
-        final theme = Theme.of(context);
-        final isOver = remaining < 0;
-        final progressColor = pct >= 100
-            ? AppColors.expense
-            : pct >= 80
-                ? const Color(0xFFB76E00)
-                : AppColors.income;
-
-        return Container(
-          margin: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.sm,
-          ),
-          decoration: const BoxDecoration(
-            color: AppColors.backgroundSecondary,
-            borderRadius: AppRadius.cardAll,
-            boxShadow: AppShadow.card,
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: AppRadius.cardAll,
-              onTap: () => context.push('/settings/budget'),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.savings_outlined,
-                          size: AppIconSize.sm,
-                          color: AppColors.brandPrimary,
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          '本月预算',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${pct.toStringAsFixed(0)}%',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: progressColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    ClipRRect(
-                      borderRadius: AppRadius.smAll,
-                      child: LinearProgressIndicator(
-                        value: (pct / 100).clamp(0.0, 1.0),
-                        backgroundColor: AppColors.backgroundTertiary,
-                        color: progressColor,
-                        minHeight: 8,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '已用 ¥${summary.totalSpent.toStringAsFixed(0)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        Text(
-                          isOver
-                              ? '超支 ¥${(-remaining).toStringAsFixed(0)}'
-                              : '剩余 ¥${remaining.toStringAsFixed(0)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: isOver ? AppColors.expense : AppColors.textSecondary,
-                            fontWeight: isOver ? FontWeight.bold : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-    );
-  }
-}
-
 /// Wraps a transaction tile with category lookup.
 class _TxTileWithCategory extends ConsumerWidget {
   const _TxTileWithCategory({
     super.key,
     required this.transaction,
     this.categoryName,
+    this.categoryColor,
+    this.categoryIconStr,
     this.isSelectionMode = false,
     this.isSelected = false,
     this.onTap,
@@ -587,6 +520,8 @@ class _TxTileWithCategory extends ConsumerWidget {
 
   final TransactionEntity transaction;
   final String? categoryName;
+  final Color? categoryColor;
+  final String? categoryIconStr;
   final bool isSelectionMode;
   final bool isSelected;
   final VoidCallback? onTap;
@@ -614,6 +549,8 @@ class _TxTileWithCategory extends ConsumerWidget {
     return RecentTransactionTile(
       transaction: transaction,
       categoryName: catName,
+      categoryColor: categoryColor,
+      categoryIconStr: categoryIconStr,
       isSelectionMode: isSelectionMode,
       isSelected: isSelected,
       onTap: onTap,
