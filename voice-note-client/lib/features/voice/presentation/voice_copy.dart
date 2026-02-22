@@ -21,6 +21,20 @@ abstract final class VoiceCopy {
   static const String idleHint = '点击开始';
   static const String pushToTalkHint = '按住 说话';
 
+  // --- Mode-specific hints (manual / keyboard / auto) ---
+  static const String modeHintManual = '按住说话，一次记多笔更省心';
+  static const String modeHintKeyboard = '输入账单，一次记多笔更省心';
+  static const String modeHintAuto = '自动识别语音，轻松记一笔';
+  static const String modeSwitchHintManual = '切换到手动模式，支持一次性记录多笔哦';
+  static const String modeSwitchHintKeyboard = '切换到键盘模式，支持一次性记录多笔哦';
+  static const String autoModeMultiNotSupported =
+      '自动模式暂不支持多笔，切换到手动模式试试吧';
+  /// Shown after user switches from auto to manual from the multi-batch banner (current batch is cleared).
+  static const String autoModeSwitchBatchCleared =
+      '已切换到手动模式，当前多笔已清空，请重新说话记录';
+  /// Substring to emphasize in manual/keyboard empty state and hints.
+  static const String emptyStateHighlight = '一次记多笔';
+
   // --- Recognition loading ---
   static const String recognizingHint = '正在识别语音，请稍候...';
   static const String recognizingTimeout = '识别超时，请重试';

@@ -7,6 +7,7 @@ import 'package:suikouji/core/di/network_providers.dart';
 import 'package:suikouji/core/network/api_client.dart';
 import 'package:suikouji/core/network/api_config.dart';
 import 'package:suikouji/features/voice/presentation/providers/voice_session_provider.dart';
+import 'package:suikouji/features/voice/presentation/voice_copy.dart';
 import 'package:suikouji/features/voice/presentation/voice_recording_screen.dart';
 import 'package:suikouji/features/voice/presentation/widgets/voice_animation.dart';
 
@@ -17,16 +18,14 @@ void main() {
   late SharedPreferences testPrefs;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({'voice_tutorial_seen': true});
+    SharedPreferences.setMockInitialValues({
+      'voice_tutorial_seen': true,
+      'voice_input_mode': 0, // VoiceInputMode.auto so VoiceAnimationWidget is shown
+    });
     testPrefs = await SharedPreferences.getInstance();
     testApiClient = ApiClient(ApiConfig(testPrefs));
 
-    // Mock native audio gateway channels
     const nativeAudioMethodChannel = MethodChannel('voice_note/native_audio');
-    const nativeAudioEventChannel = EventChannel(
-      'voice_note/native_audio/events',
-    );
-
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(nativeAudioMethodChannel, (call) async {
           switch (call.method) {
@@ -74,7 +73,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
     });
 
     testWidgets('renders status text after session starts', (tester) async {
@@ -85,6 +84,8 @@ void main() {
       final hasStatusText =
           find.text('点击开始').evaluate().isNotEmpty ||
           find.text('对着我说话，就能一键记账').evaluate().isNotEmpty ||
+          find.text(VoiceCopy.modeHintManual).evaluate().isNotEmpty ||
+          find.text(VoiceCopy.modeHintAuto).evaluate().isNotEmpty ||
           find.text('我在听，你慢慢说～').evaluate().isNotEmpty ||
           find.text('正在帮你记录账单...').evaluate().isNotEmpty ||
           find.text('请确认以下信息').evaluate().isNotEmpty ||
@@ -100,6 +101,8 @@ void main() {
       final hasStatusHint =
           find.text('点击开始').evaluate().isNotEmpty ||
           find.text('对着我说话，就能一键记账').evaluate().isNotEmpty ||
+          find.text(VoiceCopy.modeHintManual).evaluate().isNotEmpty ||
+          find.text(VoiceCopy.modeHintAuto).evaluate().isNotEmpty ||
           find.text('我在听，你慢慢说～').evaluate().isNotEmpty ||
           find.text('正在帮你记录账单...').evaluate().isNotEmpty ||
           find.text('请确认以下信息').evaluate().isNotEmpty ||

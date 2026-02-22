@@ -246,7 +246,17 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
               child: Column(
                 children: [
                   if (isOffline) _buildOfflineBanner(),
-                  Expanded(child: ChatHistory(messages: messages)),
+                  Expanded(
+                    child: ChatHistory(
+                      messages: messages,
+                      emptyStateHint: _modeEmptyStateHint(effectiveMode),
+                      emptyStateHighlight: effectiveMode ==
+                                  VoiceInputMode.pushToTalk ||
+                              effectiveMode == VoiceInputMode.keyboard
+                          ? VoiceCopy.emptyStateHighlight
+                          : null,
+                    ),
+                  ),
 
                   if (voiceState == VoiceState.recognizing &&
                       interimText.isNotEmpty)
@@ -255,6 +265,12 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                   if (isProcessing) _buildProcessingIndicator(),
 
                   if (voiceState == VoiceState.confirming) ...[
+                    if (inputMode == VoiceInputMode.auto &&
+                        draftBatch != null &&
+                        !draftBatch.isSingleItem) ...[
+                      _buildAutoModeMultiBanner(),
+                      const SizedBox(height: AppSpacing.sm),
+                    ],
                     if (draftBatch != null && !draftBatch.isSingleItem)
                       _buildBatchConfirmationCard(draftBatch, isProcessing)
                     else if (parseResult != null)
@@ -427,13 +443,13 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                 child: TextField(
                   controller: _textController,
                   enabled: !disabled,
-                  decoration: const InputDecoration(
-                    hintText: '输入记账内容，如"午餐42块"',
-                    hintStyle: TextStyle(color: AppColors.textPlaceholder),
-                    border: OutlineInputBorder(
+                  decoration: InputDecoration(
+                    hintText: VoiceCopy.modeHintKeyboard,
+                    hintStyle: const TextStyle(color: AppColors.textPlaceholder),
+                    border: const OutlineInputBorder(
                       borderRadius: AppRadius.inputAll,
                     ),
-                    enabledBorder: OutlineInputBorder(
+                    enabledBorder: const OutlineInputBorder(
                       borderRadius: AppRadius.inputAll,
                       borderSide: BorderSide(color: AppColors.divider),
                     ),
@@ -562,6 +578,46 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     );
   }
 
+  /// Renders hint with [highlightSubstring] in primary color and w600 when present.
+  Widget _buildHintWithHighlight(
+    String fullText,
+    String? highlightSubstring,
+    TextStyle? baseStyle,
+  ) {
+    final theme = Theme.of(context);
+    final useHighlight = highlightSubstring != null &&
+        highlightSubstring.isNotEmpty &&
+        fullText.contains(highlightSubstring);
+    if (!useHighlight) {
+      return Text(
+        fullText,
+        style: baseStyle,
+        textAlign: TextAlign.center,
+      );
+    }
+    final h = highlightSubstring;
+    final idx = fullText.indexOf(h);
+    return Text.rich(
+      TextSpan(
+        style: baseStyle,
+        children: [
+          TextSpan(text: fullText.substring(0, idx)),
+          TextSpan(
+            text: h,
+            style: baseStyle?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          TextSpan(
+            text: fullText.substring(idx + h.length),
+          ),
+        ],
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
   Widget _buildStatusContent(
     VoiceState voiceState,
     VoiceInputMode inputMode,
@@ -608,12 +664,12 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
 
     if (voiceState == VoiceState.listening) {
       if (inputMode == VoiceInputMode.pushToTalk) {
-        return Text(
-          VoiceCopy.pushToTalkHint,
-          style: theme.textTheme.bodySmall?.copyWith(
+        return _buildHintWithHighlight(
+          VoiceCopy.modeHintManual,
+          VoiceCopy.emptyStateHighlight,
+          theme.textTheme.bodySmall?.copyWith(
             color: AppColors.textPlaceholder,
           ),
-          textAlign: TextAlign.center,
         );
       }
       if (isProcessing) {
@@ -626,50 +682,73 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           textAlign: TextAlign.center,
         );
       }
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            VoiceCopy.mainReadyTitle,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontSize: 18,
-              color: AppColors.brandPrimary,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            VoiceCopy.mainReadySubtitle,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _buildExampleChips(),
-        ],
+      // Auto mode: one-line hint
+      return Text(
+        VoiceCopy.modeHintAuto,
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontSize: 18,
+          color: AppColors.brandPrimary,
+          fontWeight: FontWeight.w500,
+        ),
+        textAlign: TextAlign.center,
       );
     }
 
     return const SizedBox.shrink();
   }
 
-  Widget _buildExampleChips() {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: [
-        _ExampleChip(phrase: VoiceCopy.examplePhrase1, onTap: _onExampleTap),
-        _ExampleChip(phrase: VoiceCopy.examplePhrase2, onTap: _onExampleTap),
-      ],
-    );
+  String _modeEmptyStateHint(VoiceInputMode mode) {
+    return switch (mode) {
+      VoiceInputMode.auto => VoiceCopy.modeHintAuto,
+      VoiceInputMode.pushToTalk => VoiceCopy.modeHintManual,
+      VoiceInputMode.keyboard => VoiceCopy.modeHintKeyboard,
+    };
   }
 
-  void _onExampleTap(String phrase) {
-    ref.read(voiceSessionProvider.notifier).submitTextInput(phrase);
+  Widget _buildAutoModeMultiBanner() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.brandPrimary.withValues(alpha: 0.08),
+          borderRadius: AppRadius.cardAll,
+          border: Border.all(
+            color: AppColors.brandPrimary.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                VoiceCopy.autoModeMultiNotSupported,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                ref.read(voiceSessionProvider.notifier).switchMode(
+                      VoiceInputMode.pushToTalk,
+                    );
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(VoiceCopy.autoModeSwitchBatchCleared),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: const Text('切换到手动模式'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildModeSwitcher(VoiceInputMode displayMode, bool hideAutoMode) {
@@ -682,8 +761,21 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       ),
       child: ModeSwitcher(
         mode: displayMode,
-        onChanged: (mode) =>
-            ref.read(voiceSessionProvider.notifier).switchMode(mode),
+        onChanged: (newMode) async {
+          final oldMode = ref.read(voiceSettingsProvider).inputMode;
+          await ref.read(voiceSessionProvider.notifier).switchMode(newMode);
+          if (!mounted) return;
+          if (oldMode == VoiceInputMode.auto &&
+              (newMode == VoiceInputMode.pushToTalk ||
+                  newMode == VoiceInputMode.keyboard)) {
+            final msg = newMode == VoiceInputMode.pushToTalk
+                ? VoiceCopy.modeSwitchHintManual
+                : VoiceCopy.modeSwitchHintKeyboard;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+            );
+          }
+        },
         hideAutoMode: hideAutoMode,
       ),
     );
@@ -726,39 +818,6 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                   size: AppIconSize.xl,
                   color: Colors.white,
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Clickable chip that submits the phrase as text input (same path as keyboard).
-class _ExampleChip extends StatelessWidget {
-  final String phrase;
-  final void Function(String phrase) onTap;
-
-  const _ExampleChip({required this.phrase, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Material(
-      color: AppColors.backgroundTertiary,
-      borderRadius: AppRadius.cardAll,
-      child: InkWell(
-        onTap: () => onTap(phrase),
-        borderRadius: AppRadius.cardAll,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
-          child: Text(
-            phrase,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textPrimary,
-            ),
-          ),
         ),
       ),
     );

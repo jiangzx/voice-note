@@ -82,8 +82,9 @@ class _NormalBubble extends StatelessWidget {
           vertical: AppSpacing.xs,
         ),
         child: Row(
-          mainAxisAlignment:
-              isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+          mainAxisAlignment: isUser
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!isUser) ...[
@@ -100,8 +101,9 @@ class _NormalBubble extends StatelessWidget {
             ],
             Flexible(
               child: Column(
-                crossAxisAlignment:
-                    isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                crossAxisAlignment: isUser
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   GestureDetector(
@@ -126,8 +128,12 @@ class _NormalBubble extends StatelessWidget {
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(AppRadius.xl),
                           topRight: const Radius.circular(AppRadius.xl),
-                          bottomLeft: Radius.circular(isUser ? AppRadius.xl : 4),
-                          bottomRight: Radius.circular(isUser ? 4 : AppRadius.xl),
+                          bottomLeft: Radius.circular(
+                            isUser ? AppRadius.xl : 4,
+                          ),
+                          bottomRight: Radius.circular(
+                            isUser ? 4 : AppRadius.xl,
+                          ),
                         ),
                       ),
                       child: Text(
@@ -205,8 +211,9 @@ class _SystemChip extends StatelessWidget {
                     vertical: AppSpacing.xs,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.6),
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.6,
+                    ),
                     borderRadius: AppRadius.xlAll,
                   ),
                   child: Text(
@@ -249,7 +256,9 @@ class _StatusBubble extends StatelessWidget {
     final fgColor = isError
         ? theme.colorScheme.onErrorContainer
         : theme.colorScheme.onPrimaryContainer;
-    final icon = isError ? Icons.warning_amber_rounded : Icons.check_circle_rounded;
+    final icon = isError
+        ? Icons.warning_amber_rounded
+        : Icons.check_circle_rounded;
 
     final prefix = isError ? '错误' : '成功';
     return Semantics(
@@ -300,7 +309,9 @@ class _StatusBubble extends StatelessWidget {
                       ),
                       child: Text(
                         message.text,
-                        style: theme.textTheme.bodyMedium?.copyWith(color: fgColor),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: fgColor,
+                        ),
                       ),
                     ),
                   ),
@@ -324,8 +335,19 @@ class _StatusBubble extends StatelessWidget {
 /// Scrollable chat history with auto-scroll to bottom on new messages.
 class ChatHistory extends StatefulWidget {
   final List<ChatMessage> messages;
+  /// Shown when [messages] is empty. Mode-specific (manual / keyboard / auto).
+  /// If empty string, nothing visible is shown (blank placeholder).
+  final String emptyStateHint;
+  /// If non-null and contained in [emptyStateHint], that substring is emphasized (color + weight).
+  /// Only the first occurrence is emphasized when the substring appears multiple times.
+  final String? emptyStateHighlight;
 
-  const ChatHistory({super.key, required this.messages});
+  const ChatHistory({
+    super.key,
+    required this.messages,
+    required this.emptyStateHint,
+    this.emptyStateHighlight,
+  });
 
   @override
   State<ChatHistory> createState() => _ChatHistoryState();
@@ -363,13 +385,42 @@ class _ChatHistoryState extends State<ChatHistory> {
   @override
   Widget build(BuildContext context) {
     if (widget.messages.isEmpty) {
+      final theme = Theme.of(context);
+      final baseStyle = theme.textTheme.bodyLarge?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      );
+      final highlight = widget.emptyStateHighlight;
+      final hint = widget.emptyStateHint;
+      final showHighlight = highlight != null &&
+          highlight.isNotEmpty &&
+          hint.contains(highlight);
+
       return Center(
-        child: Text(
-          '说点什么或输入来记一笔吧',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+        child: showHighlight
+            ? Text.rich(
+                TextSpan(
+                  style: baseStyle,
+                  children: [
+                    TextSpan(text: hint.substring(0, hint.indexOf(highlight))),
+                    TextSpan(
+                      text: highlight,
+                      style: baseStyle?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    TextSpan(
+                      text: hint.substring(hint.indexOf(highlight) + highlight.length),
+                    ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+              )
+            : Text(
+                hint,
+                style: baseStyle,
+                textAlign: TextAlign.center,
               ),
-        ),
       );
     }
 
