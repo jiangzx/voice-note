@@ -364,20 +364,21 @@ void main() {
   });
 
   group('getRecent', () {
-    test('returns up to N most recent transactions', () async {
+    test('returns up to N most recent transactions (by createdAt, newest first)', () async {
+      // Insert in ascending date order so latest-created = latest date (amount 10).
       for (var i = 0; i < 10; i++) {
         await insertTx(
           id: 'tx-$i',
           type: 'expense',
           amount: 10.0 + i,
-          date: DateTime(2026, 2, 16 - i),
+          date: DateTime(2026, 2, 7 + i),
           categoryId: expenseCategoryId,
         );
       }
 
       final recent = await repo.getRecent(5);
       expect(recent.length, 5);
-      expect(recent.first.amount, 10); // most recent date
+      expect(recent.first.amount, 19); // last inserted = newest createdAt
     });
   });
 

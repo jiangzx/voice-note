@@ -138,22 +138,22 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return (totalIncome: totalIncome, totalExpense: totalExpense);
   }
 
-  /// Get recent N transactions.
+  /// Get recent N transactions (newest by creation first, so just-recorded items appear at top).
   Future<List<Transaction>> getRecent(int limit) =>
       (select(transactions)
             ..orderBy([
-              (t) => OrderingTerm.desc(t.date),
               (t) => OrderingTerm.desc(t.createdAt),
+              (t) => OrderingTerm.desc(t.date),
             ])
             ..limit(limit))
           .get();
 
-  /// Get a page of recent transactions (date desc, then createdAt desc).
+  /// Get a page of recent transactions (createdAt desc, then date desc).
   Future<List<Transaction>> getRecentPage(int limit, int offset) =>
       (select(transactions)
             ..orderBy([
-              (t) => OrderingTerm.desc(t.date),
               (t) => OrderingTerm.desc(t.createdAt),
+              (t) => OrderingTerm.desc(t.date),
             ])
             ..limit(limit, offset: offset))
           .get();
