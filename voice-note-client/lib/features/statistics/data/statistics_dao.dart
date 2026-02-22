@@ -39,42 +39,45 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
     with _$StatisticsDaoMixin {
   StatisticsDao(super.db);
 
-  /// Get income/expense totals for a date range using SQL aggregation.
+  /// Get income/expense totals for a date range. Includes transfer: inbound as income, outbound as expense.
   Future<({double totalIncome, double totalExpense})> getPeriodSummary({
     required DateTime dateFrom,
     required DateTime dateTo,
     String? accountId,
   }) async {
     final sumCol = transactions.amount.sum();
-    var filter = transactions.date.isBiggerOrEqualValue(dateFrom) &
+    var baseFilter = transactions.date.isBiggerOrEqualValue(dateFrom) &
         transactions.date.isSmallerOrEqualValue(dateTo) &
-        transactions.isDraft.equals(false) &
-        transactions.type.isIn(['income', 'expense']);
+        transactions.isDraft.equals(false);
     if (accountId != null) {
-      filter = filter & transactions.accountId.equals(accountId);
+      baseFilter = baseFilter & transactions.accountId.equals(accountId);
     }
 
-    final query = selectOnly(transactions)
-      ..addColumns([transactions.type, sumCol])
-      ..where(filter)
-      ..groupBy([transactions.type]);
+    final incomeFilter = baseFilter &
+        (transactions.type.equals('income') |
+            (transactions.type.equals('transfer') &
+                transactions.transferDirection.equals('in')));
+    final expenseFilter = baseFilter &
+        (transactions.type.equals('expense') |
+            (transactions.type.equals('transfer') &
+                transactions.transferDirection.equals('out')));
 
-    final rows = await query.get();
-    var totalIncome = 0.0;
-    var totalExpense = 0.0;
-    for (final row in rows) {
-      final type = row.read(transactions.type);
-      final sum = row.read(sumCol) ?? 0.0;
-      if (type == 'income') {
-        totalIncome = sum;
-      } else if (type == 'expense') {
-        totalExpense = sum;
-      }
-    }
-    return (totalIncome: totalIncome, totalExpense: totalExpense);
+    final incomeQuery = selectOnly(transactions)
+      ..addColumns([sumCol])
+      ..where(incomeFilter);
+    final expenseQuery = selectOnly(transactions)
+      ..addColumns([sumCol])
+      ..where(expenseFilter);
+
+    final incomeRow = await incomeQuery.getSingle();
+    final expenseRow = await expenseQuery.getSingle();
+    return (
+      totalIncome: incomeRow.read(sumCol) ?? 0.0,
+      totalExpense: expenseRow.read(sumCol) ?? 0.0,
+    );
   }
 
-  /// Get per-category totals for a date range.
+  /// Get per-category totals. For type expense includes transfer out; for type income includes transfer in.
   Future<List<CategorySummaryRow>> getCategorySummary({
     required DateTime dateFrom,
     required DateTime dateTo,
@@ -82,10 +85,17 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
     String? accountId,
   }) async {
     final sumExpr = transactions.amount.sum();
+    final typeFilter = type == 'expense'
+        ? (transactions.type.equals('expense') |
+            (transactions.type.equals('transfer') &
+                transactions.transferDirection.equals('out')))
+        : (transactions.type.equals('income') |
+            (transactions.type.equals('transfer') &
+                transactions.transferDirection.equals('in')));
     var filter = transactions.date.isBiggerOrEqualValue(dateFrom) &
         transactions.date.isSmallerOrEqualValue(dateTo) &
         transactions.isDraft.equals(false) &
-        transactions.type.equals(type) &
+        typeFilter &
         transactions.categoryId.isNotNull();
     if (accountId != null) {
       filter = filter & transactions.accountId.equals(accountId);
@@ -117,7 +127,7 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
     ).toList();
   }
 
-  /// Get daily income/expense trend for a date range.
+  /// Get daily income/expense trend. Income = type income or transfer in; expense = type expense or transfer out.
   Future<List<TrendRow>> getDailyTrend({
     required DateTime dateFrom,
     required DateTime dateTo,
@@ -128,7 +138,8 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
     var filter = transactions.date.isBiggerOrEqualValue(dateFrom) &
         transactions.date.isSmallerOrEqualValue(dateTo) &
         transactions.isDraft.equals(false) &
-        transactions.type.isIn(['income', 'expense']);
+        (transactions.type.isIn(['income', 'expense']) |
+            transactions.type.equals('transfer'));
     if (accountId != null) {
       filter = filter & transactions.accountId.equals(accountId);
     }
@@ -137,10 +148,11 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
       ..addColumns([
         dateExpr,
         transactions.type,
+        transactions.transferDirection,
         sumExpr,
       ])
       ..where(filter)
-      ..groupBy([dateExpr, transactions.type])
+      ..groupBy([dateExpr, transactions.type, transactions.transferDirection])
       ..orderBy([OrderingTerm.asc(dateExpr)]);
 
     final rows = await query.get();
@@ -149,9 +161,11 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
     for (final row in rows) {
       final date = row.read(dateExpr) ?? '';
       final type = row.read(transactions.type) ?? '';
+      final dir = row.read(transactions.transferDirection);
       final amount = row.read(sumExpr) ?? 0.0;
       final existing = map[date] ?? (income: 0.0, expense: 0.0);
-      if (type == 'income') {
+      final isIncome = type == 'income' || (type == 'transfer' && dir == 'in');
+      if (isIncome) {
         map[date] = (income: existing.income + amount, expense: existing.expense);
       } else {
         map[date] = (income: existing.income, expense: existing.expense + amount);
@@ -169,7 +183,7 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
         .toList();
   }
 
-  /// Get monthly income/expense trend for a date range (year view).
+  /// Get monthly income/expense trend (year view). Same income/expense口径 as getDailyTrend.
   Future<List<TrendRow>> getMonthlyTrend({
     required DateTime dateFrom,
     required DateTime dateTo,
@@ -180,7 +194,8 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
     var filter = transactions.date.isBiggerOrEqualValue(dateFrom) &
         transactions.date.isSmallerOrEqualValue(dateTo) &
         transactions.isDraft.equals(false) &
-        transactions.type.isIn(['income', 'expense']);
+        (transactions.type.isIn(['income', 'expense']) |
+            transactions.type.equals('transfer'));
     if (accountId != null) {
       filter = filter & transactions.accountId.equals(accountId);
     }
@@ -189,10 +204,11 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
       ..addColumns([
         monthExpr,
         transactions.type,
+        transactions.transferDirection,
         sumExpr,
       ])
       ..where(filter)
-      ..groupBy([monthExpr, transactions.type])
+      ..groupBy([monthExpr, transactions.type, transactions.transferDirection])
       ..orderBy([OrderingTerm.asc(monthExpr)]);
 
     final rows = await query.get();
@@ -201,9 +217,11 @@ class StatisticsDao extends DatabaseAccessor<AppDatabase>
     for (final row in rows) {
       final month = row.read(monthExpr) ?? '';
       final type = row.read(transactions.type) ?? '';
+      final dir = row.read(transactions.transferDirection);
       final amount = row.read(sumExpr) ?? 0.0;
       final existing = map[month] ?? (income: 0.0, expense: 0.0);
-      if (type == 'income') {
+      final isIncome = type == 'income' || (type == 'transfer' && dir == 'in');
+      if (isIncome) {
         map[month] =
             (income: existing.income + amount, expense: existing.expense);
       } else {

@@ -60,11 +60,13 @@ class VoiceTransactionService {
       throw const VoiceSaveException('金额无效');
     }
     final type = _mapType(result.type);
-    final categoryId = await _resolveCategoryId(result.category, type);
+    final transferDirection = _mapTransferDirection(result.transferDirection);
+    final categoryId = type == TransactionType.transfer
+        ? await _resolveTransferCategoryId(transferDirection)
+        : await _resolveCategoryId(result.category, type);
     final accountId = await _resolveAccountId(result.account);
     final now = DateTime.now();
     final date = _parseDate(result.date) ?? DateTime(now.year, now.month, now.day);
-    final transferDirection = _mapTransferDirection(result.transferDirection);
     return TransactionEntity(
       id: _uuid.v4(),
       type: type,
@@ -95,6 +97,19 @@ class VoiceTransactionService {
       'TRANSFER' => TransactionType.transfer,
       _ => TransactionType.expense,
     };
+  }
+
+  /// Resolve preset category id for transfer: 转出 (outbound) or 转入 (inbound).
+  Future<String> _resolveTransferCategoryId(TransferDirection? direction) async {
+    final dir = direction ?? TransferDirection.outbound;
+    final typeStr = dir == TransferDirection.outbound ? 'expense' : 'income';
+    final name = dir == TransferDirection.outbound ? '转出' : '转入';
+    final categories = await _categoryDao.getByType(typeStr);
+    final found = categories.where((c) => c.name == name).toList();
+    if (found.isEmpty) {
+      throw VoiceSaveException('未找到转账预设分类「$name」');
+    }
+    return found.first.id;
   }
 
   /// Resolve category name → categoryId by fuzzy matching against DB records.

@@ -139,10 +139,25 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     final isTransfer = formState.selectedType == TransactionType.transfer;
     final categoryType = formState.selectedType == TransactionType.income
         ? 'income'
-        : 'expense';
+        : formState.selectedType == TransactionType.transfer
+            ? (formState.transferDirection == TransferDirection.inbound
+                ? 'income'
+                : 'expense')
+            : 'expense';
+
+    final transferDir =
+        formState.transferDirection ?? TransferDirection.outbound;
+    ref.listen(transferDefaultCategoryIdProvider(transferDir), (prev, next) {
+      next.whenData((id) {
+        if (id != null &&
+            ref.read(transactionFormProvider).categoryId == null) {
+          ref.read(transactionFormProvider.notifier).setCategoryId(id);
+        }
+      });
+    });
 
     final canSave = _amountController.toDouble() > 0 &&
-        (isTransfer || formState.categoryId != null);
+        formState.categoryId != null;
 
     // Hide save bar while editing (description/counterparty) or while amount number pad is shown; "完成" only dismisses input, then user reviews and taps save.
     final isEditingText =
@@ -255,22 +270,33 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                         context,
                         title: isTransfer ? '转账' : '分类',
                         child: isTransfer
-                            ? TransferFields(
-                                direction: formState.transferDirection,
-                                counterparty: formState.counterparty,
-                                onDirectionChanged: (dir) {
-                                  _hideNumberPad();
-                                  ref
-                                      .read(transactionFormProvider.notifier)
-                                      .setTransferDirection(dir);
-                                },
-                                onCounterpartyChanged: (val) {
-                                  ref
-                                      .read(transactionFormProvider.notifier)
-                                      .setCounterparty(val);
-                                },
-                                onCounterpartyFocusChange:
-                                    _onCounterpartyFocusChange,
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  TransferFields(
+                                    direction: formState.transferDirection,
+                                    counterparty: formState.counterparty,
+                                    onDirectionChanged: (dir) {
+                                      _hideNumberPad();
+                                      ref
+                                          .read(transactionFormProvider.notifier)
+                                          .setTransferDirection(dir);
+                                    },
+                                    onCounterpartyChanged: (val) {
+                                      ref
+                                          .read(transactionFormProvider.notifier)
+                                          .setCounterparty(val);
+                                    },
+                                    onCounterpartyFocusChange:
+                                        _onCounterpartyFocusChange,
+                                  ),
+                                  const SizedBox(height: AppSpacing.md),
+                                  _buildCategorySection(
+                                    categoryType,
+                                    formState,
+                                    onCategoryTap: _hideNumberPad,
+                                  ),
+                                ],
                               )
                             : _buildCategorySection(
                                 categoryType,
@@ -505,9 +531,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       return;
     }
 
-    // Validate category for non-transfer
-    if (formState.selectedType != TransactionType.transfer &&
-        formState.categoryId == null) {
+    if (formState.categoryId == null) {
       _showError('请选择分类');
       return;
     }

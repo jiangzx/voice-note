@@ -25,9 +25,9 @@
 
 | 项目 | Android | iOS |
 |------|--------|-----|
-| captureActive | `initialized.get()`（init 成功即为 true） | `captureRuntime.isRunning()`（实际是否在录） |
+| captureActive | `captureRuntime?.isRunning() == true`（实际是否在录） | `captureRuntime.isRunning()`（实际是否在录） |
 
-两端语义略有不同，但“init 成功且未 dispose”时均为 true，可用于启动后做一次校验。
+两端语义一致：均以实际采集运行时状态为准；mode 切换或 capture 中途停止后能正确反映。可用于 init/switchInputMode 后做一次校验。
 
 ---
 
@@ -120,7 +120,7 @@ await native.switchInputMode(
 
 **逻辑**：  
 调用 `native.getDuplexStatus(nativeSessionId)`，若 `captureActive == false` 则 `if (kDebugMode) debugPrint('[VoiceInit] getDuplexStatus: captureActive=false')` 并 `throw StateError('capture_not_active_after_init')`。  
-Android 在 init 成功时 `initialized == true`，getDuplexStatus 的 captureActive 为 true，不会误报；iOS 若 init 已抛错则不会走到这里，若 init 成功但 capture 未跑起来则可被此校验发现。
+双端 getDuplexStatus.captureActive 均为实际采集运行状态（Android: `captureRuntime?.isRunning()`，iOS: `captureRuntime.isRunning()`），init 成功且 capture 已启动时为 true，不会误报；若 init 已抛错则不会走到这里，若 init 成功但 capture 未跑起来则可被此校验发现。
 
 ---
 

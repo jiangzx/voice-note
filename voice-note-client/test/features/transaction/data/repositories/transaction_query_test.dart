@@ -331,7 +331,7 @@ void main() {
       expect(summary.totalIncome, 200);
     });
 
-    test('excludes transfers from summary', () async {
+    test('includes transfers in summary (inbound=income, outbound=expense)', () async {
       await insertTx(
         id: 'exp',
         type: 'expense',
@@ -358,7 +358,7 @@ void main() {
         DateTime(2026, 2, 1),
         DateTime(2026, 2, 28),
       );
-      expect(summary.totalIncome, 200);
+      expect(summary.totalIncome, 700); // 200 + 500 transfer in
       expect(summary.totalExpense, 100);
     });
   });
@@ -420,7 +420,7 @@ void main() {
       expect(groups[1].dailyExpense, 30);
     });
 
-    test('transfer does not count in daily subtotals', () async {
+    test('transfer counts in daily subtotals (out=expense)', () async {
       await insertTx(
         id: 'tr',
         type: 'transfer',
@@ -435,7 +435,7 @@ void main() {
       );
       expect(groups.length, 1);
       expect(groups[0].dailyIncome, 0);
-      expect(groups[0].dailyExpense, 0);
+      expect(groups[0].dailyExpense, 500);
     });
   });
 }

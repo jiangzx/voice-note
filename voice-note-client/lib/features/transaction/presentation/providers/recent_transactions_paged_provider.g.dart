@@ -46,7 +46,7 @@ final class RecentTransactionsPagedProvider
 }
 
 String _$recentTransactionsPagedHash() =>
-    r'464fa8589e14f2178ea996e7ec807f960f7aa608';
+    r'a0978ca3dfd0637cc589665704932ab7677a0803';
 
 abstract class _$RecentTransactionsPaged
     extends $Notifier<RecentTransactionsPagedState> {

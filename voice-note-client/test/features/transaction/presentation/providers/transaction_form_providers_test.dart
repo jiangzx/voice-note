@@ -62,6 +62,16 @@ void main() {
       );
     });
 
+    test('transfer type supports category selection (required for save)', () {
+      final notifier = container.read(transactionFormProvider.notifier);
+      notifier.setType(TransactionType.transfer);
+      notifier.setTransferDirection(TransferDirection.outbound);
+      expect(container.read(transactionFormProvider).categoryId, isNull);
+
+      notifier.setCategoryId('transfer-out-cat-id');
+      expect(container.read(transactionFormProvider).categoryId, 'transfer-out-cat-id');
+    });
+
     test('reset returns to default state', () {
       final notifier = container.read(transactionFormProvider.notifier);
       notifier.setType(TransactionType.income);

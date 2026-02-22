@@ -106,6 +106,13 @@ const presetExpenseCategories = <PresetCategory>[
     sortOrder: 11,
     isHidden: true,
   ),
+  PresetCategory(
+    name: '转出',
+    type: 'expense',
+    icon: 'material:arrow_upward',
+    color: 'FF78909C',
+    sortOrder: 12,
+  ),
 ];
 
 const presetIncomeCategories = <PresetCategory>[
@@ -143,6 +150,13 @@ const presetIncomeCategories = <PresetCategory>[
     icon: 'material:more_horiz',
     color: 'FF90A4AE',
     sortOrder: 4,
+  ),
+  PresetCategory(
+    name: '转入',
+    type: 'income',
+    icon: 'material:arrow_downward',
+    color: 'FF66BB6A',
+    sortOrder: 5,
   ),
 ];
 

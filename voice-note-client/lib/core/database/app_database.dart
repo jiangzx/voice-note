@@ -4,7 +4,9 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 
+import '../constants/preset_categories.dart';
 import '../../features/account/data/account_dao.dart';
 import '../../features/budget/data/budget_dao.dart';
 import '../../features/category/data/category_dao.dart';
@@ -105,7 +107,9 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
+
+  static const _uuid = Uuid();
 
   @override
   MigrationStrategy get migration {
@@ -122,7 +126,69 @@ class AppDatabase extends _$AppDatabase {
         if (from < 3) {
           await _createIndexes();
         }
+        if (from < 4) {
+          await _migrateTransferCategories(this);
+        }
       },
+    );
+  }
+
+  /// Ensures 转出/转入 preset categories exist and backfills transfer transactions.
+  static Future<void> _migrateTransferCategories(AppDatabase db) async {
+    final now = DateTime.now();
+    final outPreset =
+        presetExpenseCategories.firstWhere((c) => c.name == '转出');
+    final inPreset =
+        presetIncomeCategories.firstWhere((c) => c.name == '转入');
+
+    var outId = await (db.select(db.categories)
+          ..where((c) =>
+              c.name.equals('转出') & c.type.equals('expense')))
+        .getSingleOrNull()
+        .then((row) => row?.id);
+    if (outId == null) {
+      outId = _uuid.v4();
+      await db.into(db.categories).insert(CategoriesCompanion.insert(
+            id: outId,
+            name: outPreset.name,
+            type: outPreset.type,
+            icon: Value(outPreset.icon),
+            color: Value(outPreset.color),
+            isPreset: const Value(true),
+            isHidden: Value(outPreset.isHidden),
+            sortOrder: Value(outPreset.sortOrder),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ));
+    }
+
+    var inId = await (db.select(db.categories)
+          ..where((c) => c.name.equals('转入') & c.type.equals('income')))
+        .getSingleOrNull()
+        .then((row) => row?.id);
+    if (inId == null) {
+      inId = _uuid.v4();
+      await db.into(db.categories).insert(CategoriesCompanion.insert(
+            id: inId,
+            name: inPreset.name,
+            type: inPreset.type,
+            icon: Value(inPreset.icon),
+            color: Value(inPreset.color),
+            isPreset: const Value(true),
+            isHidden: Value(inPreset.isHidden),
+            sortOrder: Value(inPreset.sortOrder),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ));
+    }
+
+    await db.customStatement(
+      'UPDATE transactions SET category_id = ? WHERE type = ? AND category_id IS NULL AND transfer_direction = ?',
+      [outId, 'transfer', 'out'],
+    );
+    await db.customStatement(
+      'UPDATE transactions SET category_id = ? WHERE type = ? AND category_id IS NULL AND transfer_direction = ?',
+      [inId, 'transfer', 'in'],
     );
   }
 

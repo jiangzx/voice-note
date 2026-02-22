@@ -5,7 +5,7 @@ import 'package:suikouji/core/database/app_database.dart';
 import 'package:suikouji/features/budget/data/budget_dao.dart';
 
 void main() {
-  group('Database schema v3', () {
+  group('Database schema v4', () {
     late AppDatabase db;
 
     setUp(() {
@@ -84,8 +84,18 @@ void main() {
       expect(results.first.amount, 800.0);
     });
 
-    test('schema version is 3', () {
-      expect(db.schemaVersion, 3);
+    test('schema version is 4', () {
+      expect(db.schemaVersion, 4);
+    });
+
+    test('seed includes 转出 and 转入 preset categories', () async {
+      final categories = await db.select(db.categories).get();
+      final outCat =
+          categories.where((c) => c.name == '转出' && c.type == 'expense');
+      final inCat =
+          categories.where((c) => c.name == '转入' && c.type == 'income');
+      expect(outCat, hasLength(1));
+      expect(inCat, hasLength(1));
     });
   });
 }

@@ -5,6 +5,7 @@ import '../../data/repositories/category_repository_impl.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/repositories/category_repository.dart';
 import '../../domain/services/time_period_recommendation_service.dart';
+import '../../../transaction/domain/entities/transaction_entity.dart';
 
 part 'category_providers.g.dart';
 
@@ -19,6 +20,19 @@ CategoryRepository categoryRepository(Ref ref) {
 Future<List<CategoryEntity>> visibleCategories(Ref ref, String type) async {
   final repo = ref.watch(categoryRepositoryProvider);
   return repo.getVisible(type);
+}
+
+/// Preset category id for transfer: 转出 (outbound) or 转入 (inbound). Used to default selection when creating a transfer.
+@riverpod
+Future<String?> transferDefaultCategoryId(
+  Ref ref,
+  TransferDirection direction,
+) async {
+  final type = direction == TransferDirection.outbound ? 'expense' : 'income';
+  final name = direction == TransferDirection.outbound ? '转出' : '转入';
+  final list = await ref.watch(visibleCategoriesProvider(type).future);
+  final found = list.where((c) => c.name == name).toList();
+  return found.isEmpty ? null : found.first.id;
 }
 
 @riverpod

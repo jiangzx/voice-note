@@ -107,35 +107,36 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return query.get();
   }
 
-  /// Get income/expense summary for a date range using SQL aggregation.
+  /// Get income/expense summary for a date range. Includes transfer: in=income, out=expense.
   Future<({double totalIncome, double totalExpense})> getSummary({
     required DateTime dateFrom,
     required DateTime dateTo,
   }) async {
     final sumCol = transactions.amount.sum();
-    final query = selectOnly(transactions)
-      ..addColumns([transactions.type, sumCol])
-      ..where(
-        transactions.date.isBiggerOrEqualValue(dateFrom) &
+    final baseFilter = transactions.date.isBiggerOrEqualValue(dateFrom) &
         transactions.date.isSmallerOrEqualValue(dateTo) &
-        transactions.isDraft.equals(false) &
-        transactions.type.isIn(['income', 'expense']),
-      )
-      ..groupBy([transactions.type]);
+        transactions.isDraft.equals(false);
+    final incomeFilter = baseFilter &
+        (transactions.type.equals('income') |
+            (transactions.type.equals('transfer') &
+                transactions.transferDirection.equals('in')));
+    final expenseFilter = baseFilter &
+        (transactions.type.equals('expense') |
+            (transactions.type.equals('transfer') &
+                transactions.transferDirection.equals('out')));
 
-    final rows = await query.get();
-    var totalIncome = 0.0;
-    var totalExpense = 0.0;
-    for (final row in rows) {
-      final type = row.read(transactions.type);
-      final sum = row.read(sumCol) ?? 0.0;
-      if (type == 'income') {
-        totalIncome = sum;
-      } else if (type == 'expense') {
-        totalExpense = sum;
-      }
-    }
-    return (totalIncome: totalIncome, totalExpense: totalExpense);
+    final incomeQuery = selectOnly(transactions)
+      ..addColumns([sumCol])
+      ..where(incomeFilter);
+    final expenseQuery = selectOnly(transactions)
+      ..addColumns([sumCol])
+      ..where(expenseFilter);
+    final incomeRow = await incomeQuery.getSingle();
+    final expenseRow = await expenseQuery.getSingle();
+    return (
+      totalIncome: incomeRow.read(sumCol) ?? 0.0,
+      totalExpense: expenseRow.read(sumCol) ?? 0.0,
+    );
   }
 
   /// Get recent N transactions (newest by creation first, so just-recorded items appear at top).

@@ -197,6 +197,33 @@ void main() {
       final cat = await categoryDao.getById(entity.categoryId!);
       expect(cat?.name, '医疗');
     });
+
+    test('saves transfer with 转出/转入 category by direction', () async {
+      const resultOut = ParseResult(
+        amount: 500.0,
+        type: 'TRANSFER',
+        transferDirection: 'out',
+        confidence: 0.9,
+        source: ParseSource.llm,
+      );
+      final entityOut = await service.save(resultOut);
+      expect(entityOut.type, TransactionType.transfer);
+      expect(entityOut.categoryId, isNotNull);
+      final catOut = await categoryDao.getById(entityOut.categoryId!);
+      expect(catOut?.name, '转出');
+
+      const resultIn = ParseResult(
+        amount: 200.0,
+        type: 'TRANSFER',
+        transferDirection: 'in',
+        confidence: 0.9,
+        source: ParseSource.llm,
+      );
+      final entityIn = await service.save(resultIn);
+      expect(entityIn.categoryId, isNotNull);
+      final catIn = await categoryDao.getById(entityIn.categoryId!);
+      expect(catIn?.name, '转入');
+    });
   });
 
   group('saveBatch', () {

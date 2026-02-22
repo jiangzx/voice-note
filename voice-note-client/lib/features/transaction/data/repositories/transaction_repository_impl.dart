@@ -132,6 +132,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
       for (final tx in txs) {
         if (tx.type == 'income') income += tx.amount;
         if (tx.type == 'expense') expense += tx.amount;
+        if (tx.type == 'transfer') {
+          if (tx.transferDirection == 'in') income += tx.amount;
+          if (tx.transferDirection == 'out') expense += tx.amount;
+        }
       }
       result.add(
         DailyTransactionGroup(

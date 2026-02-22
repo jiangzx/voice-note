@@ -28,11 +28,12 @@ class AudioRuntimeController(
         val sessionId = args["sessionId"] as? String
             ?: return mapOf("ok" to false, "error" to "missing_session_id")
         val platformConfig = args["platformConfig"] as? Map<*, *>
+        val requestedMode = args["mode"] as? String ?: mode
         val enableNativeCapture =
-            platformConfig?.get("enableNativeCapture") as? Boolean ?: false
+            platformConfig?.get("enableNativeCapture") as? Boolean ?: (requestedMode != "keyboard")
 
         currentSessionId = sessionId
-        mode = args["mode"] as? String ?: mode
+        mode = requestedMode
         // Lazy-create all components once, then keep them for the whole session.
         ensureComponents()
         // Current Flutter orchestrator still owns ASR capture path. Keep native capture
@@ -204,7 +205,7 @@ class AudioRuntimeController(
 
     fun getDuplexStatus(): Map<String, Any?> {
         return mapOf(
-            "captureActive" to initialized.get(),
+            "captureActive" to (captureRuntime?.isRunning() == true),
             "asrMuted" to asrMuted,
             "ttsPlaying" to ttsPlaying,
             "focusState" to focusState,
@@ -249,10 +250,16 @@ class AudioRuntimeController(
                         captureRuntime?.start()
                     } catch (e: IllegalStateException) {
                         emitRuntimeError("audio_record_start_failed", "Failed to start AudioRecord in auto mode: ${e.message}")
-                        // Continue with mode switch even if capture fails
+                        mode = oldMode
+                        return mapOf(
+                            "ok" to false,
+                            "error" to "audio_record_start_failed",
+                            "message" to (e.message ?: "Unknown error"),
+                            "mode" to oldMode,
+                        )
                     }
                 }
-                // 启用自动 VAD
+                // 启用自动 VAD（仅当 capture 已成功启动，否则 ASR 无音频帧）
                 setAsrMuted(mapOf("muted" to false))
                 bargeInConfig = bargeInConfig.copy(enabled = true)
                 bargeInDetector?.updateConfig(bargeInConfig)
@@ -285,7 +292,7 @@ class AudioRuntimeController(
     fun getLifecycleSnapshot(): Map<String, Any?> {
         return mapOf(
             "appState" to "foreground",
-            "captureActive" to initialized.get(),
+            "captureActive" to (captureRuntime?.isRunning() == true),
             "asrMuted" to asrMuted,
             "ttsPlaying" to ttsPlaying,
             "focusState" to focusState,

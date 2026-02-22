@@ -134,6 +134,86 @@ final class VisibleCategoriesFamily extends $Family
   String toString() => r'visibleCategoriesProvider';
 }
 
+/// Preset category id for transfer: 转出 (outbound) or 转入 (inbound). Used to default selection when creating a transfer.
+
+@ProviderFor(transferDefaultCategoryId)
+final transferDefaultCategoryIdProvider = TransferDefaultCategoryIdFamily._();
+
+/// Preset category id for transfer: 转出 (outbound) or 转入 (inbound). Used to default selection when creating a transfer.
+
+final class TransferDefaultCategoryIdProvider
+    extends $FunctionalProvider<AsyncValue<String?>, String?, FutureOr<String?>>
+    with $FutureModifier<String?>, $FutureProvider<String?> {
+  /// Preset category id for transfer: 转出 (outbound) or 转入 (inbound). Used to default selection when creating a transfer.
+  TransferDefaultCategoryIdProvider._({
+    required TransferDefaultCategoryIdFamily super.from,
+    required TransferDirection super.argument,
+  }) : super(
+         retry: null,
+         name: r'transferDefaultCategoryIdProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$transferDefaultCategoryIdHash();
+
+  @override
+  String toString() {
+    return r'transferDefaultCategoryIdProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<String?> create(Ref ref) {
+    final argument = this.argument as TransferDirection;
+    return transferDefaultCategoryId(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TransferDefaultCategoryIdProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$transferDefaultCategoryIdHash() =>
+    r'1f01112b53af91dcca1f28ddeabbfd131ba5e0ed';
+
+/// Preset category id for transfer: 转出 (outbound) or 转入 (inbound). Used to default selection when creating a transfer.
+
+final class TransferDefaultCategoryIdFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<String?>, TransferDirection> {
+  TransferDefaultCategoryIdFamily._()
+    : super(
+        retry: null,
+        name: r'transferDefaultCategoryIdProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Preset category id for transfer: 转出 (outbound) or 转入 (inbound). Used to default selection when creating a transfer.
+
+  TransferDefaultCategoryIdProvider call(TransferDirection direction) =>
+      TransferDefaultCategoryIdProvider._(argument: direction, from: this);
+
+  @override
+  String toString() => r'transferDefaultCategoryIdProvider';
+}
+
 @ProviderFor(recentCategories)
 final recentCategoriesProvider = RecentCategoriesProvider._();
 
