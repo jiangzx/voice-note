@@ -245,7 +245,7 @@ class _ComparisonSection extends ConsumerWidget {
               children: [
                 Expanded(
                   child: _ChangeIndicator(
-                    label: '收入环比',
+                    label: '收入',
                     change: incomeChange,
                     txColors: txColors,
                     positiveIsGood: true,
@@ -253,7 +253,7 @@ class _ComparisonSection extends ConsumerWidget {
                 ),
                 Expanded(
                   child: _ChangeIndicator(
-                    label: '支出环比',
+                    label: '支出',
                     change: expenseChange,
                     txColors: txColors,
                     positiveIsGood: false,
@@ -300,20 +300,21 @@ class _ChangeIndicator extends StatelessWidget {
     final icon = isPositive ? Icons.trending_up : Icons.trending_down;
     final sign = change! >= 0 ? '+' : '';
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: AppSpacing.xs),
-        Expanded(
-          child: Text(
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
             '$label $sign${change!.toStringAsFixed(1)}%',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
-            overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

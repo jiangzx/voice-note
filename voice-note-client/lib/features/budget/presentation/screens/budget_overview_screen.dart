@@ -242,7 +242,7 @@ class _UnbudgetedTile extends StatelessWidget {
             Text(
               '未设定',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -290,7 +290,7 @@ class _BudgetCategoryTile extends StatelessWidget {
                       Text(
                         '¥${item.status.spentAmount.toStringAsFixed(0)} / ¥${item.status.budgetAmount.toStringAsFixed(0)}',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.outline,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],

@@ -52,18 +52,6 @@ class BudgetProgressBar extends StatelessWidget {
                 ),
               ),
             ),
-            // Amount text overlay
-            Center(
-              child: Text(
-                '¥${status.spentAmount.toStringAsFixed(0)} / ¥${status.budgetAmount.toStringAsFixed(0)}',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: progress > 0.5
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
           ],
         ),
       ),

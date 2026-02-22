@@ -211,8 +211,10 @@ class _AppShellState extends ConsumerState<AppShell> {
     final location = GoRouterState.of(context).uri.path;
     final isTransactionPage = location.startsWith('/transactions');
     final hideOnHomeAndStats = ref.watch(hideFabOnHomeAndStatsProvider);
+    final isStatistics = index == 2;
     final showFab = index < 3 &&
         !isTransactionPage &&
+        !isStatistics &&
         !(_isHomeOrStatistics && hideOnHomeAndStats);
     final useDraggableFab = showFab && _isHomeOrStatistics;
 

@@ -126,11 +126,23 @@ class _BarChartContent extends StatelessWidget {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 40,
+              reservedSize: 48,
               getTitlesWidget: (value, meta) {
-                return Text(
-                  value >= 1000 ? '${(value / 1000).toStringAsFixed(1)}k' : value.toStringAsFixed(0),
-                  style: Theme.of(context).textTheme.bodySmall,
+                final label = value >= 1000
+                    ? '${(value / 1000).round()}k'
+                    : value.toStringAsFixed(0);
+                return SizedBox(
+                  width: 36,
+                  child: FittedBox(
+                    alignment: Alignment.centerRight,
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.clip,
+                    ),
+                  ),
                 );
               },
             ),
