@@ -255,6 +255,11 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                               effectiveMode == VoiceInputMode.keyboard
                           ? VoiceCopy.emptyStateHighlight
                           : null,
+                      emptyStateExample: effectiveMode ==
+                                  VoiceInputMode.pushToTalk ||
+                              effectiveMode == VoiceInputMode.keyboard
+                          ? VoiceCopy.modeExampleMultiWithLabel
+                          : null,
                     ),
                   ),
 
@@ -477,6 +482,16 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
             ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xs),
+          child: Text(
+            VoiceCopy.modeExampleMultiWithLabel,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -664,12 +679,26 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
 
     if (voiceState == VoiceState.listening) {
       if (inputMode == VoiceInputMode.pushToTalk) {
-        return _buildHintWithHighlight(
-          VoiceCopy.modeHintManual,
-          VoiceCopy.emptyStateHighlight,
-          theme.textTheme.bodySmall?.copyWith(
-            color: AppColors.textPlaceholder,
-          ),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildHintWithHighlight(
+              VoiceCopy.modeHintManual,
+              VoiceCopy.emptyStateHighlight,
+              theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textPlaceholder,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              VoiceCopy.modeExampleMultiWithLabel,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         );
       }
       if (isProcessing) {
@@ -766,13 +795,12 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           await ref.read(voiceSessionProvider.notifier).switchMode(newMode);
           if (!mounted) return;
           if (oldMode == VoiceInputMode.auto &&
-              (newMode == VoiceInputMode.pushToTalk ||
-                  newMode == VoiceInputMode.keyboard)) {
-            final msg = newMode == VoiceInputMode.pushToTalk
-                ? VoiceCopy.modeSwitchHintManual
-                : VoiceCopy.modeSwitchHintKeyboard;
+              newMode == VoiceInputMode.keyboard) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+              SnackBar(
+                content: Text(VoiceCopy.modeSwitchHintKeyboard),
+                behavior: SnackBarBehavior.floating,
+              ),
             );
           }
         },

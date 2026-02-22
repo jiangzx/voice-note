@@ -341,12 +341,15 @@ class ChatHistory extends StatefulWidget {
   /// If non-null and contained in [emptyStateHint], that substring is emphasized (color + weight).
   /// Only the first occurrence is emphasized when the substring appears multiple times.
   final String? emptyStateHighlight;
+  /// Optional line shown below [emptyStateHint] when [messages] is empty (e.g. "例如：早餐 15 元；...").
+  final String? emptyStateExample;
 
   const ChatHistory({
     super.key,
     required this.messages,
     required this.emptyStateHint,
     this.emptyStateHighlight,
+    this.emptyStateExample,
   });
 
   @override
@@ -395,32 +398,50 @@ class _ChatHistoryState extends State<ChatHistory> {
           highlight.isNotEmpty &&
           hint.contains(highlight);
 
-      return Center(
-        child: showHighlight
-            ? Text.rich(
-                TextSpan(
-                  style: baseStyle,
-                  children: [
-                    TextSpan(text: hint.substring(0, hint.indexOf(highlight))),
-                    TextSpan(
-                      text: highlight,
-                      style: baseStyle?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    TextSpan(
-                      text: hint.substring(hint.indexOf(highlight) + highlight.length),
-                    ),
-                  ],
-                ),
-                textAlign: TextAlign.center,
-              )
-            : Text(
-                hint,
+      final hintWidget = showHighlight
+          ? Text.rich(
+              TextSpan(
                 style: baseStyle,
-                textAlign: TextAlign.center,
+                children: [
+                  TextSpan(text: hint.substring(0, hint.indexOf(highlight))),
+                  TextSpan(
+                    text: highlight,
+                    style: baseStyle?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  TextSpan(
+                    text: hint.substring(hint.indexOf(highlight) + highlight.length),
+                  ),
+                ],
               ),
+              textAlign: TextAlign.center,
+            )
+          : Text(
+              hint,
+              style: baseStyle,
+              textAlign: TextAlign.center,
+            );
+      final example = widget.emptyStateExample;
+      return Center(
+        child: example != null && example.isNotEmpty
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  hintWidget,
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    example,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              )
+            : hintWidget,
       );
     }
 

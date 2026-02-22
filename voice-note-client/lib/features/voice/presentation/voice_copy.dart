@@ -34,6 +34,10 @@ abstract final class VoiceCopy {
       '已切换到手动模式，当前多笔已清空，请重新说话记录';
   /// Substring to emphasize in manual/keyboard empty state and hints.
   static const String emptyStateHighlight = '一次记多笔';
+  /// Example for manual/keyboard "multi-entry" hint.
+  static const String modeExampleMulti = '早餐 15 元；公交 2 元；咖啡 30 元';
+  /// Full line for UI: "例如：" + [modeExampleMulti]. Single source for label + content.
+  static String get modeExampleMultiWithLabel => '例如：$modeExampleMulti';
 
   // --- Recognition loading ---
   static const String recognizingHint = '正在识别语音，请稍候...';
