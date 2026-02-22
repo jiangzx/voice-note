@@ -27,6 +27,8 @@ void main() {
     expect(find.text('本月'), findsOneWidget);
     expect(find.text('全部'), findsOneWidget);
     expect(find.text('支出'), findsOneWidget);
+    expect(find.text('收入'), findsOneWidget);
+    expect(find.text('转账'), findsNothing);
   });
 
   testWidgets('search controller syncs with external searchQuery', (

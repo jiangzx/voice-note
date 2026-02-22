@@ -74,16 +74,15 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   }
 
   void _onUnlockSuccess() {
+    final notifier = ref.read(securitySettingsProvider.notifier);
     if (widget.disableTarget != null) {
-      final notifier = ref.read(securitySettingsProvider.notifier);
       if (widget.disableTarget == 'gesture') {
         notifier.setGestureLockEnabled(false, null);
       } else if (widget.disableTarget == 'password') {
         notifier.setPasswordLockEnabled(false, null);
       }
-    } else {
-      ref.read(securitySettingsProvider.notifier).setUnlockedThisSession();
     }
+    notifier.setUnlockedThisSession();
     setState(() => _isExiting = true);
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) context.go(widget.redirectUri);

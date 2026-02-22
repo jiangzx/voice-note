@@ -22,6 +22,10 @@ List<DailyTransactionGroup> groupTransactionsByDay(
     for (final tx in txs) {
       if (tx.type == TransactionType.income) income += tx.amount;
       if (tx.type == TransactionType.expense) expense += tx.amount;
+      if (tx.type == TransactionType.transfer && tx.transferDirection != null) {
+        if (tx.transferDirection == TransferDirection.inbound) income += tx.amount;
+        if (tx.transferDirection == TransferDirection.outbound) expense += tx.amount;
+      }
     }
     return DailyTransactionGroup(
       date: day,

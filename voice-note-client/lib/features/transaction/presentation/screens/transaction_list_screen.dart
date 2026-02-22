@@ -59,6 +59,10 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   static const _keyDeleteHintShown = 'transaction_list_delete_hint_shown';
   static const _keySwipeDeleteHintDismissed = 'transaction_list_swipe_delete_hint_dismissed';
 
+  /// Type filter for list/export; 'transfer' is normalized to null (no separate chip).
+  String? get _effectiveTypeFilter =>
+      _typeFilter == TransactionType.transfer.name ? null : _typeFilter;
+
   @override
   void initState() {
     super.initState();
@@ -139,7 +143,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       builder: (_) => ExportOptionsSheet(
         initialDateFrom: dateRange.from,
         initialDateTo: dateRange.to,
-        initialType: _typeFilter,
+        initialType: _effectiveTypeFilter,
       ),
     );
   }
@@ -199,7 +203,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                 ),
               FilterBar(
                 selectedDatePreset: _datePreset,
-                selectedType: _typeFilter,
+                selectedType: _effectiveTypeFilter,
                 searchQuery: _searchQuery,
                 onDatePresetChanged: (preset) =>
                     setState(() => _datePreset = preset),
@@ -468,7 +472,8 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   List<DailyTransactionGroup> _applyClientFilters(
     List<DailyTransactionGroup> groups,
   ) {
-    if (_typeFilter == null &&
+    final typeFilter = _effectiveTypeFilter;
+    if (typeFilter == null &&
         _searchQuery.isEmpty &&
         _categoryFilter == null) {
       return groups;
@@ -477,7 +482,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     return groups
         .map((g) {
           final txList = g.transactions.cast<TransactionEntity>().where((tx) {
-            if (_typeFilter != null && tx.type.name != _typeFilter) {
+            if (typeFilter != null && tx.type.name != typeFilter) {
               return false;
             }
             if (_categoryFilter != null &&

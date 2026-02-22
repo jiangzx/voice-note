@@ -122,7 +122,6 @@ class _FilterBarState extends State<FilterBar> {
               _typeChip('全部', null),
               _typeChip('支出', 'expense'),
               _typeChip('收入', 'income'),
-              _typeChip('转账', 'transfer'),
             ],
           ),
         ),

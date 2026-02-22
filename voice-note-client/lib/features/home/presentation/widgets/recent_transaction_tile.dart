@@ -41,6 +41,7 @@ class RecentTransactionTile extends StatelessWidget {
     final subtitleText = categoryName ??
         (transaction.type == TransactionType.transfer ? '转账' : '未分类');
 
+    // 统一两种颜色：支出/转出用 expense，收入/转入用 income
     Color amountColor;
     String amountPrefix;
 
@@ -52,7 +53,10 @@ class RecentTransactionTile extends StatelessWidget {
         amountColor = txColors.income;
         amountPrefix = '+';
       case TransactionType.transfer:
-        amountColor = txColors.transfer;
+        amountColor =
+            transaction.transferDirection == TransferDirection.outbound
+            ? txColors.expense
+            : txColors.income;
         amountPrefix =
             transaction.transferDirection == TransferDirection.outbound
             ? '-'

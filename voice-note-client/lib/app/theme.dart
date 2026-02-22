@@ -51,15 +51,16 @@ class TransactionColors extends ThemeExtension<TransactionColors> {
   }
 }
 
+/// 交易金额用色：收入金黄、支出黑（与 AppColors 分离，避免影响删除/错误等红色语义）
 const _lightTransactionColors = TransactionColors(
-  income: AppColors.income,
-  expense: AppColors.expense,
+  income: Color(0xFFD4A017),
+  expense: Color(0xFF000000),
   transfer: AppColors.brandPrimary,
 );
 
 const _darkTransactionColors = TransactionColors(
-  income: Color(0xFF66BB6A),
-  expense: Color(0xFFEF5350),
+  income: Color(0xFFE6B800),
+  expense: Color(0xFFE5E6EB),
   transfer: Color(0xFF42A5F5),
 );
 

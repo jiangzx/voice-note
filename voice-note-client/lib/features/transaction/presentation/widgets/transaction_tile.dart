@@ -37,6 +37,7 @@ class TransactionTile extends StatelessWidget {
     final txColors = theme.extension<TransactionColors>()!;
     final displayName = transaction.description ?? categoryName ?? '未分类';
 
+    // 统一为两种颜色：支出/转出用 expense，收入/转入用 income；金额格式 ±¥xx
     Color amountColor;
     String amountText;
 
@@ -48,12 +49,13 @@ class TransactionTile extends StatelessWidget {
         amountColor = txColors.income;
         amountText = '+¥${transaction.amount.toStringAsFixed(2)}';
       case TransactionType.transfer:
-        amountColor = txColors.transfer;
-        final prefix =
-            transaction.transferDirection == TransferDirection.outbound
-            ? '转出'
-            : '转入';
-        amountText = '$prefix ¥${transaction.amount.toStringAsFixed(2)}';
+        if (transaction.transferDirection == TransferDirection.outbound) {
+          amountColor = txColors.expense;
+          amountText = '-¥${transaction.amount.toStringAsFixed(2)}';
+        } else {
+          amountColor = txColors.income;
+          amountText = '+¥${transaction.amount.toStringAsFixed(2)}';
+        }
     }
 
     final tile = ListTile(
