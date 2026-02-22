@@ -54,10 +54,8 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   bool _isSelectionMode = false;
   final Set<String> _selectedIds = <String>{};
   bool _deleteHintShown = false;
-  bool _swipeDeleteHintShown = false;
 
   static const _keyDeleteHintShown = 'transaction_list_delete_hint_shown';
-  static const _keySwipeDeleteHintDismissed = 'transaction_list_swipe_delete_hint_dismissed';
 
   /// Type filter for list/export; 'transfer' is normalized to null (no separate chip).
   String? get _effectiveTypeFilter =>
@@ -75,17 +73,6 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       }
     }
     _checkAndShowDeleteHint();
-    _checkAndShowSwipeDeleteHint();
-  }
-
-  Future<void> _checkAndShowSwipeDeleteHint() async {
-    final prefs = await SharedPreferences.getInstance();
-    final dismissed = prefs.getBool(_keySwipeDeleteHintDismissed) ?? false;
-    if (!dismissed && mounted) {
-      setState(() {
-        _swipeDeleteHintShown = true;
-      });
-    }
   }
 
   Future<void> _checkAndShowDeleteHint() async {
@@ -211,47 +198,6 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                 onSearchChanged: (query) => setState(() => _searchQuery = query),
                 onAdvancedFilter: () => _showAdvancedFilter(context),
               ),
-              if (_swipeDeleteHintShown && !_isSelectionMode)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.xs,
-                  ),
-                  color: AppColors.backgroundTertiary.withValues(alpha: 0.8),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.swipe_left,
-                        size: AppIconSize.sm,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          '左滑可删除',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: AppIconSize.sm),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: () {
-                          setState(() {
-                            _swipeDeleteHintShown = false;
-                          });
-                          SharedPreferences.getInstance().then((prefs) {
-                            prefs.setBool(_keySwipeDeleteHintDismissed, true);
-                          });
-                        },
-                        tooltip: '关闭',
-                      ),
-                    ],
-                  ),
-                ),
               const Divider(height: 1),
               Expanded(child: _buildList(groupsAsync, categoryNameMap)),
             ],

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
@@ -32,8 +31,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _swipeDeleteHintShown = false;
-  static const _keySwipeDeleteHintDismissed = 'home_swipe_delete_hint_dismissed';
   bool _didRequestInitialLoad = false;
   static const double _loadMoreScrollThreshold = 200;
 
@@ -46,7 +43,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAndShowSwipeDeleteHint();
     _scrollController.addListener(_onScroll);
   }
 
@@ -64,16 +60,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final paged = ref.read(recentTransactionsPagedProvider);
     if (paged.hasMore && !paged.isLoadingMore) {
       ref.read(recentTransactionsPagedProvider.notifier).loadMore();
-    }
-  }
-
-  Future<void> _checkAndShowSwipeDeleteHint() async {
-    final prefs = await SharedPreferences.getInstance();
-    final dismissed = prefs.getBool(_keySwipeDeleteHintDismissed) ?? false;
-    if (!dismissed && mounted) {
-      setState(() {
-        _swipeDeleteHintShown = true;
-      });
     }
   }
 
@@ -158,59 +144,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                     ),
-                    if (_swipeDeleteHintShown && !_isSelectionMode)
-                      SliverToBoxAdapter(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.md,
-                                vertical: AppSpacing.xs,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.backgroundTertiary.withValues(alpha: 0.8),
-                                borderRadius: AppRadius.smAll,
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.swipe_left,
-                                    size: AppIconSize.sm,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                  const SizedBox(width: AppSpacing.sm),
-                                  Expanded(
-                                    child: Text(
-                                      '左滑可删除',
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.close, size: AppIconSize.sm),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: () {
-                                      setState(() {
-                                        _swipeDeleteHintShown = false;
-                                      });
-                                      SharedPreferences.getInstance().then((prefs) {
-                                        prefs.setBool(_keySwipeDeleteHintDismissed, true);
-                                      });
-                                    },
-                                    tooltip: '关闭',
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                          ],
-                        ),
-                      ),
                     if (pagedState.isLoading && pagedState.list.isEmpty)
                       SliverToBoxAdapter(
                         child: ShimmerPlaceholder.listPlaceholder(itemCount: 3),
