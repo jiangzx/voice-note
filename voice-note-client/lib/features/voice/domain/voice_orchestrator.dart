@@ -26,7 +26,8 @@ abstract class VoiceOrchestratorDelegate {
   void onInterimText(String text);
   void onFinalText(String text, DraftBatch draftBatch);
   void onDraftBatchUpdated(DraftBatch draftBatch);
-  void onBatchSaved(List<DraftTransaction> confirmedItems);
+  /// Returns true if save succeeded (so orchestrator may speak success); false if save failed or was skipped.
+  Future<bool> onBatchSaved(List<DraftTransaction> confirmedItems);
   void onConfirmTransaction();
   void onCancelTransaction();
   void onExitSession();
@@ -450,7 +451,7 @@ class VoiceOrchestrator {
       final batch = _draftBatch!;
       // Save any confirmed items before clearing
       if (batch.confirmedItems.isNotEmpty) {
-        _delegate.onBatchSaved(batch.confirmedItems);
+        await _delegate.onBatchSaved(batch.confirmedItems);
       }
       // Clear the batch and reset to listening state
       _draftBatch = null;
@@ -1242,13 +1243,13 @@ class VoiceOrchestrator {
       _cancelInactivityTimer();
       _delegate.onFinalText(text, _draftBatch!);
 
-      // TTS: single vs batch announcement
+      // TTS: single vs batch announcement (transfer has no category, still announce)
       if (_draftBatch!.isSingleItem) {
         final r = results.first;
-        if (r.amount != null && r.category != null) {
+        if (r.amount != null) {
           await _speakWithSuppression(
             TtsTemplates.confirm(
-              category: r.category!,
+              category: r.category,
               type: r.type,
               amount: r.amount!,
             ),
@@ -1290,19 +1291,19 @@ class VoiceOrchestrator {
 
     switch (intent) {
       case CorrectionIntent.confirm:
-        _handleConfirmAll();
+        await _handleConfirmAll();
 
       case CorrectionIntent.cancel:
         _handleCancelAll();
 
       case CorrectionIntent.confirmItem:
-        _handleConfirmItem(text);
+        await _handleConfirmItem(text);
 
       case CorrectionIntent.cancelItem:
-        _handleCancelItem(text);
+        await _handleCancelItem(text);
 
       case CorrectionIntent.continueRecording:
-        _handleContinueRecording();
+        await _handleContinueRecording();
 
       case CorrectionIntent.exit:
         _handleExit();
@@ -1313,7 +1314,7 @@ class VoiceOrchestrator {
     }
   }
 
-  void _handleConfirmAll() {
+  Future<void> _handleConfirmAll() async {
     final batch = _draftBatch;
     if (batch == null) {
       _delegate.onConfirmTransaction();
@@ -1324,7 +1325,7 @@ class VoiceOrchestrator {
 
     _draftBatch = batch.confirmAll();
     _delegate.onDraftBatchUpdated(_draftBatch!);
-    _checkAutoSubmit();
+    await _checkAutoSubmit();
   }
 
   void _handleCancelAll() {
@@ -1341,7 +1342,7 @@ class VoiceOrchestrator {
     _checkAutoSubmit();
   }
 
-  void _handleConfirmItem(String text) {
+  Future<void> _handleConfirmItem(String text) async {
     final batch = _draftBatch;
     if (batch == null) return;
 
@@ -1353,10 +1354,10 @@ class VoiceOrchestrator {
 
     _draftBatch = batch.confirmItem(zeroBasedIndex);
     _delegate.onDraftBatchUpdated(_draftBatch!);
-    _checkAutoSubmit();
+    await _checkAutoSubmit();
   }
 
-  void _handleCancelItem(String text) {
+  Future<void> _handleCancelItem(String text) async {
     final batch = _draftBatch;
     if (batch == null) return;
 
@@ -1368,13 +1369,13 @@ class VoiceOrchestrator {
 
     _draftBatch = batch.cancelItem(zeroBasedIndex);
     _delegate.onDraftBatchUpdated(_draftBatch!);
-    _checkAutoSubmit();
+    await _checkAutoSubmit();
   }
 
-  void _handleContinueRecording() {
+  Future<void> _handleContinueRecording() async {
     final batch = _draftBatch;
     if (batch != null && batch.confirmedItems.isNotEmpty) {
-      _delegate.onBatchSaved(batch.confirmedItems);
+      await _delegate.onBatchSaved(batch.confirmedItems);
     }
     _draftBatch = null;
     _currentState = VoiceState.listening;
@@ -1534,6 +1535,8 @@ class VoiceOrchestrator {
       description: fields['description'] as String?,
       date: fields['date'] as String?,
       account: fields['account'] as String?,
+      transferDirection: fields['transfer_direction'] as String?,
+      counterparty: fields['counterparty'] as String?,
       confidence: response.confidence,
       source: ParseSource.llm,
     );
@@ -1558,7 +1561,7 @@ class VoiceOrchestrator {
 
   // ======================== Auto-Submit ========================
 
-  void _checkAutoSubmit() {
+  Future<void> _checkAutoSubmit() async {
     final batch = _draftBatch;
     if (batch == null || !batch.allResolved) return;
 
@@ -1572,12 +1575,14 @@ class VoiceOrchestrator {
     _startInactivityTimer();
 
     if (valid.isNotEmpty) {
-      _delegate.onBatchSaved(valid);
-      _speakWithSuppression(TtsTemplates.batchSaved(count: valid.length));
-      if (valid.length < confirmed.length) {
-        _speakWithSuppression(
-          TtsTemplates.batchSkippedNoAmount(count: confirmed.length - valid.length),
-        );
+      final saveOk = await _delegate.onBatchSaved(valid);
+      if (saveOk) {
+        _speakWithSuppression(TtsTemplates.batchSaved(count: valid.length));
+        if (valid.length < confirmed.length) {
+          _speakWithSuppression(
+            TtsTemplates.batchSkippedNoAmount(count: confirmed.length - valid.length),
+          );
+        }
       }
       _delegate.onConfirmTransaction();
     } else if (confirmed.isNotEmpty) {

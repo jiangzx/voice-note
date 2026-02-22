@@ -62,8 +62,9 @@ class VoiceTransactionService {
     final type = _mapType(result.type);
     final categoryId = await _resolveCategoryId(result.category, type);
     final accountId = await _resolveAccountId(result.account);
-    final date = _parseDate(result.date) ?? DateTime.now();
     final now = DateTime.now();
+    final date = _parseDate(result.date) ?? DateTime(now.year, now.month, now.day);
+    final transferDirection = _mapTransferDirection(result.transferDirection);
     return TransactionEntity(
       id: _uuid.v4(),
       type: type,
@@ -73,9 +74,19 @@ class VoiceTransactionService {
       description: result.description,
       categoryId: categoryId,
       accountId: accountId,
+      transferDirection: transferDirection,
+      counterparty: result.counterparty,
       createdAt: now,
       updatedAt: now,
     );
+  }
+
+  /// Expects "in" | "out"; any other value (e.g. LLM typo) maps to outbound.
+  TransferDirection? _mapTransferDirection(String? dir) {
+    if (dir == null) return null;
+    return dir.toLowerCase() == 'in'
+        ? TransferDirection.inbound
+        : TransferDirection.outbound;
   }
 
   TransactionType _mapType(String typeStr) {
@@ -138,9 +149,12 @@ class VoiceTransactionService {
     throw const VoiceSaveException('没有可用的账户');
   }
 
+  /// Parses YYYY-MM-DD to local date-only to avoid timezone shifts.
   DateTime? _parseDate(String? dateStr) {
     if (dateStr == null) return null;
-    return DateTime.tryParse(dateStr);
+    final parsed = DateTime.tryParse(dateStr);
+    if (parsed == null) return null;
+    return DateTime(parsed.year, parsed.month, parsed.day);
   }
 }
 

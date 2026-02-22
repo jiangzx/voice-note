@@ -12,6 +12,7 @@ import com.suikouji.server.llm.provider.LlmProvider
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
+import java.time.LocalDate
 
 @Service
 class LlmService(
@@ -143,9 +144,11 @@ class LlmService(
             "#${item.index}: $type $amount $category $desc$date"
         }
 
+    /** Builds parse prompt. "Today" (今天) uses server's local date; deploy server in target timezone if user date must match. */
     private fun buildSystemPrompt(request: TransactionParseRequest): String {
         val base = promptManager.getPrompt("transaction-parse")
-        return appendContextSuffix(base, request.context)
+        val todayLine = "\nCurrent date (use this for 今天/today): ${LocalDate.now()}.\n"
+        return appendContextSuffix(base + todayLine, request.context)
     }
 
     private fun appendContextSuffix(base: String, context: ParseContext?): String {

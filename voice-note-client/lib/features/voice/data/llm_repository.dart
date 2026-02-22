@@ -40,15 +40,17 @@ class LlmRepository {
       final batch = TransactionBatchParseResponse.fromJson(json);
       return batch.transactions
           .map((t) => ParseResult(
-                amount: t.amount,
-                date: t.date,
-                category: t.category,
-                description: t.description,
-                type: t.type ?? 'EXPENSE',
-                account: t.account,
-                confidence: t.confidence,
-                source: ParseSource.llm,
-              ))
+          amount: t.amount,
+          date: t.date,
+          category: t.category,
+          description: t.description,
+          type: t.type ?? 'EXPENSE',
+          account: t.account,
+          transferDirection: t.transferDirection,
+          counterparty: t.counterparty,
+          confidence: t.confidence,
+          source: ParseSource.llm,
+        ))
           .toList();
     } on LlmParseException {
       rethrow;

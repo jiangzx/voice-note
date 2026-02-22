@@ -13,12 +13,12 @@
     </appender>
 
     <springProfile name="prod">
-        <property name="LOG_DIR" value="${LOG_DIR:-logs}"/>
+        <!-- Use LOG_PATH: set by Spring Boot from logging.file.path before Logback loads -->
 
         <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>${LOG_DIR}/voice-note-server.log</file>
+            <file>${LOG_PATH:-/app/logs}/voice-note-server.log</file>
             <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-                <fileNamePattern>${LOG_DIR}/voice-note-server.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <fileNamePattern>${LOG_PATH:-/app/logs}/voice-note-server.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
                 <maxFileSize>50MB</maxFileSize>
                 <maxHistory>30</maxHistory>
                 <totalSizeCap>1GB</totalSizeCap>
@@ -55,8 +55,24 @@
     </springProfile>
 
     <springProfile name="!prod">
+        <!-- LOG_PATH set by Spring Boot from logging.file.path (e.g. application-dev.yml) -->
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH:-logs}/voice-note-server.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH:-logs}/voice-note-server.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>50MB</maxFileSize>
+                <maxHistory>7</maxHistory>
+                <totalSizeCap>200MB</totalSizeCap>
+            </rollingPolicy>
+            <encoder>
+                <pattern>${LOG_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
         </root>
         <logger name="com.suikouji" level="DEBUG"/>
     </springProfile>

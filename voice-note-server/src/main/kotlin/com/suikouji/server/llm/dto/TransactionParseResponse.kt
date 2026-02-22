@@ -1,5 +1,7 @@
 package com.suikouji.server.llm.dto
 
+import com.fasterxml.jackson.annotation.JsonProperty
+
 /** Structured transaction data extracted by LLM from natural language. */
 data class TransactionParseResponse(
     val amount: Double?,
@@ -9,6 +11,8 @@ data class TransactionParseResponse(
     val description: String?,
     val type: TransactionType?,
     val account: String?,
+    @JsonProperty("transfer_direction") val transferDirection: String? = null,
+    val counterparty: String? = null,
     val confidence: Double = 0.0,
     val model: String = ""
 )

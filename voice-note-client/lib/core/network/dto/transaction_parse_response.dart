@@ -7,6 +7,8 @@ class TransactionParseResponse {
   final String? description;
   final String? type;
   final String? account;
+  final String? transferDirection;
+  final String? counterparty;
   final double confidence;
   final String model;
 
@@ -18,6 +20,8 @@ class TransactionParseResponse {
     this.description,
     this.type,
     this.account,
+    this.transferDirection,
+    this.counterparty,
     required this.confidence,
     required this.model,
   });
@@ -31,8 +35,10 @@ class TransactionParseResponse {
       description: json['description'] as String?,
       type: json['type'] as String?,
       account: json['account'] as String?,
-      confidence: (json['confidence'] as num).toDouble(),
-      model: json['model'] as String,
+      transferDirection: json['transfer_direction'] as String?,
+      counterparty: json['counterparty'] as String?,
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+      model: json['model']?.toString() ?? '',
     );
   }
 

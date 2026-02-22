@@ -17,10 +17,15 @@ class DateQuickSelect extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now().toDateOnly;
+    final now = DateTime.now();
+    final today = now.toDateOnly;
     final yesterday = today.yesterday;
     final dayBefore = today.dayBeforeYesterday;
     final formatter = DateFormat('M/d');
+    final selectedDateOnly = selected.toDateOnly;
+    final isOtherDate = !selectedDateOnly.isSameDay(today) &&
+        !selectedDateOnly.isSameDay(yesterday) &&
+        !selectedDateOnly.isSameDay(dayBefore);
 
     return Row(
       children: [
@@ -30,19 +35,20 @@ class DateQuickSelect extends StatelessWidget {
         const SizedBox(width: AppSpacing.sm),
         _chip(context, '前天', dayBefore),
         const SizedBox(width: AppSpacing.sm),
-        ActionChip(
+        ChoiceChip(
           avatar: const Icon(Icons.calendar_today, size: 16),
           label: Text(
-            selected.isSameDay(today) ? '选择日期' : formatter.format(selected),
+            isOtherDate ? formatter.format(selectedDateOnly) : '选择日期',
           ),
-          onPressed: () => _pickDate(context),
+          selected: isOtherDate,
+          onSelected: (_) => _pickDate(context),
         ),
       ],
     );
   }
 
   Widget _chip(BuildContext context, String label, DateTime date) {
-    final isSelected = selected.isSameDay(date);
+    final isSelected = selected.toDateOnly.isSameDay(date);
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
@@ -51,11 +57,17 @@ class DateQuickSelect extends StatelessWidget {
   }
 
   Future<void> _pickDate(BuildContext context) async {
+    // Use "now" at picker open so lastDate is correct even near midnight.
+    final now = DateTime.now();
+    final lastDate = now.toDateOnly;
+    final initialDate = selected.toDateOnly.isAfter(lastDate)
+        ? lastDate
+        : selected;
     final picked = await showDatePicker(
       context: context,
-      initialDate: selected,
+      initialDate: initialDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: lastDate,
     );
     if (picked != null) onChanged(picked);
   }

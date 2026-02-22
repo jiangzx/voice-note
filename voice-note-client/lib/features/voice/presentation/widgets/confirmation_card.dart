@@ -102,8 +102,10 @@ class _ConfirmationCardState extends State<ConfirmationCard>
             _FieldRow(
               icon: Icons.category_rounded,
               label: '分类',
-              value: result.category ?? '未识别',
-              isMissing: result.category == null,
+              value: result.category ??
+                  (result.type.toUpperCase() == 'TRANSFER' ? '转账' : '未识别'),
+              isMissing: result.category == null &&
+                  result.type.toUpperCase() != 'TRANSFER',
               onTap: () =>
                   widget.onFieldTap?.call('category', result.category),
             ),

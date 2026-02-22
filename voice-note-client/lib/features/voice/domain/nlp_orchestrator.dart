@@ -71,6 +71,8 @@ class NlpOrchestrator {
           description: r.description ?? localResult.description,
           type: r.type.isNotEmpty ? r.type : localResult.type,
           account: r.account,
+          transferDirection: r.transferDirection,
+          counterparty: r.counterparty,
           confidence: r.confidence,
           source: ParseSource.llm,
         );
@@ -176,6 +178,9 @@ class NlpOrchestrator {
       category: local.category,
       description: local.description,
       type: local.type,
+      account: null,
+      transferDirection: null,
+      counterparty: null,
       confidence: 0.3,
       source: ParseSource.local,
     );

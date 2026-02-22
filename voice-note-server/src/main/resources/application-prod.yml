@@ -1,6 +1,11 @@
 # Production profile — activated via SPRING_PROFILES_ACTIVE=prod
 # Overrides application.yml for security and performance in production.
 
+# Set before Logback loads so LOG_PATH is available in logback-spring.xml
+logging:
+  file:
+    path: ${LOG_DIR:/app/logs}
+
 api-auth:
   enabled: true
   key: ${API_AUTH_KEY}  # Required in production

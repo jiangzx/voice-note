@@ -6,6 +6,8 @@ class ParseResult {
   final String? description;
   final String type;
   final String? account;
+  final String? transferDirection;
+  final String? counterparty;
   final double confidence;
   final ParseSource source;
 
@@ -16,6 +18,8 @@ class ParseResult {
     this.description,
     this.type = 'EXPENSE',
     this.account,
+    this.transferDirection,
+    this.counterparty,
     this.confidence = 0.0,
     required this.source,
   });
@@ -31,6 +35,8 @@ class ParseResult {
     String? description,
     String? type,
     String? account,
+    String? transferDirection,
+    String? counterparty,
   }) {
     return ParseResult(
       amount: amount ?? this.amount,
@@ -39,6 +45,8 @@ class ParseResult {
       description: description ?? this.description,
       type: type ?? this.type,
       account: account ?? this.account,
+      transferDirection: transferDirection ?? this.transferDirection,
+      counterparty: counterparty ?? this.counterparty,
       confidence: confidence,
       source: source,
     );

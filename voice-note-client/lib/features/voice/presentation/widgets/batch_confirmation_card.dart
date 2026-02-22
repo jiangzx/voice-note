@@ -270,7 +270,7 @@ class _BatchItemRow extends StatelessWidget {
 
     return Semantics(
       label:
-          '第$displayIndex笔，${result.category ?? ""}$typeLabel'
+          '第$displayIndex笔，${result.category ?? (result.type.toUpperCase() == "TRANSFER" ? "转账" : "")}$typeLabel'
           '${result.amount?.toStringAsFixed(2) ?? ""}元'
           '${isConfirmed
               ? "，已确认"
@@ -352,7 +352,7 @@ class _BatchItemRow extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
-                    '${result.category ?? ""}'
+                    '${result.category ?? (result.type.toUpperCase() == "TRANSFER" ? "转账" : "")}'
                     '${result.description != null ? " · ${result.description}" : ""}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: onSurfaceColor,

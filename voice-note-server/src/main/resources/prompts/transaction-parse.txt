@@ -13,6 +13,8 @@ Return a JSON object with the following structure:
       "description": "brief description in Chinese" or null,
       "type": "EXPENSE" | "INCOME" | "TRANSFER" or null,
       "account": "account name" or null,
+      "transfer_direction": "in" | "out" or null,
+      "counterparty": "counterparty name in Chinese" or null,
       "confidence": 0.0 to 1.0
     }
   ]
@@ -24,12 +26,14 @@ Rules:
 3. Maintain the ORDER of transactions as they appear in the input.
 4. Split on punctuation (，、。；) or connectors (然后、还有、另外、以及) as transaction boundaries.
 5. If a shared context applies to multiple transactions (e.g. "今天" as date), inherit it to all.
-6. If a field cannot be determined, set it to null.
-7. Default type is EXPENSE unless keywords suggest otherwise (e.g. 工资/收入/红包 → INCOME, 转账 → TRANSFER).
-8. Relative dates: 今天=today, 昨天=yesterday, 前天=day before yesterday. Use ISO 8601 format.
-9. Map common keywords to categories: 吃饭/午餐/外卖/奶茶→餐饮, 打车/地铁/公交→交通, 淘宝/京东→购物, 电费/水费→账单, 电影/游戏→娱乐, 看病/药→医疗, 房租→住房, 工资→工资, 红包→红包, 洗脚/按摩/泡澡→洗浴.
-10. The confidence field reflects how complete and unambiguous the extraction is (1.0 = all fields clearly present).
-11. Return ONLY the JSON object, no explanations or markdown fences.
+6. description: Extract the concrete purpose or context of each transaction in short Chinese (e.g. who, what). category is the broad type (e.g. 餐饮, 交通); description is the user-facing phrase (e.g. 请小王吃饭, 和同事喝咖啡). Fill description whenever inferable from the text; use null only when the purpose cannot be inferred. Prefer 2–10 characters when possible; slightly longer is acceptable if it preserves context (e.g. who, what).
+7. If a field cannot be determined, set it to null. Exception: for description, prefer filling when the purpose of the transaction can be inferred from the text.
+8. Default type is EXPENSE unless keywords suggest otherwise (e.g. 工资/收入/红包 → INCOME, 转账 → TRANSFER).
+9. Relative dates: 今天=today, 昨天=yesterday, 前天=day before yesterday. Use ISO 8601 format.
+10. Map common keywords to categories: 吃饭/午餐/外卖/奶茶→餐饮, 打车/地铁/公交→交通, 淘宝/京东→购物, 电费/水费→账单, 电影/游戏→娱乐, 看病/药→医疗, 房租→住房, 工资→工资, 红包→红包, 洗脚/按摩/泡澡→洗浴.
+11. For type=TRANSFER: extract transfer_direction and counterparty. transfer_direction: "out" when user gives money to someone (e.g. 转账给X, 转给X, 转出); "in" when user receives from someone (e.g. X转给我, X转来, 转入). counterparty: the other party's name (person or account), e.g. 张丽娜, 张三, 支付宝. Use null only when not mentioned.
+12. The confidence field reflects how complete and unambiguous the extraction is (1.0 = all fields clearly present).
+13. Return ONLY the JSON object, no explanations or markdown fences.
 
 Examples:
 
@@ -47,3 +51,24 @@ Output: {"transactions":[{"amount":60,"currency":"CNY","date":"2026-02-19","cate
 
 Input: "60块钱的火锅打车回来30"
 Output: {"transactions":[{"amount":60,"currency":"CNY","date":null,"category":"餐饮","description":"火锅","type":"EXPENSE","account":null,"confidence":0.85},{"amount":30,"currency":"CNY","date":null,"category":"交通","description":"打车","type":"EXPENSE","account":null,"confidence":0.85}]}
+
+Input: "我请小王吃饭花了60"
+Output: {"transactions":[{"amount":60,"currency":"CNY","date":null,"category":"餐饮","description":"请小王吃饭","type":"EXPENSE","account":null,"confidence":0.9}]}
+
+Input: "和同事喝咖啡45"
+Output: {"transactions":[{"amount":45,"currency":"CNY","date":null,"category":"餐饮","description":"和同事喝咖啡","type":"EXPENSE","account":null,"confidence":0.9}]}
+
+Input: "给妈妈买药花了80"
+Output: {"transactions":[{"amount":80,"currency":"CNY","date":null,"category":"医疗","description":"给妈妈买药","type":"EXPENSE","account":null,"confidence":0.9}]}
+
+Input: "打车去机场120"
+Output: {"transactions":[{"amount":120,"currency":"CNY","date":null,"category":"交通","description":"打车去机场","type":"EXPENSE","account":null,"confidence":0.9}]}
+
+Input: "请小王吃饭60，给同事买奶茶18"
+Output: {"transactions":[{"amount":60,"currency":"CNY","date":null,"category":"餐饮","description":"请小王吃饭","type":"EXPENSE","account":null,"confidence":0.9},{"amount":18,"currency":"CNY","date":null,"category":"餐饮","description":"给同事买奶茶","type":"EXPENSE","account":null,"confidence":0.9}]}
+
+Input: "转账给张丽娜200元"
+Output: {"transactions":[{"amount":200,"currency":"CNY","date":null,"category":null,"description":"转账给张丽娜","type":"TRANSFER","account":null,"transfer_direction":"out","counterparty":"张丽娜","confidence":0.95}]}
+
+Input: "张三转给我300元"
+Output: {"transactions":[{"amount":300,"currency":"CNY","date":null,"category":null,"description":"张三转给我","type":"TRANSFER","account":null,"transfer_direction":"in","counterparty":"张三","confidence":0.95}]}

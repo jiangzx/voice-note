@@ -1,4 +1,7 @@
+# LOG_PATH for logback; default "logs" for local run, override with LOG_DIR in Docker
 logging:
+  file:
+    path: ${LOG_DIR:logs}
   level:
     com.suikouji: TRACE
     org.springframework.web.reactive.function.client: DEBUG
