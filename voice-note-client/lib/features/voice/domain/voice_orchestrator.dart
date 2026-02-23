@@ -89,6 +89,9 @@ class VoiceOrchestrator {
   /// Merged with the final segment on release so multi-phrase input is not lost.
   final List<String> _pushToTalkFinalTextBuffer = [];
 
+  /// After pushCancel we commit to flush server buffer; discard the next asrFinalText (that commit’s result).
+  int _discardAsrFinalTextCount = 0;
+
   DraftBatch? _draftBatch;
 
   // TTS VAD suppression flag
@@ -417,6 +420,38 @@ class VoiceOrchestrator {
     _startInactivityTimer();
   }
 
+  /// Cancel push-to-talk: commit to flush server buffer (so next recording is clean), then discard that result.
+  /// Used when user slides up to cancel (release in cancel zone).
+  Future<void> pushCancel() async {
+    _pushToTalkAutoReleaseTimer?.cancel();
+    _pushToTalkAutoReleaseTimer = null;
+    final native = _nativeAudioGateway;
+    final nativeSessionId = _nativeAudioSessionId;
+    if (native != null &&
+        nativeSessionId != null &&
+        _currentInputMode == VoiceInputMode.pushToTalk) {
+      try {
+        await native.setAsrMuted(
+          sessionId: nativeSessionId,
+          muted: true,
+          reason: 'push_cancel',
+        );
+        await Future.delayed(_pushEndCommitDelay, () {});
+        native.commitAsr(nativeSessionId);
+        native.stopCapture(sessionId: nativeSessionId);
+        _pushToTalkFinalTextBuffer.clear();
+        _discardAsrFinalTextCount = 1;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[VoiceMode] pushCancel: $e');
+        }
+      }
+      _ttsStoppedByUserAction = false;
+    }
+    _currentState = VoiceState.listening;
+    _delegate.onStateChanged(VoiceState.listening);
+    _startInactivityTimer();
+  }
 
   /// Process text input directly (keyboard mode).
   Future<void> processTextInput(String text) async {
@@ -828,6 +863,17 @@ class VoiceOrchestrator {
         }
         return;
       }
+      // 上滑取消后 commit 产生的 asrFinalText 丢弃接下来若干条（同一次 commit 可能 1～2 条）
+      if (_currentInputMode == VoiceInputMode.pushToTalk &&
+          _discardAsrFinalTextCount > 0) {
+        if (kDebugMode) {
+          debugPrint(
+            '[ASRFlow] Discard asrFinalText (from pushCancel commit, remaining=$_discardAsrFinalTextCount)',
+          );
+        }
+        _discardAsrFinalTextCount--;
+        return;
+      }
       // 手动模式：仍按住时只累积到 buffer，松开后再与最后一段合并处理
       if (_currentInputMode == VoiceInputMode.pushToTalk &&
           !_isPushEndPending) {
@@ -1087,6 +1133,7 @@ class VoiceOrchestrator {
     _isPushEndPending = false;
     _pushEndCompleter?.completeError(StateError('Orchestrator disposed'));
     _pushEndCompleter = null;
+    _discardAsrFinalTextCount = 0;
     _pushToTalkAutoReleaseTimer?.cancel();
     _pushToTalkAutoReleaseTimer = null;
     await stopListening();

@@ -1,6 +1,6 @@
 ## Purpose
 
-定义语音管线编排器的系统行为，包括 AudioCapture → VAD → ASR → NLP 完整管线协调、Delegate 模式解耦、交易确认与保存、ASR 自动重连和会话结束态管理。
+定义语音管线编排器的系统行为，包括 AudioCapture → VAD → ASR → NLP 完整管线协调、Delegate 模式解耦、交易确认与保存、手动模式取消（pushCancel）与缓冲清空、ASR 自动重连和会话结束态管理。
 
 ## Requirements
 
@@ -18,6 +18,21 @@
 #### Scenario: 键盘输入模式
 - **WHEN** 用户通过 processTextInput 提交文本
 - **THEN** 编排器 SHALL 跳过 AudioCapture/VAD/ASR，直接将文本交给 NLP 解析
+
+### Requirement: 手动模式取消（pushCancel）
+编排器 SHALL 提供 pushCancel()，供 UI 在用户「上滑松开取消」时调用。pushCancel SHALL 与 pushEnd 互斥（同一手势仅调用其一）。pushCancel 执行时 SHALL：取消 PTT 自动松开定时器；将 ASR 静音；等待与 pushEnd 相同的 commit 延迟；对 ASR 执行 commit 以清空服务端缓冲；停止本地采集；清空 _pushToTalkFinalTextBuffer；将「待丢弃 asrFinalText 计数」置为 1；状态 SHALL 设为 LISTENING 并通知 Delegate。编排器 SHALL 在收到 asrFinalText 时若该计数大于 0 则丢弃该条并减 1，SHALL NOT 调用 _onAsrFinalText。pushStart 时 SHALL NOT 重置该计数（仅由 pushCancel 设置、由收到并丢弃 asrFinalText 消耗），以保证取消段产生的识别结果不会在后续 pushEnd 时混入。
+
+#### Scenario: 上滑取消清空服务端缓冲
+- **WHEN** UI 调用 pushCancel（用户上滑松开）
+- **THEN** 编排器 SHALL 执行 mute → delay → commit → stopCapture，SHALL 设置丢弃计数为 1，状态 SHALL 回 LISTENING
+
+#### Scenario: 取消段 asrFinalText 丢弃
+- **WHEN** pushCancel 触发的 commit 导致服务端返回 asrFinalText
+- **THEN** 编排器 SHALL 丢弃该条（不调用 _onAsrFinalText），丢弃计数 SHALL 减 1
+
+#### Scenario: 取消后下次 pushEnd 正常
+- **WHEN** 用户完成一次 pushCancel 后再次按住并调用 pushEnd
+- **THEN** 编排器 SHALL 按正常 pushEnd 流程提交并等待 asrFinalText，该条 SHALL 被处理并进入 CONFIRMING，SHALL NOT 与先前取消段合并
 
 ### Requirement: Delegate 模式解耦
 编排器 SHALL 通过 VoiceOrchestratorDelegate 接口向 UI 层报告事件。Delegate SHALL 包含以下回调：onSpeechDetected（语音检测到）、onPartialText（中间识别结果）、onFinalText（最终文本+解析结果）、onDraftBatchUpdated（DraftBatch 变更通知）、onError（错误信息）、onContinueRecording（连续记账继续监听）。

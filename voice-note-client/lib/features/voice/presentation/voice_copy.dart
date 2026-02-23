@@ -18,6 +18,12 @@ abstract final class VoiceCopy {
   // --- Hints ---
   static const String idleHint = '点击开始';
   static const String pushToTalkHint = '按住 说话';
+  /// Shown while holding and in send zone: release to send.
+  static const String pushToTalkReleaseToSend = '松开 发送';
+  /// Shown while holding and in cancel zone (slid up): release to cancel.
+  static const String pushToTalkReleaseToCancel = '松开 取消';
+  /// Hint above button: slide up to cancel (WeChat-style).
+  static const String pushToTalkSlideUpToCancel = '上滑取消';
 
   // --- Mode-specific hints (manual / keyboard / auto) ---
   static const String modeHintManual = '按住说话，一次记多笔更省心';

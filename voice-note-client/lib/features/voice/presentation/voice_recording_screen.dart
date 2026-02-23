@@ -43,6 +43,11 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
   final _permissionService = PermissionService();
   bool _hasCheckedPermission = false;
 
+  /// PTT slide-to-cancel: pointer position at down for dy threshold.
+  Offset? _pttPointerDownLocal;
+  bool _pttInCancelZone = false;
+  static const double _kCancelZoneThreshold = 56;
+
   @override
   void initState() {
     super.initState();
@@ -635,12 +640,28 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
     VoiceInputMode inputMode,
     bool isProcessing,
   ) {
+    final theme = Theme.of(context);
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (inputMode == VoiceInputMode.pushToTalk)
-          _buildPushToTalkButton(voiceState)
-        else
+        if (inputMode == VoiceInputMode.pushToTalk) ...[
+          if (voiceState == VoiceState.recognizing)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Text(
+                _pttInCancelZone
+                    ? VoiceCopy.pushToTalkReleaseToCancel
+                    : VoiceCopy.pushToTalkSlideUpToCancel,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: _pttInCancelZone
+                      ? AppColors.expense
+                      : AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          _buildPushToTalkButton(voiceState),
+        ] else
           VoiceAnimationWidget(state: voiceState, size: 100),
         const SizedBox(height: AppSpacing.md),
         _buildStatusContent(voiceState, inputMode, isProcessing),
@@ -894,22 +915,36 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
 
   Widget _buildPushToTalkButton(VoiceState voiceState) {
     final isActive = voiceState == VoiceState.recognizing;
+    final showCancel = isActive && _pttInCancelZone;
 
     return Semantics(
       button: true,
-      label: isActive ? '正在录音，松开停止' : '按住说话',
+      label: isActive
+          ? (_pttInCancelZone
+              ? VoiceCopy.pushToTalkReleaseToCancel
+              : VoiceCopy.pushToTalkReleaseToSend)
+          : '按住说话',
       child: Listener(
-        onPointerDown: (_) {
+        onPointerDown: (PointerDownEvent event) {
+          _pttPointerDownLocal = event.localPosition;
+          _pttInCancelZone = false;
           HapticFeedback.mediumImpact();
           ref.read(voiceSessionProvider.notifier).pushStart();
         },
-        onPointerUp: (_) {
-          HapticFeedback.lightImpact();
-          ref.read(voiceSessionProvider.notifier).pushEnd();
+        onPointerMove: (PointerMoveEvent event) {
+          if (_pttPointerDownLocal == null) return;
+          final dy = event.localPosition.dy - _pttPointerDownLocal!.dy;
+          final inCancelZone = dy < -_kCancelZoneThreshold;
+          if (inCancelZone != _pttInCancelZone) {
+            setState(() => _pttInCancelZone = inCancelZone);
+            HapticFeedback.selectionClick();
+          }
         },
-        onPointerCancel: (_) {
-          HapticFeedback.lightImpact();
-          ref.read(voiceSessionProvider.notifier).pushEnd();
+        onPointerUp: (PointerUpEvent _) {
+          _handlePttRelease();
+        },
+        onPointerCancel: (PointerCancelEvent _) {
+          _handlePttRelease();
         },
         child: AnimatedContainer(
           duration: AppDuration.fast,
@@ -927,18 +962,38 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
               ),
             ],
           ),
-          child: isActive
-              ? const SpeakingWaveform(
+          child: showCancel
+              ? const Icon(
+                  Icons.cancel_outlined,
                   size: AppIconSize.lg,
                   color: Colors.white,
                 )
-              : const Icon(
-                  Icons.mic_none_rounded,
-                  size: AppIconSize.lg,
-                  color: Colors.white,
-                ),
+              : isActive
+                  ? const SpeakingWaveform(
+                      size: AppIconSize.lg,
+                      color: Colors.white,
+                    )
+                  : const Icon(
+                      Icons.mic_none_rounded,
+                      size: AppIconSize.lg,
+                      color: Colors.white,
+                    ),
         ),
       ),
     );
+  }
+
+  void _handlePttRelease() {
+    final wasCancelZone = _pttInCancelZone;
+    final hadPttDown = _pttPointerDownLocal != null;
+    _pttPointerDownLocal = null;
+    setState(() => _pttInCancelZone = false);
+    if (!hadPttDown) return;
+    HapticFeedback.lightImpact();
+    if (wasCancelZone) {
+      ref.read(voiceSessionProvider.notifier).pushCancel();
+    } else {
+      ref.read(voiceSessionProvider.notifier).pushEnd();
+    }
   }
 }

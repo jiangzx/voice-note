@@ -337,6 +337,16 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     await _orchestrator?.pushEnd();
   }
 
+  /// Push-to-talk: cancel recording without sending (e.g. user slid up to cancel).
+  Future<void> pushCancel() async {
+    _cancelRecognizingTimeout();
+    state = state.copyWith(
+      voiceState: VoiceState.listening,
+      interimText: '',
+    );
+    await _orchestrator?.pushCancel();
+  }
+
   /// User confirmed the transaction — save to DB and continue listening.
   Future<void> confirmTransaction() async {
     final result = state.parseResult;
