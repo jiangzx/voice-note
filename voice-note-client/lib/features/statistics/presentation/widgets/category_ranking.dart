@@ -66,7 +66,8 @@ class CategoryRanking extends ConsumerWidget {
     final range = ref.read(effectiveDateRangeProvider);
     final from = range.start.toIso8601String();
     final to = range.end.toIso8601String();
-    context.go(
+    // Use push so back from transaction list returns to statistics with stack intact (back button stays).
+    context.push(
       '/transactions?categoryId=${category.categoryId}&dateFrom=$from&dateTo=$to',
     );
   }

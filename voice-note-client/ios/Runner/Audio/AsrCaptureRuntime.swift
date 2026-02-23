@@ -97,7 +97,12 @@ final class AsrCaptureRuntime {
       }
     }
 
-    try engine.start()
+    do {
+      try engine.start()
+    } catch {
+      input.removeTap(onBus: 0)
+      throw error
+    }
     started = true
     print("\(kCaptureLogTag) start() DONE engine.start() succeeded, tap installed")
   }

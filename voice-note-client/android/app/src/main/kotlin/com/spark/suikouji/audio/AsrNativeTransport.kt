@@ -18,8 +18,8 @@ class AsrNativeTransport(
     private val client = OkHttpClient()
     private var socket: WebSocket? = null
     private val connected = AtomicBoolean(false)
-    /** When true, we are intentionally disconnecting; do not report failures to UI. */
-    private var disconnecting = false
+    /** When true, we are intentionally disconnecting; do not report failures to UI. Thread-safe. */
+    private val disconnecting = AtomicBoolean(false)
 
     private val silenceDurationMsMin = 200
     private val silenceDurationMsMax = 6000
@@ -42,7 +42,7 @@ class AsrNativeTransport(
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 connected.set(true)
-                disconnecting = false
+                disconnecting.set(false)
                 webSocket.send(buildSessionUpdate(useServerVad, clampedMs).toString())
             }
 
@@ -59,7 +59,7 @@ class AsrNativeTransport(
                 if (webSocket === socket) {
                     connected.set(false)
                 }
-                if (!disconnecting && webSocket === socket) {
+                if (!disconnecting.get() && webSocket === socket) {
                     onError("asr_ws_failure:${t.message}")
                 }
             }
@@ -90,7 +90,7 @@ class AsrNativeTransport(
     }
 
     fun disconnect() {
-        disconnecting = true
+        disconnecting.set(true)
         connected.set(false)
         socket?.close(1000, "client_close")
         socket = null

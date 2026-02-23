@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../../app/router.dart';
 import '../../../../app/theme.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../export/presentation/widgets/export_options_sheet.dart';
@@ -258,6 +259,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   }
 
   /// 当日支出/收入合计（含转入计收入、转出计支出），与首页 DailyGroupHeader 口径一致。
+  /// 转账且 transferDirection 为 null 时不纳入当日收支。
   static (double expense, double income) _dailyTotalsFromList(
     List<TransactionEntity> list,
   ) {
@@ -274,7 +276,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
         case TransactionType.transfer:
           if (tx.transferDirection == TransferDirection.outbound) {
             expense += tx.amount;
-          } else {
+          } else if (tx.transferDirection == TransferDirection.inbound) {
             income += tx.amount;
           }
           break;
@@ -292,7 +294,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go('/statistics');
+      context.go(AppRoutes.statistics);
     }
   }
 
@@ -455,7 +457,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
           duration: AppDuration.normal,
           child: SlidableAutoCloseBehavior(
             child: ListView.builder(
-              key: ValueKey(list.hashCode),
+              key: ValueKey('${_selectedDate.year}-${_selectedDate.month}-${_selectedDate.day}-${list.length}'),
               itemCount: list.length,
               itemBuilder: (context, index) {
                 final tx = list[index];
@@ -571,7 +573,12 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   }
 
   static Color _parseCategoryColor(String hex) {
-    final s = hex.replaceFirst(RegExp(r'^#'), '');
+    final s = hex.replaceFirst(RegExp(r'^#'), '').trim();
+    final hexOnly = RegExp(r'^[0-9A-Fa-f]{6}$');
+    final hexWithAlpha = RegExp(r'^[0-9A-Fa-f]{8}$');
+    if (s.isEmpty || (!hexOnly.hasMatch(s) && !hexWithAlpha.hasMatch(s))) {
+      return AppColors.textSecondary;
+    }
     final full = s.length == 6 ? 'FF$s' : s;
     return Color(int.parse(full, radix: 16));
   }

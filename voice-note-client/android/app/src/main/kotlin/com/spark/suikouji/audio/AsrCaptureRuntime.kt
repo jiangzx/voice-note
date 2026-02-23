@@ -81,13 +81,8 @@ class AsrCaptureRuntime(
                 val read = recorder.read(buffer, 0, buffer.size)
                 if (read <= 0) continue
                 val frame = buffer.copyOf(read)
-                if (!asrMuted) {
-                    onAudioFrame(frame)
-                } else {
-                    // Keep frames flowing for local detectors (e.g., barge-in),
-                    // while higher layer decides whether to forward to ASR.
-                    onAudioFrame(frame)
-                }
+                // Always forward; AudioRuntimeController gates ASR by asrMuted and still needs frames for barge-in.
+                onAudioFrame(frame)
             }
         }
     }

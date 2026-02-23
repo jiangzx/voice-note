@@ -23,6 +23,11 @@ import 'design_tokens.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Route paths for programmatic navigation (avoids hardcoding strings).
+abstract final class AppRoutes {
+  static const String statistics = '/statistics';
+}
+
 /// FadeThrough transition page for tab switches.
 Page<void> _fadeThroughPage(Widget child, GoRouterState state) {
   return CustomTransitionPage<void>(

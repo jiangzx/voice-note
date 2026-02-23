@@ -14,13 +14,13 @@ const _kWeekdayPillBlue = Color(0xFF93C5FD);
 const _kTodayYellow = Color(0xFFE6C229);
 const _kSundayGrey = Color(0xFF9CA3AF);
 
-/// Map from date (day-only) to daily income/expense for calendar cells.
-Map<DateTime, ({double income, double expense})> _groupMap(
+/// Map from date key (yyyy-mm-dd) to daily income/expense. String key avoids DateTime equality edge cases.
+Map<String, ({double income, double expense})> _groupMap(
   List<DailyTransactionGroup> groups,
 ) {
-  final map = <DateTime, ({double income, double expense})>{};
+  final map = <String, ({double income, double expense})>{};
   for (final g in groups) {
-    final key = DateTime(g.date.year, g.date.month, g.date.day);
+    final key = '${g.date.year}-${g.date.month}-${g.date.day}';
     map[key] = (income: g.dailyIncome, expense: g.dailyExpense);
   }
   return map;
@@ -107,7 +107,8 @@ class TransactionCalendarGrid extends StatelessWidget {
                   ...List.generate(leadingBlanks, (_) => const SizedBox.shrink()),
                   ...List.generate(lastDay, (i) {
                     final date = DateTime(currentMonth.year, currentMonth.month, i + 1);
-                    final sum = summaryMap[date] ?? (income: 0.0, expense: 0.0);
+                    final dateKey = '${date.year}-${date.month}-${date.day}';
+                    final sum = summaryMap[dateKey] ?? (income: 0.0, expense: 0.0);
                     final isSelected = date.isSameDay(selectedDayOnly);
                     final isToday = date.isSameDay(today);
                     final isSunday = date.weekday == DateTime.sunday;

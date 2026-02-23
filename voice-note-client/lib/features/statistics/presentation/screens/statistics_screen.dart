@@ -58,6 +58,13 @@ class StatisticsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
       appBar: AppBar(
+        leading: context.canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.pop(),
+                tooltip: '返回',
+              )
+            : null,
         title: const Text(
           '统计',
           style: TextStyle(

@@ -49,23 +49,27 @@ class TransactionCalendarHeader extends StatelessWidget {
                   ),
             ),
           ),
-          Material(
-            color: _kBackToTodayYellow,
-            borderRadius: BorderRadius.circular(20),
-            child: InkWell(
-              onTap: onBackToToday,
+          Semantics(
+            label: '回到今天',
+            button: true,
+            child: Material(
+              color: _kBackToTodayYellow,
               borderRadius: BorderRadius.circular(20),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.xs,
-                ),
-                child: Text(
-                  '回今天',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
+              child: InkWell(
+                onTap: onBackToToday,
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.xs,
+                  ),
+                  child: Text(
+                    '回今天',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
                 ),
               ),
             ),

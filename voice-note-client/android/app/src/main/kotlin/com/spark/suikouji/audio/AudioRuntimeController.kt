@@ -32,7 +32,6 @@ class AudioRuntimeController(
         val enableNativeCapture =
             platformConfig?.get("enableNativeCapture") as? Boolean ?: (requestedMode != "keyboard")
 
-        currentSessionId = sessionId
         mode = requestedMode
         // Lazy-create all components once, then keep them for the whole session.
         ensureComponents()
@@ -46,6 +45,7 @@ class AudioRuntimeController(
                 return mapOf("ok" to false, "error" to "audio_record_init_failed", "message" to (e.message ?: "Unknown error"))
             }
         }
+        currentSessionId = sessionId
         initialized.set(true)
         route = focusRouteManager?.getRoute() ?: route
         emitEvent(
@@ -352,14 +352,7 @@ class AudioRuntimeController(
             it.updateConfig(bargeInConfig)
         }
 
-        captureRuntime = AsrCaptureRuntime(
-            context = context,
-            onAudioFrame = { frame ->
-                bargeInDetector?.onFrame(frame, ttsPlaying)
-                if (!asrMuted) asrTransport?.sendAudioFrame(frame)
-            }
-        ).also { it.setAsrMuted(asrMuted) }
-
+        // Create asrTransport before captureRuntime so the capture callback always sees a non-null transport.
         asrTransport = AsrNativeTransport(
             onInterimText = { text ->
                 val sid = currentSessionId ?: ""
@@ -387,6 +380,14 @@ class AudioRuntimeController(
                 emitRuntimeError("asr_ws_error", message)
             },
         )
+
+        captureRuntime = AsrCaptureRuntime(
+            context = context,
+            onAudioFrame = { frame ->
+                bargeInDetector?.onFrame(frame, ttsPlaying)
+                if (!asrMuted) asrTransport?.sendAudioFrame(frame)
+            }
+        ).also { it.setAsrMuted(asrMuted) }
 
         focusRouteManager = FocusRouteManager(context) { newFocusState, canAutoResume ->
             focusState = newFocusState

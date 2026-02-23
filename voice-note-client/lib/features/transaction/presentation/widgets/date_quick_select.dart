@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/design_tokens.dart';
 import '../../../../core/extensions/date_extensions.dart';
-import '../../../../shared/widgets/time_picker_dialog.dart';
 
 /// Quick date selection: today / yesterday + date picker.
 class DateQuickSelect extends StatelessWidget {
@@ -49,12 +48,12 @@ class DateQuickSelect extends StatelessWidget {
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
-      onSelected: (_) => _pickTimeForDate(context, date),
+      onSelected: (_) => _setDateOnly(context, date),
     );
   }
 
-  Future<void> _pickTimeForDate(BuildContext context, DateTime date) async {
-    final initial = DateTime(
+  void _setDateOnly(BuildContext context, DateTime date) {
+    final combined = DateTime(
       date.year,
       date.month,
       date.day,
@@ -62,8 +61,7 @@ class DateQuickSelect extends StatelessWidget {
       selected.minute,
       0,
     );
-    final result = await showTimePickerDialog(context, initial: initial);
-    if (result != null && context.mounted) onChanged(result);
+    onChanged(combined);
   }
 
   Future<void> _pickDate(BuildContext context) async {
@@ -71,7 +69,7 @@ class DateQuickSelect extends StatelessWidget {
     final lastDate = now.toDateOnly;
     final initialDate = selected.toDateOnly.isAfter(lastDate)
         ? lastDate
-        : selected;
+        : selected.toDateOnly;
     final picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -79,7 +77,7 @@ class DateQuickSelect extends StatelessWidget {
       lastDate: lastDate,
     );
     if (picked == null || !context.mounted) return;
-    final initialTime = DateTime(
+    final combined = DateTime(
       picked.year,
       picked.month,
       picked.day,
@@ -87,7 +85,6 @@ class DateQuickSelect extends StatelessWidget {
       selected.minute,
       0,
     );
-    final result = await showTimePickerDialog(context, initial: initialTime);
-    if (result != null && context.mounted) onChanged(result);
+    onChanged(combined);
   }
 }
