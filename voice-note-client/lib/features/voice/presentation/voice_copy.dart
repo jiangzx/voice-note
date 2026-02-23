@@ -5,16 +5,14 @@ abstract final class VoiceCopy {
 
   // --- Main area (core visual) ---
   static const String mainReadyTitle = '对着我说话，就能一键记账';
-  static const String mainReadySubtitle =
-      '试试说：午饭花了30元 / 工资到账8000元';
+  static const String mainReadySubtitle = '试试说：午饭花了30元 / 工资到账8000元';
   static const String mainListening = '我在听，你慢慢说～';
   static const String mainProcessing = '正在帮你记录账单...';
   static const String mainConfirmSingle = '请确认以下信息';
   static const String mainConfirmBatch = '请确认或说出要修改的内容';
 
   // --- Timeout ---
-  static const String timeoutWarningMain =
-      '还在吗？暂时不用的话我会先休息哦';
+  static const String timeoutWarningMain = '还在吗？暂时不用的话我会先休息哦';
   static const String timeoutWarningSub = '30秒后自动退出';
 
   // --- Hints ---
@@ -25,17 +23,19 @@ abstract final class VoiceCopy {
   static const String modeHintManual = '按住说话，一次记多笔更省心';
   static const String modeHintKeyboard = '输入账单，一次记多笔更省心';
   static const String modeHintAuto = '自动识别语音，轻松记一笔';
-  static const String modeSwitchHintManual = '切换到手动模式，支持一次性记录多笔哦';
-  static const String modeSwitchHintKeyboard = '切换到键盘模式，支持一次性记录多笔哦';
-  static const String autoModeMultiNotSupported =
-      '自动模式暂不支持多笔，切换到手动模式试试吧';
+  static const String modeSwitchHintManual = '已切换到手动模式，支持一次性记录多笔哦';
+  static const String modeSwitchHintKeyboard = '已切换到键盘模式，支持一次性记录多笔哦';
+  static const String autoModeMultiNotSupported = '自动模式暂不支持多笔，切换到手动模式试试吧';
+
   /// Shown after user switches from auto to manual from the multi-batch banner (current batch is cleared).
-  static const String autoModeSwitchBatchCleared =
-      '已切换到手动模式，当前多笔已清空，请重新说话记录';
+  static const String autoModeSwitchBatchCleared = '已切换到手动模式，当前多笔已清空，请重新说话记录';
+
   /// Substring to emphasize in manual/keyboard empty state and hints.
   static const String emptyStateHighlight = '一次记多笔';
+
   /// Example for manual/keyboard "multi-entry" hint.
   static const String modeExampleMulti = '早餐 15 元；公交 2 元；咖啡 30 元';
+
   /// Full line for UI: "例如：" + [modeExampleMulti]. Single source for label + content.
   static String get modeExampleMultiWithLabel => '例如：$modeExampleMulti';
 
@@ -44,10 +44,8 @@ abstract final class VoiceCopy {
   static const String recognizingTimeout = '识别超时，请重试';
 
   // --- Dialogue feedback ---
-  static const String feedbackCancel =
-      '已为你取消本次记录，你可以继续说话记账啦';
-  static const String feedbackNoBill =
-      '没听清你的账单哦，试试说"买咖啡花了20元"这类句式吧';
+  static const String feedbackCancel = '已为你取消本次记录，你可以继续说话记账啦';
+  static const String feedbackNoBill = '没听清你的账单哦，试试说"买咖啡花了20元"这类句式吧';
 
   // --- Example phrases (clickable chips) ---
   static const String examplePhrase1 = '午饭花了30元';
