@@ -29,6 +29,7 @@ class _ExportProgressDialogState extends State<ExportProgressDialog> {
   bool _noData = false;
   String? _error;
   File? _exportedFile;
+  final GlobalKey _shareButtonKey = GlobalKey();
 
   @override
   void initState() {
@@ -130,8 +131,14 @@ class _ExportProgressDialogState extends State<ExportProgressDialog> {
             child: const Text('关闭'),
           ),
           FilledButton.icon(
+            key: _shareButtonKey,
             onPressed: () async {
-              await widget.exportService.share(_exportedFile!);
+              Rect? origin;
+              final box = _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
+              if (box != null && box.hasSize) {
+                origin = box.localToGlobal(Offset.zero) & box.size;
+              }
+              await widget.exportService.share(_exportedFile!, sharePositionOrigin: origin);
             },
             icon: const Icon(Icons.share),
             label: const Text('分享'),

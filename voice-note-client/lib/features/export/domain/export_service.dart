@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show Rect;
 
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -96,8 +97,10 @@ class ExportService {
   }
 
   /// Share a generated file via system Share Sheet.
-  Future<void> share(File file) async {
-    await Share.shareXFiles([XFile(file.path)]);
+  /// [sharePositionOrigin] required on iOS 26+ for popover anchor; fallback used when null.
+  Future<void> share(File file, {Rect? sharePositionOrigin}) async {
+    final origin = sharePositionOrigin ?? Rect.fromLTWH(0, 0, 1, 1);
+    await Share.shareXFiles([XFile(file.path)], sharePositionOrigin: origin);
   }
 
   /// Generate a timestamped file name.
