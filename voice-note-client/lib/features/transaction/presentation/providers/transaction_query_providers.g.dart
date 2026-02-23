@@ -293,3 +293,183 @@ final class DailyGroupedFamily extends $Family
   @override
   String toString() => r'dailyGroupedProvider';
 }
+
+/// Calendar grid data for the given month (date/dailyIncome/dailyExpense only).
+
+@ProviderFor(calendarMonthGroups)
+final calendarMonthGroupsProvider = CalendarMonthGroupsFamily._();
+
+/// Calendar grid data for the given month (date/dailyIncome/dailyExpense only).
+
+final class CalendarMonthGroupsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<DailyTransactionGroup>>,
+          List<DailyTransactionGroup>,
+          FutureOr<List<DailyTransactionGroup>>
+        >
+    with
+        $FutureModifier<List<DailyTransactionGroup>>,
+        $FutureProvider<List<DailyTransactionGroup>> {
+  /// Calendar grid data for the given month (date/dailyIncome/dailyExpense only).
+  CalendarMonthGroupsProvider._({
+    required CalendarMonthGroupsFamily super.from,
+    required DateTime super.argument,
+  }) : super(
+         retry: null,
+         name: r'calendarMonthGroupsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$calendarMonthGroupsHash();
+
+  @override
+  String toString() {
+    return r'calendarMonthGroupsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<DailyTransactionGroup>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<DailyTransactionGroup>> create(Ref ref) {
+    final argument = this.argument as DateTime;
+    return calendarMonthGroups(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CalendarMonthGroupsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$calendarMonthGroupsHash() =>
+    r'bef3eeb8b4ce8d6deb96114ca432b7792eb7f8c0';
+
+/// Calendar grid data for the given month (date/dailyIncome/dailyExpense only).
+
+final class CalendarMonthGroupsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<DailyTransactionGroup>>,
+          DateTime
+        > {
+  CalendarMonthGroupsFamily._()
+    : super(
+        retry: null,
+        name: r'calendarMonthGroupsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Calendar grid data for the given month (date/dailyIncome/dailyExpense only).
+
+  CalendarMonthGroupsProvider call(DateTime currentMonth) =>
+      CalendarMonthGroupsProvider._(argument: currentMonth, from: this);
+
+  @override
+  String toString() => r'calendarMonthGroupsProvider';
+}
+
+/// Transactions for the selected day only (drives list below calendar).
+
+@ProviderFor(selectedDateTransactions)
+final selectedDateTransactionsProvider = SelectedDateTransactionsFamily._();
+
+/// Transactions for the selected day only (drives list below calendar).
+
+final class SelectedDateTransactionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<TransactionEntity>>,
+          List<TransactionEntity>,
+          FutureOr<List<TransactionEntity>>
+        >
+    with
+        $FutureModifier<List<TransactionEntity>>,
+        $FutureProvider<List<TransactionEntity>> {
+  /// Transactions for the selected day only (drives list below calendar).
+  SelectedDateTransactionsProvider._({
+    required SelectedDateTransactionsFamily super.from,
+    required DateTime super.argument,
+  }) : super(
+         retry: null,
+         name: r'selectedDateTransactionsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$selectedDateTransactionsHash();
+
+  @override
+  String toString() {
+    return r'selectedDateTransactionsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<TransactionEntity>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<TransactionEntity>> create(Ref ref) {
+    final argument = this.argument as DateTime;
+    return selectedDateTransactions(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is SelectedDateTransactionsProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$selectedDateTransactionsHash() =>
+    r'2006b63cfc43e41b491426f691a9f029d2850b23';
+
+/// Transactions for the selected day only (drives list below calendar).
+
+final class SelectedDateTransactionsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<FutureOr<List<TransactionEntity>>, DateTime> {
+  SelectedDateTransactionsFamily._()
+    : super(
+        retry: null,
+        name: r'selectedDateTransactionsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Transactions for the selected day only (drives list below calendar).
+
+  SelectedDateTransactionsProvider call(DateTime selectedDate) =>
+      SelectedDateTransactionsProvider._(argument: selectedDate, from: this);
+
+  @override
+  String toString() => r'selectedDateTransactionsProvider';
+}

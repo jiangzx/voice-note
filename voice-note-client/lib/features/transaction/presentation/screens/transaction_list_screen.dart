@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/design_tokens.dart';
@@ -10,15 +11,14 @@ import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../export/presentation/widgets/export_options_sheet.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
-import '../../../../core/utils/icon_utils.dart';
 import '../../domain/entities/transaction_entity.dart';
-import '../../domain/entities/transaction_filter.dart';
+import '../../../category/domain/entities/category_entity.dart';
 import '../../../category/presentation/providers/category_providers.dart';
 import '../providers/transaction_form_providers.dart';
 import '../providers/transaction_query_providers.dart';
-import '../widgets/daily_group_header.dart';
-import '../widgets/filter_bar.dart';
-import '../widgets/transaction_tile.dart';
+import '../../../home/presentation/widgets/recent_transaction_tile.dart';
+import '../widgets/transaction_calendar_grid.dart';
+import '../widgets/transaction_calendar_header.dart';
 
 /// Screen showing transactions grouped by day with filters.
 class TransactionListScreen extends ConsumerStatefulWidget {
@@ -44,35 +44,21 @@ class TransactionListScreen extends ConsumerStatefulWidget {
 }
 
 class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
-  DateRangePreset _datePreset = DateRangePreset.thisMonth;
-  String? _typeFilter;
-  String _searchQuery = '';
-  String? _categoryFilter;
-  DateTime? _customDateFrom;
-  DateTime? _customDateTo;
+  late DateTime _currentMonth;
+  late DateTime _selectedDate;
 
-  // Selection mode state
   bool _isSelectionMode = false;
   final Set<String> _selectedIds = <String>{};
   bool _deleteHintShown = false;
 
   static const _keyDeleteHintShown = 'transaction_list_delete_hint_shown';
 
-  /// Type filter for list/export; 'transfer' is normalized to null (no separate chip).
-  String? get _effectiveTypeFilter =>
-      _typeFilter == TransactionType.transfer.name ? null : _typeFilter;
-
   @override
   void initState() {
     super.initState();
-    _categoryFilter = widget.filterCategoryId;
-    if (widget.filterDateFrom != null || widget.filterDateTo != null) {
-      _customDateFrom = DateTime.tryParse(widget.filterDateFrom ?? '');
-      _customDateTo = DateTime.tryParse(widget.filterDateTo ?? '');
-      if (_customDateFrom != null || _customDateTo != null) {
-        _datePreset = DateRangePreset.custom;
-      }
-    }
+    final now = DateTime.now();
+    _currentMonth = DateTime(now.year, now.month, 1);
+    _selectedDate = now;
     _checkAndShowDeleteHint();
   }
 
@@ -121,116 +107,210 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     });
   }
 
-  void _showExportSheet(
-    BuildContext context,
-    ({DateTime from, DateTime to}) dateRange,
-  ) {
+  void _showExportSheet(BuildContext context, DateTime currentMonth) {
+    final start = DateTime(currentMonth.year, currentMonth.month, 1);
+    final end = DateTime(currentMonth.year, currentMonth.month + 1, 0);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (_) => ExportOptionsSheet(
-        initialDateFrom: dateRange.from,
-        initialDateTo: dateRange.to,
-        initialType: _effectiveTypeFilter,
+        initialDateFrom: start,
+        initialDateTo: end,
+        initialType: null,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final range = _datePreset == DateRangePreset.custom
-        ? (
-            from: _customDateFrom ?? DateTime(2000),
-            to: _customDateTo ?? DateTime(2099),
-          )
-        : resolveDateRange(_datePreset);
-    final groupsAsync = ref.watch(dailyGroupedProvider(range.from, range.to));
+    final calendarGroupsAsync = ref.watch(calendarMonthGroupsProvider(_currentMonth));
+    final listAsync = ref.watch(selectedDateTransactionsProvider(_selectedDate));
 
-    // Watch category providers once at parent level to avoid per-tile rebuilds
     final incomeCategoriesAsync = ref.watch(visibleCategoriesProvider('income'));
     final expenseCategoriesAsync = ref.watch(visibleCategoriesProvider('expense'));
-    
-    // Build category name and icon maps for efficient lookup (与首页一致，图标参考明细页)
     final categoryNameMap = <String, String>{};
     final categoryIconMap = <String, String>{};
-    incomeCategoriesAsync.whenData((cats) {
+    final categoryColorMap = <String, Color>{};
+    void fillMaps(List<CategoryEntity> cats) {
       for (final cat in cats) {
         categoryNameMap[cat.id] = cat.name;
         categoryIconMap[cat.id] = cat.icon;
+        categoryColorMap[cat.id] = _parseCategoryColor(cat.color);
       }
-    });
-    expenseCategoriesAsync.whenData((cats) {
-      for (final cat in cats) {
-        categoryNameMap[cat.id] = cat.name;
-        categoryIconMap[cat.id] = cat.icon;
-      }
-    });
-
-    final hasRouteFilter = _categoryFilter != null ||
-        _customDateFrom != null ||
-        _customDateTo != null;
+    }
+    incomeCategoriesAsync.whenData(fillMaps);
+    expenseCategoriesAsync.whenData(fillMaps);
 
     return Scaffold(
-      appBar: _isSelectionMode ? _buildSelectionAppBar() : _buildNormalAppBar(hasRouteFilter, range),
+      appBar: _isSelectionMode ? _buildSelectionAppBar() : _buildNormalAppBar(_currentMonth),
       floatingActionButton: null,
-      body: Stack(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Column(
-            children: [
-              if (hasRouteFilter)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.xs,
-                  ),
-                  color: AppColors.brandPrimary.withValues(alpha: 0.12),
-                  child: Text(
-                    '已应用筛选条件',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.brandPrimary,
-                    ),
-                  ),
-                ),
-              FilterBar(
-                selectedDatePreset: _datePreset,
-                selectedType: _effectiveTypeFilter,
-                searchQuery: _searchQuery,
-                onDatePresetChanged: (preset) =>
-                    setState(() => _datePreset = preset),
-                onTypeChanged: (type) => setState(() => _typeFilter = type),
-                onSearchChanged: (query) => setState(() => _searchQuery = query),
-                onAdvancedFilter: () => _showAdvancedFilter(context),
+          calendarGroupsAsync.when(
+            data: (groups) => TransactionCalendarGrid(
+              monthHeader: TransactionCalendarHeader(
+                currentMonth: _currentMonth,
+                onPrevMonth: () {
+                  setState(() {
+                    if (_currentMonth.month == 1) {
+                      _currentMonth = DateTime(_currentMonth.year - 1, 12, 1);
+                    } else {
+                      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
+                    }
+                  });
+                },
+                onNextMonth: () {
+                  setState(() {
+                    if (_currentMonth.month == 12) {
+                      _currentMonth = DateTime(_currentMonth.year + 1, 1, 1);
+                    } else {
+                      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
+                    }
+                  });
+                },
+                onBackToToday: () {
+                  setState(() {
+                    final now = DateTime.now();
+                    _currentMonth = DateTime(now.year, now.month, 1);
+                    _selectedDate = now;
+                  });
+                },
               ),
-              const Divider(height: 1),
-              Expanded(child: _buildList(groupsAsync, categoryNameMap, categoryIconMap)),
-            ],
+              currentMonth: _currentMonth,
+              selectedDate: _selectedDate,
+              dailyGroups: groups,
+              onSelectDate: (DateTime d) => setState(() => _selectedDate = d),
+            ),
+            loading: () => const Padding(
+              padding: EdgeInsets.all(AppSpacing.lg),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => const SizedBox.shrink(),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _selectedDateLabel(_selectedDate),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                ),
+                listAsync.when(
+                  data: (list) {
+                    final (expense, income) = _dailyTotalsFromList(list);
+                    final expenseStr = NumberFormat.currency(
+                      locale: 'zh_CN',
+                      symbol: '¥',
+                      decimalDigits: 2,
+                    ).format(expense);
+                    final incomeStr = NumberFormat.currency(
+                      locale: 'zh_CN',
+                      symbol: '¥',
+                      decimalDigits: 2,
+                    ).format(income);
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '支出$expenseStr · 收入$incomeStr',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _buildSelectedDayList(
+              listAsync,
+              categoryNameMap,
+              categoryIconMap,
+              categoryColorMap,
+            ),
           ),
         ],
       ),
-      bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar(groupsAsync) : null,
+      bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar(listAsync) : null,
     );
   }
 
-  PreferredSizeWidget _buildNormalAppBar(bool hasRouteFilter, ({DateTime from, DateTime to}) range) {
+  String _selectedDateLabel(DateTime d) {
+    final today = DateTime.now();
+    final sameDay = d.year == today.year && d.month == today.month && d.day == today.day;
+    final prefix = sameDay ? '今天' : '';
+    final suffix = '${d.month}月${d.day}日（周${['一', '二', '三', '四', '五', '六', '日'][d.weekday - 1]}）';
+    return prefix.isEmpty ? suffix : '$prefix $suffix';
+  }
+
+  /// 当日支出/收入合计（含转入计收入、转出计支出），与首页 DailyGroupHeader 口径一致。
+  static (double expense, double income) _dailyTotalsFromList(
+    List<TransactionEntity> list,
+  ) {
+    double expense = 0;
+    double income = 0;
+    for (final tx in list) {
+      switch (tx.type) {
+        case TransactionType.expense:
+          expense += tx.amount;
+          break;
+        case TransactionType.income:
+          income += tx.amount;
+          break;
+        case TransactionType.transfer:
+          if (tx.transferDirection == TransferDirection.outbound) {
+            expense += tx.amount;
+          } else {
+            income += tx.amount;
+          }
+          break;
+      }
+    }
+    return (expense, income);
+  }
+
+  /// 从统计等页带筛选进入时显示返回键。Shell 下同级路由无栈可 pop，用 go 回统计。
+  bool get _canPop => widget.filterCategoryId != null ||
+      widget.filterDateFrom != null ||
+      widget.filterDateTo != null;
+
+  void _onBackFromFiltered() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/statistics');
+    }
+  }
+
+  PreferredSizeWidget _buildNormalAppBar(DateTime currentMonth) {
     return AppBar(
-      title: const Text('交易明细'),
+      leading: _canPop
+          ? IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: _onBackFromFiltered,
+              tooltip: '返回',
+            )
+          : null,
+      title: const Text('全部列表'),
       actions: [
-        if (hasRouteFilter)
-          IconButton(
-            icon: const Icon(Icons.filter_alt_off),
-            tooltip: '清除筛选',
-            onPressed: () => setState(() {
-              _categoryFilter = null;
-              _customDateFrom = null;
-              _customDateTo = null;
-              _datePreset = DateRangePreset.thisMonth;
-            }),
-          ),
         IconButton(
           icon: const Icon(Icons.file_download_outlined),
           tooltip: '导出',
-          onPressed: () => _showExportSheet(context, range),
+          onPressed: () => _showExportSheet(context, currentMonth),
         ),
         IconButton(
           icon: const Icon(Icons.checklist),
@@ -266,19 +346,10 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     );
   }
 
-  Widget? _buildSelectionBottomBar(AsyncValue<List<DailyTransactionGroup>> groupsAsync) {
+  Widget? _buildSelectionBottomBar(AsyncValue<List<TransactionEntity>> listAsync) {
     final count = _selectedIds.length;
-    
-    // 计算总数量以判断是否全选
-    final int totalCount = groupsAsync.maybeWhen(
-      data: (groups) {
-        final filtered = _applyClientFilters(groups);
-        var total = 0;
-        for (final group in filtered) {
-          total += group.transactions.length;
-        }
-        return total;
-      },
+    final int totalCount = listAsync.maybeWhen(
+      data: (list) => list.length,
       orElse: () => 0,
     );
     
@@ -354,57 +425,71 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   }
 
   void _toggleSelectAll() {
-    final range = _datePreset == DateRangePreset.custom
-        ? (
-            from: _customDateFrom ?? DateTime(2000),
-            to: _customDateTo ?? DateTime(2099),
-          )
-        : resolveDateRange(_datePreset);
-    final groupsAsync = ref.read(dailyGroupedProvider(range.from, range.to));
-    
-    groupsAsync.whenData((groups) {
-      final filtered = _applyClientFilters(groups);
-      final allIds = <String>{};
-      for (final group in filtered) {
-        for (final tx in group.transactions.cast<TransactionEntity>()) {
-          allIds.add(tx.id);
-        }
-      }
-      
+    final listAsync = ref.read(selectedDateTransactionsProvider(_selectedDate));
+    listAsync.whenData((list) {
       setState(() {
-        if (_selectedIds.length == allIds.length) {
+        if (_selectedIds.length == list.length) {
           _selectedIds.clear();
         } else {
-          _selectedIds.addAll(allIds);
+          _selectedIds.addAll(list.map((e) => e.id));
         }
       });
     });
   }
 
-  Widget _buildList(
-    AsyncValue<List<DailyTransactionGroup>> groupsAsync,
+  Widget _buildSelectedDayList(
+    AsyncValue<List<TransactionEntity>> listAsync,
     Map<String, String> categoryNameMap,
     Map<String, String> categoryIconMap,
+    Map<String, Color> categoryColorMap,
   ) {
-    return groupsAsync.when(
-      data: (groups) {
-        final filtered = _applyClientFilters(groups);
-
-        if (filtered.isEmpty) {
+    return listAsync.when(
+      data: (list) {
+        if (list.isEmpty) {
           return const EmptyStateWidget(
-            icon: Icons.search_off,
-            title: '暂无匹配的交易记录',
+            icon: Icons.receipt_long_outlined,
+            title: '当天暂无记录',
           );
         }
-
         return AnimatedSwitcher(
           duration: AppDuration.normal,
           child: SlidableAutoCloseBehavior(
             child: ListView.builder(
-              key: ValueKey(filtered.hashCode),
-              itemCount: _countItems(filtered),
-              itemBuilder: (context, index) =>
-                  _buildItem(context, filtered, index, categoryNameMap, categoryIconMap),
+              key: ValueKey(list.hashCode),
+              itemCount: list.length,
+              itemBuilder: (context, index) {
+                final tx = list[index];
+                final categoryName = tx.categoryId != null ? categoryNameMap[tx.categoryId] : null;
+                final categoryIconStr = tx.categoryId != null ? categoryIconMap[tx.categoryId] : null;
+                final categoryColor = tx.categoryId != null ? categoryColorMap[tx.categoryId] : null;
+                return _TransactionTileWithCategory(
+                  transaction: tx,
+                  categoryName: categoryName,
+                  categoryIconStr: categoryIconStr,
+                  categoryColor: categoryColor,
+                  isSelectionMode: _isSelectionMode,
+                  isSelected: _selectedIds.contains(tx.id),
+                  onEdit: () => context.push('/record/${tx.id}'),
+                  onDelete: () => _deleteTransaction(tx.id),
+                  onSelectionChanged: (selected) {
+                    setState(() {
+                      if (selected) {
+                        _selectedIds.add(tx.id);
+                      } else {
+                        _selectedIds.remove(tx.id);
+                      }
+                    });
+                  },
+                  onLongPress: () {
+                    if (!_isSelectionMode) {
+                      setState(() {
+                        _isSelectionMode = true;
+                        _selectedIds.add(tx.id);
+                      });
+                    }
+                  },
+                );
+              },
             ),
           ),
         );
@@ -413,119 +498,10 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       error: (e, _) => ErrorStateWidget(
         message: '加载失败: $e',
         onRetry: () {
-          final range = resolveDateRange(_datePreset);
-          ref.invalidate(dailyGroupedProvider(range.from, range.to));
+          ref.invalidate(selectedDateTransactionsProvider(_selectedDate));
         },
       ),
     );
-  }
-
-  List<DailyTransactionGroup> _applyClientFilters(
-    List<DailyTransactionGroup> groups,
-  ) {
-    final typeFilter = _effectiveTypeFilter;
-    if (typeFilter == null &&
-        _searchQuery.isEmpty &&
-        _categoryFilter == null) {
-      return groups;
-    }
-
-    return groups
-        .map((g) {
-          final txList = g.transactions.cast<TransactionEntity>().where((tx) {
-            if (typeFilter != null && tx.type.name != typeFilter) {
-              return false;
-            }
-            if (_categoryFilter != null &&
-                tx.categoryId != _categoryFilter) {
-              return false;
-            }
-            if (_searchQuery.isNotEmpty) {
-              final desc = tx.description;
-              if (desc == null ||
-                  !desc.toLowerCase().contains(_searchQuery.toLowerCase())) {
-                return false;
-              }
-            }
-            return true;
-          }).toList();
-
-          if (txList.isEmpty) return null;
-
-          return DailyTransactionGroup(
-            date: g.date,
-            dailyIncome: g.dailyIncome,
-            dailyExpense: g.dailyExpense,
-            transactions: txList,
-          );
-        })
-        .whereType<DailyTransactionGroup>()
-        .toList();
-  }
-
-  int _countItems(List<DailyTransactionGroup> groups) {
-    var count = 0;
-    for (final g in groups) {
-      count += 1 + g.transactions.length;
-    }
-    return count;
-  }
-
-  Widget _buildItem(
-    BuildContext context,
-    List<DailyTransactionGroup> groups,
-    int index,
-    Map<String, String> categoryNameMap,
-    Map<String, String> categoryIconMap,
-  ) {
-    var offset = 0;
-    for (final group in groups) {
-      if (index == offset) {
-        return DailyGroupHeader(
-          date: group.date,
-          dailyIncome: group.dailyIncome,
-          dailyExpense: group.dailyExpense,
-        );
-      }
-      offset++;
-      if (index < offset + group.transactions.length) {
-        final tx = group.transactions[index - offset] as TransactionEntity;
-        final categoryName = tx.categoryId != null
-            ? categoryNameMap[tx.categoryId]
-            : null;
-        final categoryIconStr = tx.categoryId != null
-            ? categoryIconMap[tx.categoryId]
-            : null;
-        return _TransactionTileWithCategory(
-          transaction: tx,
-          categoryName: categoryName,
-          categoryIconStr: categoryIconStr,
-          isSelectionMode: _isSelectionMode,
-          isSelected: _selectedIds.contains(tx.id),
-          onEdit: () => context.push('/record/${tx.id}'),
-          onDelete: () => _deleteTransaction(tx.id),
-          onSelectionChanged: (selected) {
-            setState(() {
-              if (selected) {
-                _selectedIds.add(tx.id);
-              } else {
-                _selectedIds.remove(tx.id);
-              }
-            });
-          },
-          onLongPress: () {
-            if (!_isSelectionMode) {
-              setState(() {
-                _isSelectionMode = true;
-                _selectedIds.add(tx.id);
-              });
-            }
-          },
-        );
-      }
-      offset += group.transactions.length;
-    }
-    return const SizedBox.shrink();
   }
 
   Future<void> _deleteTransaction(String id) async {
@@ -594,40 +570,20 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     }
   }
 
-  void _showAdvancedFilter(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('高级筛选', style: Theme.of(ctx).textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.lg),
-            const Text('更多筛选选项（分类、金额范围等）将在后续版本完善'),
-            const SizedBox(height: AppSpacing.lg),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('关闭'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  static Color _parseCategoryColor(String hex) {
+    final s = hex.replaceFirst(RegExp(r'^#'), '');
+    final full = s.length == 6 ? 'FF$s' : s;
+    return Color(int.parse(full, radix: 16));
   }
-
 }
 
-/// Transaction tile with category name and icon resolved at parent level (与首页图标一致).
+/// List item aligned with home: RecentTransactionTile (category chip, time·category, 收入/支出颜色一致).
 class _TransactionTileWithCategory extends StatelessWidget {
   const _TransactionTileWithCategory({
     required this.transaction,
     this.categoryName,
     this.categoryIconStr,
+    this.categoryColor,
     this.isSelectionMode = false,
     this.isSelected = false,
     required this.onEdit,
@@ -639,6 +595,7 @@ class _TransactionTileWithCategory extends StatelessWidget {
   final TransactionEntity transaction;
   final String? categoryName;
   final String? categoryIconStr;
+  final Color? categoryColor;
   final bool isSelectionMode;
   final bool isSelected;
   final VoidCallback onEdit;
@@ -648,22 +605,14 @@ class _TransactionTileWithCategory extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categoryIcon = categoryIconStr != null && categoryIconStr!.isNotEmpty
-        ? IconTheme(
-            data: const IconThemeData(
-              size: AppIconSize.sm,
-              color: AppColors.textSecondary,
-            ),
-            child: iconFromString(categoryIconStr!, size: AppIconSize.sm),
-          )
-        : null;
-    return TransactionTile(
+    return RecentTransactionTile(
       transaction: transaction,
       categoryName: categoryName,
-      categoryIcon: categoryIcon,
+      categoryColor: categoryColor,
+      categoryIconStr: categoryIconStr,
       isSelectionMode: isSelectionMode,
       isSelected: isSelected,
-      onEdit: onEdit,
+      onTap: onEdit,
       onDelete: onDelete,
       onSelectionChanged: onSelectionChanged,
       onLongPress: onLongPress,

@@ -345,4 +345,4 @@ final class TopTransactionsByAmountProvider
 }
 
 String _$topTransactionsByAmountHash() =>
-    r'3c38996e5c7a9b45dc57a9827b730257ddf0b599';
+    r'0b979a3c90b8f986c309741b9bc1556bd87e41f1';

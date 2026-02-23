@@ -13,6 +13,8 @@ void invalidateTransactionQueries(dynamic ref) {
   ref.invalidate(summaryProvider);
   ref.invalidate(dailyGroupedProvider);
   ref.invalidate(transactionListProvider);
+  ref.invalidate(calendarMonthGroupsProvider);
+  ref.invalidate(selectedDateTransactionsProvider);
   ref.read(recentTransactionsPagedProvider.notifier).refresh();
 }
 
@@ -49,4 +51,29 @@ Future<List<DailyTransactionGroup>> dailyGrouped(
 ) async {
   final repo = ref.watch(transactionRepositoryProvider);
   return repo.getDailyGrouped(dateFrom, dateTo);
+}
+
+/// Calendar grid data for the given month (date/dailyIncome/dailyExpense only).
+@riverpod
+Future<List<DailyTransactionGroup>> calendarMonthGroups(
+  Ref ref,
+  DateTime currentMonth,
+) async {
+  final repo = ref.watch(transactionRepositoryProvider);
+  final start = DateTime(currentMonth.year, currentMonth.month, 1);
+  final end = DateTime(currentMonth.year, currentMonth.month + 1, 0);
+  return repo.getDailyGrouped(start, end);
+}
+
+/// Transactions for the selected day only (drives list below calendar).
+@riverpod
+Future<List<TransactionEntity>> selectedDateTransactions(
+  Ref ref,
+  DateTime selectedDate,
+) async {
+  final repo = ref.watch(transactionRepositoryProvider);
+  final start = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+  final end = start.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
+  final filter = TransactionFilter(dateFrom: start, dateTo: end);
+  return repo.getFiltered(filter);
 }
