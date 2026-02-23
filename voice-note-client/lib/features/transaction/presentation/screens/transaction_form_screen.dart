@@ -10,6 +10,7 @@ import '../../../../core/utils/icon_utils.dart';
 import '../../../../core/utils/id_generator.dart' as id_gen;
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
+import '../../../../shared/widgets/time_picker_dialog.dart';
 import '../../domain/entities/transaction_entity.dart';
 import '../../../account/presentation/providers/account_providers.dart';
 import '../../../budget/domain/budget_service.dart';
@@ -67,6 +68,8 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   bool _initialized = false;
   bool _counterpartyFocused = false;
   bool _showNumberPad = false;
+  /// Snapshot of form state when entering record detail; save enabled only when form differs.
+  TransactionFormState? _initialEditState;
 
   void _onScroll() {
     if (!mounted || !_scrollController.hasClients) return;
@@ -110,6 +113,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     ref.read(transactionFormProvider.notifier).loadFromEntity(entity);
     _amountController.setFromDouble(entity.amount);
     _descriptionController.text = entity.description ?? '';
+    _initialEditState = ref.read(transactionFormProvider);
     setState(() {});
   }
 
@@ -148,6 +152,21 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     });
   }
 
+  /// True if any field differs from the snapshot taken when entering record detail.
+  bool _hasEditFormChanged(TransactionFormState formState) {
+    final init = _initialEditState;
+    if (init == null) return false;
+    final currentAmount = _amountController.toDouble();
+    return formState.selectedType != init.selectedType ||
+        currentAmount != init.amount ||
+        formState.categoryId != init.categoryId ||
+        !formState.date.isAtSameMomentAs(init.date) ||
+        (formState.description ?? '') != (init.description ?? '') ||
+        formState.accountId != init.accountId ||
+        formState.transferDirection != init.transferDirection ||
+        (formState.counterparty ?? '') != (init.counterparty ?? '');
+  }
+
   /// Hide number pad when user interacts with non-amount areas (type, date, category, transfer direction).
   void _hideNumberPad() {
     FocusScope.of(context).unfocus();
@@ -178,8 +197,12 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       });
     });
 
-    final canSave =
+    final formValid =
         _amountController.toDouble() > 0 && formState.categoryId != null;
+    final canSave = formValid &&
+        (!widget.isEditing ||
+            _initialEditState == null ||
+            _hasEditFormChanged(formState));
 
     // Hide save bar while editing (description/counterparty) or while amount number pad is shown; "完成" only dismisses input, then user reviews and taps save.
     final isEditingText =
@@ -489,10 +512,13 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         );
       },
       loading: () => ShimmerPlaceholder.listPlaceholder(itemCount: 2),
-      error: (e, _) => ErrorStateWidget(
-        message: '加载分类失败: $e',
-        onRetry: () => ref.invalidate(visibleCategoriesProvider(categoryType)),
-      ),
+      error: (e, _) {
+            debugPrint('加载分类失败: $e');
+            return ErrorStateWidget(
+              message: '加载分类失败，请稍后重试',
+              onRetry: () => ref.invalidate(visibleCategoriesProvider(categoryType)),
+            );
+          },
     );
   }
 
@@ -572,10 +598,13 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
             );
           },
           loading: () => ShimmerPlaceholder.listItem(),
-          error: (e, _) => ErrorStateWidget(
-            message: '加载账户失败: $e',
-            onRetry: () => ref.invalidate(accountListProvider),
-          ),
+          error: (e, _) {
+            debugPrint('加载账户失败: $e');
+            return ErrorStateWidget(
+              message: '加载账户失败，请稍后重试',
+              onRetry: () => ref.invalidate(accountListProvider),
+            );
+          },
         );
       },
       loading: () => const SizedBox.shrink(),
@@ -617,7 +646,8 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       ).showSnackBar(const SnackBar(content: Text('已删除')));
     } catch (e) {
       if (!mounted) return;
-      _showError('删除失败：$e');
+      debugPrint('删除失败: $e');
+      _showError('删除失败，请重试');
     }
   }
 
@@ -684,7 +714,8 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      _showError('保存失败：$e');
+      debugPrint('保存失败: $e');
+      _showError('保存失败，请重试');
       return;
     }
 
@@ -1064,20 +1095,25 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       lastDate: DateTime(2100),
     );
     if (date == null || !mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(formState.date),
+    final initialTime = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      formState.date.hour,
+      formState.date.minute,
+      0,
     );
+    final timeResult = await showTimePickerDialog(context, initial: initialTime);
     if (!mounted) return;
-    final newDateTime = time != null
-        ? DateTime(date.year, date.month, date.day, time.hour, time.minute)
-        : DateTime(
-            date.year,
-            date.month,
-            date.day,
-            formState.date.hour,
-            formState.date.minute,
-          );
+    final newDateTime = timeResult ??
+        DateTime(
+          date.year,
+          date.month,
+          date.day,
+          formState.date.hour,
+          formState.date.minute,
+          0,
+        );
     ref.read(transactionFormProvider.notifier).setDate(newDateTime);
   }
 

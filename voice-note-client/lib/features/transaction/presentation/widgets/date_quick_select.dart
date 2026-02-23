@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/design_tokens.dart';
 import '../../../../core/extensions/date_extensions.dart';
+import '../../../../shared/widgets/time_picker_dialog.dart';
 
 /// Quick date selection: today / yesterday + date picker.
 class DateQuickSelect extends StatelessWidget {
@@ -48,12 +49,24 @@ class DateQuickSelect extends StatelessWidget {
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
-      onSelected: (_) => onChanged(date),
+      onSelected: (_) => _pickTimeForDate(context, date),
     );
   }
 
+  Future<void> _pickTimeForDate(BuildContext context, DateTime date) async {
+    final initial = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      selected.hour,
+      selected.minute,
+      0,
+    );
+    final result = await showTimePickerDialog(context, initial: initial);
+    if (result != null && context.mounted) onChanged(result);
+  }
+
   Future<void> _pickDate(BuildContext context) async {
-    // Use "now" at picker open so lastDate is correct even near midnight.
     final now = DateTime.now();
     final lastDate = now.toDateOnly;
     final initialDate = selected.toDateOnly.isAfter(lastDate)
@@ -65,6 +78,16 @@ class DateQuickSelect extends StatelessWidget {
       firstDate: DateTime(2020),
       lastDate: lastDate,
     );
-    if (picked != null) onChanged(picked);
+    if (picked == null || !context.mounted) return;
+    final initialTime = DateTime(
+      picked.year,
+      picked.month,
+      picked.day,
+      selected.hour,
+      selected.minute,
+      0,
+    );
+    final result = await showTimePickerDialog(context, initial: initialTime);
+    if (result != null && context.mounted) onChanged(result);
   }
 }
