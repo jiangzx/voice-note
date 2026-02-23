@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../shared/error_copy.dart';
 import '../../../../core/audio/audio_session_providers.dart';
 import '../../../../core/audio/native_audio_models.dart';
 import '../../../../core/di/network_providers.dart';
@@ -210,7 +211,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       if (kDebugMode) debugPrint('[VoiceInit] startListening FAILED: $e');
       if (!_sessionActive) return;
       state = state.copyWith(errorMessage: '$e', voiceState: VoiceState.idle);
-      _addAssistantMessage('启动失败：$e', type: ChatMessageType.error);
+      _addAssistantMessage(ErrorCopy.asrStartFailed, type: ChatMessageType.error);
     }
   }
 
@@ -223,7 +224,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     if (_orchestrator == null) {
       await startSession();
       if (_orchestrator == null) {
-        _addAssistantMessage('会话未就绪，请重试', type: ChatMessageType.error);
+        _addAssistantMessage(ErrorCopy.retryLater, type: ChatMessageType.error);
         return;
       }
     }
@@ -232,7 +233,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       await _orchestrator?.processTextInput(text);
     } catch (e) {
       if (!_sessionActive) return;
-      _addAssistantMessage('处理失败：$e', type: ChatMessageType.error);
+      _addAssistantMessage(ErrorCopy.retryLater, type: ChatMessageType.error);
     } finally {
       if (_sessionActive) state = state.copyWith(isProcessing: false);
     }
@@ -279,7 +280,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         }
       } catch (e) {
         if (!_sessionActive) return;
-        _addAssistantMessage('启动麦克风失败：$e', type: ChatMessageType.error);
+        _addAssistantMessage(ErrorCopy.recordStartFailed, type: ChatMessageType.error);
       }
     } else if (wasAudioMode && isAudioMode) {
       await _modeSwitchInFlight;
@@ -303,7 +304,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       } catch (e) {
         if (!_sessionActive) return;
         settings.setInputMode(oldMode);
-        _addAssistantMessage('切换模式失败，请检查网络后重试', type: ChatMessageType.error);
+        _addAssistantMessage(ErrorCopy.asrTimeout, type: ChatMessageType.error);
       } finally {
         _modeSwitchInProgress = false;
         completer.complete();
@@ -318,7 +319,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
     if (_orchestrator == null) {
       await startSession();
       if (_orchestrator == null) {
-        _addAssistantMessage('会话未就绪，请重试', type: ChatMessageType.error);
+        _addAssistantMessage(ErrorCopy.retryLater, type: ChatMessageType.error);
         return;
       }
     }
@@ -326,7 +327,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       await _orchestrator?.pushStart();
     } catch (e) {
       if (!_sessionActive) return;
-      _addAssistantMessage('录音启动失败：$e', type: ChatMessageType.error);
+      _addAssistantMessage(ErrorCopy.recordStartFailed, type: ChatMessageType.error);
     }
   }
 
@@ -380,7 +381,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
       }
     } catch (e) {
       HapticFeedback.vibrate();
-      _addAssistantMessage('保存失败：$e', type: ChatMessageType.error);
+      _addAssistantMessage(ErrorCopy.saveFailed, type: ChatMessageType.error);
     }
     // Clear orchestrator's internal draftBatch to ensure subsequent input
     // is treated as new input, not correction
@@ -543,7 +544,7 @@ class VoiceSessionNotifier extends Notifier<VoiceSessionState>
         }
         return;
       }
-      _addAssistantMessage('原生音频错误：$errorMessage', type: ChatMessageType.error);
+      _addAssistantMessage(ErrorCopy.asrStartFailed, type: ChatMessageType.error);
     }
   }
 

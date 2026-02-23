@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../../app/design_tokens.dart';
 import '../../app/theme.dart';
 
-/// Unified error state component with icon, message and retry button.
+/// Unified error state: soft palette, compact text, optional retry.
+/// Matches chat error bubble and SnackBar style (ErrorCopy + softError*).
 class ErrorStateWidget extends StatelessWidget {
   const ErrorStateWidget({super.key, required this.message, this.onRetry});
 
@@ -19,16 +20,16 @@ class ErrorStateWidget extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: AppIconSize.xl,
-              color: AppColors.expense,
+            Icon(
+              Icons.info_outline_rounded,
+              size: AppIconSize.lg,
+              color: AppColors.softErrorText,
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
               message,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: AppColors.textPrimary,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.softErrorText,
               ),
               textAlign: TextAlign.center,
             ),

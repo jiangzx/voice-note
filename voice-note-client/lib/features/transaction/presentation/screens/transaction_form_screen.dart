@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/utils/id_generator.dart' as id_gen;
+import '../../../../shared/error_copy.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../../../shared/widgets/time_picker_dialog.dart';
@@ -508,7 +509,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       error: (e, _) {
             debugPrint('加载分类失败: $e');
             return ErrorStateWidget(
-              message: '加载分类失败，请稍后重试',
+              message: ErrorCopy.loadFailed,
               onRetry: () => ref.invalidate(visibleCategoriesProvider(categoryType)),
             );
           },
@@ -597,7 +598,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           error: (e, _) {
             debugPrint('加载账户失败: $e');
             return ErrorStateWidget(
-              message: '加载账户失败，请稍后重试',
+              message: ErrorCopy.loadFailed,
               onRetry: () => ref.invalidate(accountListProvider),
             );
           },
@@ -643,19 +644,19 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     } catch (e) {
       if (!mounted) return;
       debugPrint('删除失败: $e');
-      _showError('删除失败，请重试');
+      _showError(ErrorCopy.deleteFailed);
     }
   }
 
   Future<void> _save(TransactionFormState formState) async {
     // Validate amount
     if (_amountController.toDouble() <= 0) {
-      _showError('请输入金额');
+      _showError(ErrorCopy.amountRequired);
       return;
     }
 
     if (formState.categoryId == null) {
-      _showError('请选择分类');
+      _showError(ErrorCopy.categoryRequired);
       return;
     }
 
@@ -711,7 +712,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     } catch (e) {
       if (!mounted) return;
       debugPrint('保存失败: $e');
-      _showError('保存失败，请重试');
+      _showError(ErrorCopy.saveFailed);
       return;
     }
 
@@ -776,9 +777,19 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    final theme = Theme.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: AppColors.softErrorText,
+          ),
+        ),
+        backgroundColor: AppColors.softErrorBackground,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   static Widget _dashedDivider(BuildContext context) {

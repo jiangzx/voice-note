@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart' as handler;
 
 import '../../app/theme.dart';
 import '../../core/permissions/permission_service.dart';
+import '../../shared/error_copy.dart';
 
 /// Enterprise-style floating pill: elevated surface, two actions (voice / manual add).
 const kHomePillHeight = 52.0;
@@ -82,11 +83,18 @@ class _HomeVoicePillState extends State<HomeVoicePill> {
         );
       }
     } else if (mounted) {
+      final theme = Theme.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('需要麦克风权限才能使用语音记账功能'),
+        SnackBar(
+          content: Text(
+            ErrorCopy.recordNoPermission,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.softErrorText,
+            ),
+          ),
+          backgroundColor: AppColors.softErrorBackground,
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     }

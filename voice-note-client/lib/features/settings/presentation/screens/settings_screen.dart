@@ -8,6 +8,7 @@ import '../../../../shared/widgets/swipe_back_zone.dart';
 import '../../../../core/di/network_providers.dart';
 import '../../../../core/tts/tts_providers.dart';
 import '../../../export/presentation/widgets/export_options_sheet.dart';
+import '../../../../shared/error_copy.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../../account/presentation/providers/account_providers.dart';
@@ -124,7 +125,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 loading: () => ShimmerPlaceholder.listItem(),
                 error: (e, st) => ErrorStateWidget(
-                  message: '加载失败',
+                  message: ErrorCopy.loadFailed,
                   onRetry: () => ref.invalidate(multiAccountEnabledProvider),
                 ),
               ),

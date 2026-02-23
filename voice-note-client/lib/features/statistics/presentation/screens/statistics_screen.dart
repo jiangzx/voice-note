@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
+import '../../../../shared/error_copy.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/swipe_back_zone.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
@@ -435,7 +436,7 @@ class _SummaryCard extends ConsumerWidget {
       ),
       loading: () => ShimmerPlaceholder.card(height: 64),
       error: (e, st) => ErrorStateWidget(
-        message: '汇总加载失败: $e',
+        message: ErrorCopy.loadFailed,
         onRetry: () => ref.invalidate(periodSummaryProvider),
       ),
     );

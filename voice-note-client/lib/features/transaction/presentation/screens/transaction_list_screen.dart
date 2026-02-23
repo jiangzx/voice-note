@@ -11,6 +11,7 @@ import '../../../../app/theme.dart';
 import '../../../../shared/widgets/swipe_back_zone.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../export/presentation/widgets/export_options_sheet.dart';
+import '../../../../shared/error_copy.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../domain/entities/transaction_entity.dart';
@@ -509,7 +510,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       },
       loading: () => ShimmerPlaceholder.listPlaceholder(itemCount: 8),
       error: (e, _) => ErrorStateWidget(
-        message: '加载失败: $e',
+        message: ErrorCopy.loadFailed,
         onRetry: () {
           ref.invalidate(selectedDateTransactionsProvider(_selectedDate));
         },

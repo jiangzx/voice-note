@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../../core/utils/id_generator.dart' as id_gen;
 import '../../../../shared/widgets/empty_state_widget.dart';
+import '../../../../shared/error_copy.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../domain/entities/account_entity.dart';
@@ -65,7 +66,7 @@ class AccountManageScreen extends ConsumerWidget {
         },
         loading: () => ShimmerPlaceholder.listPlaceholder(itemCount: 3),
         error: (e, _) => ErrorStateWidget(
-          message: '加载失败: $e',
+          message: ErrorCopy.loadFailed,
           onRetry: () => ref.invalidate(accountListProvider),
         ),
       ),

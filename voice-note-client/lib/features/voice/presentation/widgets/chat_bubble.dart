@@ -240,7 +240,7 @@ class _SystemChip extends StatelessWidget {
   }
 }
 
-/// Error or success status bubble with leading icon.
+/// Error or success status bubble; error uses soft palette to match ErrorStateWidget.
 class _StatusBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isError;
@@ -251,16 +251,16 @@ class _StatusBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final bgColor = isError
-        ? theme.colorScheme.errorContainer
+        ? AppColors.softErrorBackground
         : theme.colorScheme.primaryContainer;
     final fgColor = isError
-        ? theme.colorScheme.onErrorContainer
+        ? AppColors.softErrorText
         : theme.colorScheme.onPrimaryContainer;
     final icon = isError
-        ? Icons.warning_amber_rounded
+        ? Icons.info_outline_rounded
         : Icons.check_circle_rounded;
 
-    final prefix = isError ? '错误' : '成功';
+    final prefix = isError ? '提示' : '成功';
     return Semantics(
       label: '$prefix：${message.text}',
       child: Padding(
@@ -309,7 +309,7 @@ class _StatusBubble extends StatelessWidget {
                       ),
                       child: Text(
                         message.text,
-                        style: theme.textTheme.bodyMedium?.copyWith(
+                        style: theme.textTheme.bodySmall?.copyWith(
                           color: fgColor,
                         ),
                       ),

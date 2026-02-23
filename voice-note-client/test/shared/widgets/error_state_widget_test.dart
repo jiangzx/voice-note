@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:suikouji/shared/error_copy.dart';
 import 'package:suikouji/shared/widgets/error_state_widget.dart';
 
 void main() {
@@ -8,17 +9,22 @@ void main() {
   }
 
   testWidgets('renders error icon and message', (tester) async {
-    await tester.pumpWidget(buildApp(const ErrorStateWidget(message: '加载失败')));
+    await tester.pumpWidget(
+      buildApp(ErrorStateWidget(message: ErrorCopy.loadFailed)),
+    );
 
-    expect(find.byIcon(Icons.error_outline), findsOneWidget);
-    expect(find.text('加载失败'), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
+    expect(find.text(ErrorCopy.loadFailed), findsOneWidget);
   });
 
   testWidgets('renders retry button and fires callback', (tester) async {
     var retried = false;
     await tester.pumpWidget(
       buildApp(
-        ErrorStateWidget(message: '加载失败', onRetry: () => retried = true),
+        ErrorStateWidget(
+          message: ErrorCopy.loadFailed,
+          onRetry: () => retried = true,
+        ),
       ),
     );
 
@@ -28,7 +34,9 @@ void main() {
   });
 
   testWidgets('hides retry button when onRetry is null', (tester) async {
-    await tester.pumpWidget(buildApp(const ErrorStateWidget(message: '加载失败')));
+    await tester.pumpWidget(
+      buildApp(ErrorStateWidget(message: ErrorCopy.loadFailed)),
+    );
 
     expect(find.text('重试'), findsNothing);
   });

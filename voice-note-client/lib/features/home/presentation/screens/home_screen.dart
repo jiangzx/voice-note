@@ -7,6 +7,7 @@ import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/extensions/date_extensions.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
+import '../../../../shared/error_copy.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../../account/presentation/providers/account_providers.dart';
@@ -154,7 +155,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         loading: () => ShimmerPlaceholder.card(height: 100),
                         error: (e, st) => ErrorStateWidget(
-                          message: '汇总加载失败: $e',
+                          message: ErrorCopy.loadFailed,
                           onRetry: () => ref.invalidate(
                             summaryProvider(monthRange.from, monthRange.to),
                           ),
@@ -169,7 +170,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     else if (pagedState.error != null && pagedState.list.isEmpty)
                       SliverToBoxAdapter(
                         child: ErrorStateWidget(
-                          message: '加载失败: ${pagedState.error}',
+                          message: ErrorCopy.loadFailed,
                           onRetry: () =>
                               ref.read(recentTransactionsPagedProvider.notifier).refresh(),
                         ),

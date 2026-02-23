@@ -5,6 +5,7 @@ import '../../../../core/utils/color_utils.dart';
 import '../../../../core/utils/icon_utils.dart';
 import '../../../../core/utils/id_generator.dart' as id_gen;
 import '../../../../shared/widgets/empty_state_widget.dart';
+import '../../../../shared/error_copy.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../domain/entities/category_entity.dart';
@@ -133,7 +134,7 @@ class _CategoryList extends StatelessWidget {
           return ShimmerPlaceholder.listPlaceholder(itemCount: 5);
         }
         if (snapshot.hasError) {
-          return ErrorStateWidget(message: '加载失败: ${snapshot.error}');
+          return ErrorStateWidget(message: ErrorCopy.loadFailed);
         }
 
         final categories = snapshot.data ?? [];

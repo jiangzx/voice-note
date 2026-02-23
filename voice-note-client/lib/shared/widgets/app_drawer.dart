@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/design_tokens.dart';
 import '../../app/theme.dart';
+import '../../shared/error_copy.dart';
 
 /// Reusable app drawer: user block, common actions grid, quick-entry grid, settings/feedback.
 /// Optional [onUserTap] for future login/profile; when null, user block shows placeholder.
@@ -91,7 +92,16 @@ class AppDrawer extends StatelessWidget {
   static void _showPlaceholderAndClose(BuildContext context) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('暂未开放')),
+      SnackBar(
+        content: Text(
+          ErrorCopy.notAvailableYet,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppColors.softErrorText,
+          ),
+        ),
+        backgroundColor: AppColors.softErrorBackground,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
     if (!context.mounted) return;
     Navigator.of(context).pop();

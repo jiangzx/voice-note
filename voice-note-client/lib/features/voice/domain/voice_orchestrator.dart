@@ -5,6 +5,7 @@ import 'dart:io' show Platform;
 import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../shared/error_copy.dart';
 import '../../../core/audio/native_audio_gateway.dart';
 import '../../../core/audio/native_audio_models.dart';
 import '../../../core/network/dto/transaction_correction_response.dart'
@@ -157,7 +158,7 @@ class VoiceOrchestrator {
     _asrConnection.onFinalText = (String text) => _onAsrFinalText(text);
     _asrConnection.onError = (String msg) => _delegate.onError(msg);
     _asrConnection.onReconnectFailed = () {
-      _delegate.onError('ASR 连接中断，重连失败');
+      _delegate.onError(ErrorCopy.asrReconnectFailed);
       _currentState = VoiceState.listening;
     };
     _asrConnection.onReconnecting = (int attempt, int max) {
@@ -203,39 +204,45 @@ class VoiceOrchestrator {
       _startInactivityTimer();
     } catch (e) {
       if (kDebugMode) debugPrint('[VoiceInit] FAILED: $e');
-      // 提取用户友好的错误消息
       final errorStr = e.toString();
       String userMessage;
+      String? logCode;
       if (errorStr.contains('RECORD_AUDIO permission not granted') ||
           errorStr.contains('permission may be denied')) {
-        userMessage = '无法启动录音：麦克风权限未授予。请在系统设置中授予麦克风权限';
+        userMessage = ErrorCopy.recordNoPermission;
       } else if (errorStr.contains('audio_record_start_failed') ||
           errorStr.contains('AudioRecord initialization failed')) {
-        if (errorStr.contains('state=0') || 
+        if (errorStr.contains('state=0') ||
             errorStr.contains('STATE_UNINITIALIZED') ||
             errorStr.contains('permission may be denied')) {
-          userMessage = '无法启动录音：请检查麦克风权限是否已授予，或音频资源是否被其他应用占用';
+          userMessage = ErrorCopy.recordBusy;
         } else {
-          userMessage = '无法启动录音，可能是权限问题或音频资源被占用';
+          userMessage = ErrorCopy.recordStartFailed;
         }
       } else if (e is AsrTokenException) {
         if (errorStr.contains('TimeoutException') ||
             errorStr.contains('Request timed out')) {
-          userMessage = '获取语音服务超时，请检查网络后重试 [E-ASR-001]';
+          logCode = 'E-ASR-001';
+          userMessage = ErrorCopy.asrTimeout;
         } else if (errorStr.contains('NetworkUnavailableException') ||
             errorStr.contains('Network unavailable')) {
-          userMessage = '无法连接网络，请检查网络后重试 [E-ASR-002]';
+          logCode = 'E-ASR-002';
+          userMessage = ErrorCopy.asrNetwork;
         } else if (errorStr.contains('RateLimitException') ||
             errorStr.contains('Rate limit')) {
-          userMessage = '请求过于频繁，请稍后再试 [E-ASR-003]';
+          logCode = 'E-ASR-003';
+          userMessage = ErrorCopy.asrRateLimit;
         } else if (errorStr.contains('Invalid token response')) {
-          userMessage = '语音服务暂时不可用，请稍后重试 [E-ASR-004]';
+          logCode = 'E-ASR-004';
+          userMessage = ErrorCopy.asrUnavailable;
         } else {
-          userMessage = '启动语音识别失败，请稍后重试 [E-ASR-005]';
+          logCode = 'E-ASR-005';
+          userMessage = ErrorCopy.asrStartFailed;
         }
       } else {
-        userMessage = '启动语音识别失败：$errorStr';
+        userMessage = ErrorCopy.asrStartFailed;
       }
+      if (kDebugMode && logCode != null) debugPrint('[VoiceInit] $logCode');
       _delegate.onError(userMessage);
     }
   }
@@ -373,9 +380,7 @@ class VoiceOrchestrator {
                 }
                 // 超时多为 ASR/网络不可用，提示检查网络或改用键盘，避免误用「没听清」
                 if (_isPushEndPending) {
-                  _delegate.onError(
-                    '语音识别未返回结果，请检查网络或尝试键盘输入',
-                  );
+                  _delegate.onError(ErrorCopy.asrNoResult);
                 }
               },
             );
@@ -384,9 +389,7 @@ class VoiceOrchestrator {
               debugPrint('[VoiceMode] pushEnd: Error waiting for asrFinalText: $e');
             }
             if (_isPushEndPending) {
-              _delegate.onError(
-                '语音识别未返回结果，请检查网络或尝试键盘输入',
-              );
+              _delegate.onError(ErrorCopy.asrNoResult);
             }
           }
 
@@ -399,7 +402,7 @@ class VoiceOrchestrator {
           }
           // Ensure error is reported if not already handled
           if (_isPushEndPending) {
-            _delegate.onError('录音处理失败：$e');
+            _delegate.onError(ErrorCopy.recordStartFailed);
           }
         } finally {
           if (_pushToTalkFinalTextBuffer.isNotEmpty) {
@@ -559,7 +562,7 @@ class VoiceOrchestrator {
           if (kDebugMode) debugPrint('[VoiceMode] Revert failed: $revertErr');
         }
       }
-      _delegate.onError('切换模式失败，请检查网络后重试');
+      _delegate.onError(ErrorCopy.asrTimeout);
     }
   }
 
@@ -705,7 +708,7 @@ class VoiceOrchestrator {
       if (kDebugMode) {
         debugPrint('[TTSFlow] Native TTS failed: $e');
       }
-      _delegate.onError('原生 TTS 播放失败：$e');
+      _delegate.onError(ErrorCopy.retryLater);
     } finally {
       _nativeTtsCompletions.remove(requestId);
       _isTtsSpeaking = false;
@@ -1020,7 +1023,7 @@ class VoiceOrchestrator {
       }
       if (event.error != null &&
           event.error!.code != NativeAudioError.codeTtsUnavailable) {
-        _delegate.onError('Native TTS error: ${event.error!.message}');
+        _delegate.onError(ErrorCopy.retryLater);
       }
       return;
     }
@@ -1096,7 +1099,7 @@ class VoiceOrchestrator {
         }
         return;
       }
-      _delegate.onError('原生音频错误：$errorMessage');
+      _delegate.onError(ErrorCopy.asrStartFailed);
     }
   }
 
@@ -1213,24 +1216,29 @@ class VoiceOrchestrator {
     return stripped.isEmpty || _fillerWords.contains(stripped);
   }
 
-  /// Maps LlmParseException message to user-friendly string with E-LLM-xxx code.
+  /// Maps LlmParseException to user-facing copy; logs E-LLM-xxx in debug.
   String _userMessageForLlmError(String errorStr) {
     if (errorStr.contains('TimeoutException') ||
         errorStr.contains('Request timed out')) {
-      return '语义解析请求超时，请检查网络后重试 [E-LLM-001]';
+      if (kDebugMode) debugPrint('[LlmParse] E-LLM-001');
+      return ErrorCopy.llmTimeout;
     }
     if (errorStr.contains('NetworkUnavailableException') ||
         errorStr.contains('Network unavailable')) {
-      return '无法连接网络，请检查网络后重试 [E-LLM-002]';
+      if (kDebugMode) debugPrint('[LlmParse] E-LLM-002');
+      return ErrorCopy.llmNetwork;
     }
     if (errorStr.contains('RateLimitException') ||
         errorStr.contains('Rate limit')) {
-      return '请求过于频繁，请稍后再试 [E-LLM-003]';
+      if (kDebugMode) debugPrint('[LlmParse] E-LLM-003');
+      return ErrorCopy.llmRateLimit;
     }
     if (errorStr.contains('LLM parse failed') || errorStr.contains('422')) {
-      return '语义解析暂时不可用，请稍后重试 [E-LLM-004]';
+      if (kDebugMode) debugPrint('[LlmParse] E-LLM-004');
+      return ErrorCopy.llmUnavailable;
     }
-    return '语义解析失败，请稍后重试 [E-LLM-005]';
+    if (kDebugMode) debugPrint('[LlmParse] E-LLM-005');
+    return ErrorCopy.llmParseFailed;
   }
 
   Future<void> _parseAndDeliver(String text) async {
@@ -1245,7 +1253,7 @@ class VoiceOrchestrator {
       final results = await _nlpOrchestrator.parse(text);
       if (_disposed) return;
       if (results.isEmpty) {
-        _delegate.onError('NLP parsing returned empty results');
+        _delegate.onError(ErrorCopy.llmParseFailed);
         _currentState = VoiceState.listening;
         _startInactivityTimer();
         return;

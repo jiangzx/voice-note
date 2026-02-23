@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../../core/utils/color_utils.dart';
 import '../../../../core/utils/icon_utils.dart';
+import '../../../../shared/error_copy.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../../category/domain/entities/category_entity.dart';
@@ -125,7 +126,7 @@ class _BudgetEditScreenState extends ConsumerState<BudgetEditScreen> {
             },
             loading: () => ShimmerPlaceholder.listPlaceholder(itemCount: 8),
             error: (e, st) => ErrorStateWidget(
-              message: '加载预算失败: $e',
+              message: ErrorCopy.loadFailed,
               onRetry: () =>
                   ref.invalidate(currentMonthBudgetAmountsProvider),
             ),
@@ -133,7 +134,7 @@ class _BudgetEditScreenState extends ConsumerState<BudgetEditScreen> {
         },
         loading: () => ShimmerPlaceholder.listPlaceholder(itemCount: 8),
         error: (e, st) => ErrorStateWidget(
-          message: '加载分类失败: $e',
+          message: ErrorCopy.loadFailed,
           onRetry: () => ref.invalidate(visibleCategoriesProvider('expense')),
         ),
             ),

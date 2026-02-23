@@ -16,6 +16,9 @@ abstract final class AppColors {
   static const Color divider = Color(0xFFF2F3F5);
   /// Unselected gesture lock node stroke (industry spec).
   static const Color gestureNodeStroke = Color(0xFFE5E6EB);
+  /// Soft error surface for friendly hints (not destructive); enterprise-style.
+  static const Color softErrorBackground = Color(0xFFFDF6EF);
+  static const Color softErrorText = Color(0xFF8B6914);
 }
 
 /// Semantic color extension for transaction types.

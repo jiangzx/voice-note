@@ -7,6 +7,7 @@ import '../../../../core/di/database_provider.dart';
 import '../../../../core/utils/color_utils.dart';
 import '../../../../core/utils/icon_utils.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
+import '../../../../shared/error_copy.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../providers/budget_providers.dart';
@@ -67,7 +68,7 @@ class BudgetOverviewScreen extends ConsumerWidget {
                     ),
                     loading: () => ShimmerPlaceholder.card(height: 100),
                     error: (e, st) => ErrorStateWidget(
-                      message: '汇总加载失败: $e',
+                      message: ErrorCopy.loadFailed,
                       onRetry: () => ref.invalidate(budgetSummaryProvider),
                     ),
                   ),
@@ -112,7 +113,7 @@ class BudgetOverviewScreen extends ConsumerWidget {
         },
         loading: () => ShimmerPlaceholder.listPlaceholder(itemCount: 5),
         error: (e, st) => ErrorStateWidget(
-          message: '加载失败: $e',
+          message: ErrorCopy.loadFailed,
           onRetry: () => ref.invalidate(currentMonthBudgetStatusesProvider),
         ),
       ),
