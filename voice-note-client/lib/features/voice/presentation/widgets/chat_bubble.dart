@@ -148,7 +148,7 @@ class _NormalBubble extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    DateFormat('yyyy-MM-dd HH:mm:ss').format(message.timestamp),
+                    DateFormat('yyyy-MM-dd HH:mm').format(message.timestamp),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: AppColors.textPlaceholder,
                     ),
@@ -227,7 +227,7 @@ class _SystemChip extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                DateFormat('yyyy-MM-dd HH:mm:ss').format(message.timestamp),
+                DateFormat('yyyy-MM-dd HH:mm').format(message.timestamp),
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: AppColors.textPlaceholder,
                 ),
@@ -317,7 +317,7 @@ class _StatusBubble extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    DateFormat('yyyy-MM-dd HH:mm:ss').format(message.timestamp),
+                    DateFormat('yyyy-MM-dd HH:mm').format(message.timestamp),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: AppColors.textPlaceholder,
                     ),
