@@ -48,7 +48,9 @@ class _PieChartContentState extends State<_PieChartContent> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.categories.isEmpty) {
+    final total =
+        widget.categories.fold<double>(0, (s, c) => s + c.totalAmount);
+    if (widget.categories.isEmpty || total == 0) {
       return Center(
         child: Text(
           '暂无数据',

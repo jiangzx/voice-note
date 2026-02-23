@@ -650,7 +650,7 @@ class _TransactionTileWithCategory extends StatelessWidget {
   Widget build(BuildContext context) {
     final categoryIcon = categoryIconStr != null && categoryIconStr!.isNotEmpty
         ? IconTheme(
-            data: IconThemeData(
+            data: const IconThemeData(
               size: AppIconSize.sm,
               color: AppColors.textSecondary,
             ),

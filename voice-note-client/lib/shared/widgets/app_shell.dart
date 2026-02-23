@@ -57,7 +57,7 @@ class _DraggablePillOverlayState extends State<_DraggablePillOverlay> {
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
         final pillWidth = homePillWidthForScreen(w);
-        final pillHeight = kHomePillHeight;
+        const pillHeight = kHomePillHeight;
         const minX = 0.0;
         final maxX = (w - pillWidth).clamp(0.0, double.infinity);
         const minY = 0.0;

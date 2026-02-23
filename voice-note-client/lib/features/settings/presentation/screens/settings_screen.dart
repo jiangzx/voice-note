@@ -66,7 +66,7 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm,
             AppSpacing.lg, AppSpacing.xl),
         children: [
-          _SectionHeader(title: '外观', style: _sectionTitleStyle),
+          const _SectionHeader(title: '外观', style: _sectionTitleStyle),
           _SettingsCard(
             radius: _cardRadius,
             borderColor: _cardBorder,
@@ -94,7 +94,7 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          _SectionHeader(title: '数据管理', style: _sectionTitleStyle),
+          const _SectionHeader(title: '数据管理', style: _sectionTitleStyle),
           _SettingsCard(
             radius: _cardRadius,
             borderColor: _cardBorder,
@@ -167,7 +167,7 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          _SectionHeader(title: '语音输入', style: _sectionTitleStyle),
+          const _SectionHeader(title: '语音输入', style: _sectionTitleStyle),
           _SettingsCard(
             radius: _cardRadius,
             borderColor: _cardBorder,
@@ -196,11 +196,11 @@ class SettingsScreen extends ConsumerWidget {
                 },
               ),
               _divider(),
-              _TtsSettingsSection(compact: true),
+              const _TtsSettingsSection(compact: true),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          _SectionHeader(title: '偏好设置', style: _sectionTitleStyle),
+          const _SectionHeader(title: '偏好设置', style: _sectionTitleStyle),
           _SettingsCard(
             radius: _cardRadius,
             borderColor: _cardBorder,
@@ -255,11 +255,11 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          _SectionHeader(title: '安全设置', style: _sectionTitleStyle),
+          const _SectionHeader(title: '安全设置', style: _sectionTitleStyle),
           _SettingsCard(
             radius: _cardRadius,
             borderColor: _cardBorder,
-            child: _SecuritySettingsSection(compact: true),
+            child: const _SecuritySettingsSection(compact: true),
           ),
         ],
       ),
@@ -357,7 +357,7 @@ class SettingsScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.timer_outlined, size: 20, color: AppColors.textSecondary),
+          const Icon(Icons.timer_outlined, size: 20, color: AppColors.textSecondary),
           const SizedBox(width: AppSpacing.sm),
           Text(
             '自动语音停顿',
@@ -889,7 +889,7 @@ class _TtsSettingsSectionState extends ConsumerState<_TtsSettingsSection> {
           child: Row(
             children: [
               if (!widget.compact) const SizedBox(width: 24 + AppSpacing.lg),
-              Icon(
+              const Icon(
                 Icons.speed_rounded,
                 size: 20,
                 color: AppColors.textSecondary,

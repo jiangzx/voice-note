@@ -114,9 +114,9 @@ class _HomeVoicePillState extends State<HomeVoicePill> {
               children: [
                 Container(
                   width: 3,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppColors.brandPrimary,
-                    borderRadius: const BorderRadius.horizontal(
+                    borderRadius: BorderRadius.horizontal(
                       left: Radius.circular(_kPillRadius),
                     ),
                   ),

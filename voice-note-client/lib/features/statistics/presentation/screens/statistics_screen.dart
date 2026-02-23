@@ -93,7 +93,7 @@ class StatisticsScreen extends ConsumerWidget {
           _chartCard(const _CategoryCompositionSection()),
           const SizedBox(height: 12),
           _sectionRow('单笔支出排行榜', _rankingTypeToggle(ref)),
-          _chartCard(SingleTransactionRanking()),
+          _chartCard(const SingleTransactionRanking()),
           const SizedBox(height: 12),
           _sectionTitle('账单汇总'),
           const BillSummaryTable(),
@@ -457,17 +457,20 @@ class _PieChartSection extends ConsumerWidget {
     final labelText = _centerLabel(periodType, type);
     final theme = Theme.of(context);
 
-    return SizedBox(
-      height: 200,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          const PieChartWidget(),
-          categoriesAsync.when(
-            data: (categories) {
-              final total =
-                  categories.fold<double>(0, (s, c) => s + c.totalAmount);
-              return Center(
+    return categoriesAsync.when(
+      data: (categories) {
+        final total =
+            categories.fold<double>(0, (s, c) => s + c.totalAmount);
+        if (categories.isEmpty || total == 0) {
+          return const SizedBox.shrink();
+        }
+        return SizedBox(
+          height: 200,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              const PieChartWidget(),
+              Center(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Column(
@@ -494,13 +497,13 @@ class _PieChartSection extends ConsumerWidget {
                     ],
                   ),
                 ),
-              );
-            },
-            loading: () => const SizedBox.shrink(),
-            error: (e, st) => const SizedBox.shrink(),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
+      loading: () => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+      error: (e, st) => const SizedBox.shrink(),
     );
   }
 }
@@ -511,12 +514,12 @@ class _CategoryCompositionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const _PieChartSection(),
-        const Divider(height: 1, color: Color(0xFFEBEDF0)),
-        const CategoryRanking(),
+        _PieChartSection(),
+        Divider(height: 1, color: Color(0xFFEBEDF0)),
+        CategoryRanking(),
       ],
     );
   }

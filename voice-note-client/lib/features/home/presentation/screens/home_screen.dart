@@ -164,9 +164,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ref,
                       ),
                     if (pagedState.hasMore && pagedState.isLoadingMore)
-                      SliverToBoxAdapter(
+                      const SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                          padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
                           child: Center(child: CircularProgressIndicator()),
                         ),
                       ),
@@ -195,7 +195,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.error_outline,
                                       size: AppIconSize.sm,
                                       color: AppColors.textSecondary,

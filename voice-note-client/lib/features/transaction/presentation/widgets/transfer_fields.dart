@@ -61,33 +61,53 @@ class _TransferFieldsState extends State<TransferFields> {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SegmentedButton<TransferDirection>(
           segments: const [
             ButtonSegment(
               value: TransferDirection.outbound,
               label: Text('转出'),
-              icon: Icon(Icons.arrow_forward),
+              icon: Icon(Icons.arrow_forward_rounded, size: 16),
             ),
             ButtonSegment(
               value: TransferDirection.inbound,
               label: Text('转入'),
-              icon: Icon(Icons.arrow_back),
+              icon: Icon(Icons.arrow_back_rounded, size: 16),
             ),
           ],
           selected: {widget.direction ?? TransferDirection.outbound},
           onSelectionChanged: (set) => widget.onDirectionChanged(set.first),
+          style: const ButtonStyle(
+            padding: WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
+            ),
+            minimumSize: WidgetStatePropertyAll(Size(0, 36)),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.sm),
         TextField(
           focusNode: _counterpartyFocusNode,
           textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: '对方 (可选)',
             hintText: '账户名或人名',
-            border: OutlineInputBorder(),
             isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+              ),
+            ),
           ),
           controller: _controller,
           onChanged: (v) => widget.onCounterpartyChanged(v.isEmpty ? null : v),

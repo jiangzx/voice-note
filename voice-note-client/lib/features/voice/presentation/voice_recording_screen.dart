@@ -481,7 +481,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                   enabled: !disabled,
                   decoration: InputDecoration(
                     hintText: VoiceCopy.modeHintKeyboard,
-                    hintStyle: TextStyle(
+                    hintStyle: const TextStyle(
                       color: AppColors.textPlaceholder,
                       fontSize: 14,
                     ),
@@ -845,7 +845,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                     );
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  const SnackBar(
                     content: Text(VoiceCopy.autoModeSwitchBatchCleared),
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -880,7 +880,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           if (oldMode == VoiceInputMode.auto &&
               newMode == VoiceInputMode.keyboard) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
+              const SnackBar(
                 content: Text(VoiceCopy.modeSwitchHintKeyboard),
                 behavior: SnackBarBehavior.floating,
               ),

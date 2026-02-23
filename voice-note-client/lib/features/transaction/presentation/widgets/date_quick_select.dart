@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../../core/extensions/date_extensions.dart';
 
-/// Quick date selection: today / yesterday / day-before + date picker.
+/// Quick date selection: today / yesterday + date picker.
 class DateQuickSelect extends StatelessWidget {
   const DateQuickSelect({
     super.key,
@@ -20,20 +20,16 @@ class DateQuickSelect extends StatelessWidget {
     final now = DateTime.now();
     final today = now.toDateOnly;
     final yesterday = today.yesterday;
-    final dayBefore = today.dayBeforeYesterday;
     final formatter = DateFormat('M/d');
     final selectedDateOnly = selected.toDateOnly;
     final isOtherDate = !selectedDateOnly.isSameDay(today) &&
-        !selectedDateOnly.isSameDay(yesterday) &&
-        !selectedDateOnly.isSameDay(dayBefore);
+        !selectedDateOnly.isSameDay(yesterday);
 
     return Row(
       children: [
         _chip(context, '今天', today),
         const SizedBox(width: AppSpacing.sm),
         _chip(context, '昨天', yesterday),
-        const SizedBox(width: AppSpacing.sm),
-        _chip(context, '前天', dayBefore),
         const SizedBox(width: AppSpacing.sm),
         ChoiceChip(
           avatar: const Icon(Icons.calendar_today, size: 16),

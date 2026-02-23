@@ -285,7 +285,7 @@ class _DescriptionEditorSheetState extends State<_DescriptionEditorSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('备注', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.xs),
           TextField(
             controller: _controller,
             autofocus: true,

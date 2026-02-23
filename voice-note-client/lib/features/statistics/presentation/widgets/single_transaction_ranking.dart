@@ -62,7 +62,7 @@ class _SingleTransactionRankingState
                   item: item,
                   isIncome: isIncome,
                   txColors: txColors,
-                  onTap: () => context.go('/record/${item.id}'),
+                  onTap: () => context.push('/record/${item.id}'),
                 );
               },
             ),

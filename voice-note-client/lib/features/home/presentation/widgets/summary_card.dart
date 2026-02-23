@@ -107,7 +107,7 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
                     );
                   },
                   loading: () => _BudgetUnsetBlock(onTap: () => context.push('/settings/budget')),
-                  error: (_, __) => _BudgetUnsetBlock(onTap: () => context.push('/settings/budget')),
+                  error: (_, _) => _BudgetUnsetBlock(onTap: () => context.push('/settings/budget')),
                 ),
               ],
             ),
@@ -164,13 +164,13 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
               child: InkWell(
                 onTap: () => context.push('/statistics'),
                 borderRadius: BorderRadius.circular(6),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.bar_chart_outlined, size: 16, color: _Spec.statsText),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         '统计',
                         style: TextStyle(
@@ -190,7 +190,7 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
               child: InkWell(
                 onTap: () => context.push('/settings'),
                 borderRadius: BorderRadius.circular(20),
-                child: SizedBox(
+                child: const SizedBox(
                   width: 36,
                   height: 36,
                   child: Center(
@@ -213,7 +213,7 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
     final decPart = dot > 0 ? str.substring(dot) : '';
 
     if (!_amountsVisible) {
-      return Text(
+      return const Text(
         '¥****',
         style: TextStyle(
           fontSize: 28,
@@ -303,7 +303,7 @@ class _LabelAmount extends StatelessWidget {
     final display = visible ? '$sign¥${absAmount.toStringAsFixed(2)}' : '¥****';
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
@@ -316,12 +316,17 @@ class _LabelAmount extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 2),
-        Text(
-          display,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: color,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            display,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+            maxLines: 1,
           ),
         ),
       ],
@@ -342,8 +347,8 @@ class _BudgetUnsetBlock extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(_Spec.cardRadius),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -366,7 +371,7 @@ class _BudgetUnsetBlock extends StatelessWidget {
                       color: _Spec.budgetUnsetHint,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: 4),
                   Text(
                     '设置',
                     style: TextStyle(
@@ -375,7 +380,7 @@ class _BudgetUnsetBlock extends StatelessWidget {
                       color: _Spec.budgetLink,
                     ),
                   ),
-                  const SizedBox(width: 2),
+                  SizedBox(width: 2),
                   Icon(Icons.arrow_forward_ios, size: 10, color: _Spec.budgetLink),
                 ],
               ),

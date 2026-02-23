@@ -92,7 +92,7 @@ class DailyGroupHeader extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Icon(
+                          const Icon(
                             Icons.chevron_right,
                             size: 18,
                             color: _kArrowColor,
@@ -133,7 +133,7 @@ class _DailyReceiptDecoration extends StatelessWidget {
         color: _kReceiptBg,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(Icons.receipt_long_outlined, size: 18, color: _kReceiptFg),
+      child: const Icon(Icons.receipt_long_outlined, size: 18, color: _kReceiptFg),
     );
   }
 }
