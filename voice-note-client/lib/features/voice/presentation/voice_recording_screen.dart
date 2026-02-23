@@ -66,6 +66,8 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
         voiceSessionProvider,
         _onSessionChanged,
       );
+      // Preload quick suggestions so first keyboard + tap doesn't run DB on focus.
+      ref.read(quickSuggestionsProvider.future).ignore();
     });
   }
 
