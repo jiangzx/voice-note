@@ -89,7 +89,7 @@ class _CategoryRankItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final txColors = theme.extension<TransactionColors>()!;
+    final txColors = transactionColorsOrFallback(theme);
     final color = _parseColor(category.color, txColors.expense);
     final progress = maxAmount > 0 ? category.totalAmount / maxAmount : 0.0;
     final amountColor = isIncome ? txColors.income : txColors.expense;

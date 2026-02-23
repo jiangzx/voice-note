@@ -39,18 +39,19 @@ class ModeSwitcher extends StatelessWidget {
         ? [VoiceInputMode.pushToTalk, VoiceInputMode.keyboard]
         : [VoiceInputMode.auto, VoiceInputMode.pushToTalk, VoiceInputMode.keyboard];
 
+    final colorScheme = Theme.of(context).colorScheme;
     return Semantics(
       label: '输入模式：${_label(mode)}',
       child: Container(
         height: _height,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(_radius),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-          boxShadow: const [
+          border: Border.all(color: colorScheme.outline),
+          boxShadow: [
             BoxShadow(
-              color: Color(0x0D000000),
-              offset: Offset(0, 1),
+              color: colorScheme.shadow.withValues(alpha: 0.05),
+              offset: const Offset(0, 1),
               blurRadius: 3,
             ),
           ],
@@ -62,7 +63,7 @@ class ModeSwitcher extends StatelessWidget {
                 Container(
                   width: 1,
                   height: 20,
-                  color: const Color(0xFFE5E7EB),
+                  color: colorScheme.outline,
                 ),
               Expanded(
                 child: _Segment(
@@ -113,10 +114,11 @@ class _Segment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.brandPrimary : AppColors.textSecondary;
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = selected ? colorScheme.primary : colorScheme.onSurfaceVariant;
     return Material(
       color: selected
-          ? AppColors.brandPrimary.withValues(alpha: 0.08)
+          ? colorScheme.primary.withValues(alpha: 0.08)
           : Colors.transparent,
       borderRadius: BorderRadius.circular(ModeSwitcher._radius - 2),
       child: InkWell(

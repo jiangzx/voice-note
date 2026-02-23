@@ -50,15 +50,16 @@ class _AnimatedVoiceFabState extends State<AnimatedVoiceFab>
       child: AnimatedBuilder(
         animation: _pulseAnimation,
         builder: (context, child) {
+          final colorScheme = Theme.of(context).colorScheme;
           return Transform.scale(
             scale: _pulseAnimation.value,
             child: FloatingActionButton(
               heroTag: 'voice_fab',
               onPressed: () => _handleTap(context),
-              backgroundColor: AppColors.brandPrimary,
-              child: const Icon(
+              backgroundColor: colorScheme.primary,
+              child: Icon(
                 Icons.mic_rounded,
-                color: Colors.white,
+                color: colorScheme.onPrimary,
               ),
             ),
           );

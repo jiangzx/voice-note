@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/design_tokens.dart';
 import '../../../../app/router.dart';
-import '../../../../app/theme.dart';
 import '../../../../shared/widgets/swipe_back_zone.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../export/presentation/widgets/export_options_sheet.dart';
@@ -83,14 +82,14 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
+        content: Row(
           children: [
             Icon(
               Icons.info_outline,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
-            SizedBox(width: AppSpacing.sm),
-            Expanded(
+            const SizedBox(width: AppSpacing.sm),
+            const Expanded(
               child: Text('长按项目可进入批量操作模式'),
             ),
           ],
@@ -138,7 +137,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       for (final cat in cats) {
         categoryNameMap[cat.id] = cat.name;
         categoryIconMap[cat.id] = cat.icon;
-        categoryColorMap[cat.id] = _parseCategoryColor(cat.color);
+        categoryColorMap[cat.id] = _parseCategoryColor(context, cat.color);
       }
     }
     incomeCategoriesAsync.whenData(fillMaps);
@@ -212,7 +211,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                 Text(
                   _selectedDateLabel(_selectedDate),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                 ),
                 listAsync.when(
@@ -375,14 +374,13 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.backgroundPrimary,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
         boxShadow: AppShadow.card,
       ),
       child: SafeArea(
         child: Row(
           children: [
-            // 左侧：全选复选框
             InkWell(
               onTap: _toggleSelectAll,
               borderRadius: AppRadius.mdAll,
@@ -402,7 +400,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                     Text(
                       '全选',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: AppColors.textPrimary,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ],
@@ -410,7 +408,6 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
               ),
             ),
             const Spacer(),
-            // 右侧：操作按钮组
             TextButton(
               onPressed: _exitSelectionMode,
               child: const Text('取消'),
@@ -421,8 +418,8 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
               icon: const Icon(Icons.delete_outline),
               label: const Text('删除'),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.expense,
-                foregroundColor: Colors.white,
+                backgroundColor: theme.colorScheme.error,
+                foregroundColor: theme.colorScheme.onError,
               ),
             ),
           ],
@@ -548,7 +545,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
-              foregroundColor: AppColors.expense,
+              foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
             child: const Text('删除'),
           ),
@@ -584,12 +581,12 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     }
   }
 
-  static Color _parseCategoryColor(String hex) {
+  static Color _parseCategoryColor(BuildContext context, String hex) {
     final s = hex.replaceFirst(RegExp(r'^#'), '').trim();
     final hexOnly = RegExp(r'^[0-9A-Fa-f]{6}$');
     final hexWithAlpha = RegExp(r'^[0-9A-Fa-f]{8}$');
     if (s.isEmpty || (!hexOnly.hasMatch(s) && !hexWithAlpha.hasMatch(s))) {
-      return AppColors.textSecondary;
+      return Theme.of(context).colorScheme.onSurfaceVariant;
     }
     final full = s.length == 6 ? 'FF$s' : s;
     return Color(int.parse(full, radix: 16));

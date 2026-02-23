@@ -58,8 +58,8 @@ class HomeFab extends ConsumerWidget {
         child: FloatingActionButton.extended(
           heroTag: 'exit_fab',
           onPressed: () => context.go('/home'),
-          backgroundColor: AppColors.backgroundTertiary,
-          foregroundColor: AppColors.textPrimary,
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           icon: const Icon(Icons.arrow_back_rounded),
           label: const Text('退出'),
           elevation: 0,

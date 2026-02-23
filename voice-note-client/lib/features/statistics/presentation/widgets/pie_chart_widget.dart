@@ -15,7 +15,7 @@ class PieChartWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(categorySummaryProvider);
-    final txColors = Theme.of(context).extension<TransactionColors>()!;
+    final txColors = transactionColorsOrFallback(Theme.of(context));
 
     return categoriesAsync.when(
       data: (categories) => _PieChartContent(

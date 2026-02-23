@@ -8,9 +8,6 @@ import '../../domain/entities/transaction_filter.dart';
 
 const _weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 
-/// Calendar card: light grey, rounded, slight elevation (per prototype).
-const _kCalendarCardBg = Color(0xFFF3F4F6);
-const _kWeekdayPillBlue = Color(0xFF93C5FD);
 const _kTodayYellow = Color(0xFFE6C229);
 const _kSundayGrey = Color(0xFF9CA3AF);
 
@@ -57,7 +54,7 @@ class TransactionCalendarGrid extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       child: Material(
-        color: _kCalendarCardBg,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         elevation: 1,
         shadowColor: Colors.black.withValues(alpha: 0.06),
@@ -81,14 +78,14 @@ class TransactionCalendarGrid extends StatelessWidget {
                             horizontal: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: _kWeekdayPillBlue,
+                            color: Theme.of(context).colorScheme.primary,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             w,
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: Colors.white,
+                                  color: Theme.of(context).colorScheme.onPrimary,
                                   fontWeight: FontWeight.w500,
                                 ),
                           ),
@@ -154,13 +151,15 @@ class _DayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final txColors = theme.extension<TransactionColors>();
     final incomeStr = income > 0 ? '+${NumberFormat.currency(locale: 'zh_CN', symbol: '', decimalDigits: 2).format(income)}' : '';
     final expenseStr = expense > 0 ? '-${NumberFormat.currency(locale: 'zh_CN', symbol: '', decimalDigits: 2).format(expense)}' : '';
 
     final bool useTodayStyle = isToday;
-    final Color cellBg = useTodayStyle ? _kTodayYellow : Colors.white;
-    final Color dayColor = useTodayStyle ? Colors.white : (isSunday ? _kSundayGrey : AppColors.textPrimary);
-    final Color borderColor = isSelected && !useTodayStyle ? AppColors.brandPrimary.withValues(alpha: 0.4) : const Color(0xFFE5E7EB);
+    final Color cellBg = useTodayStyle ? _kTodayYellow : scheme.surface;
+    final Color dayColor = useTodayStyle ? Colors.white : (isSunday ? _kSundayGrey : scheme.onSurface);
+    final Color borderColor = isSelected && !useTodayStyle ? scheme.primary.withValues(alpha: 0.4) : scheme.outline;
 
     return Material(
       color: cellBg,
@@ -202,7 +201,7 @@ class _DayCell extends StatelessWidget {
                                   Text(
                                     incomeStr,
                                     style: theme.textTheme.labelSmall?.copyWith(
-                                      color: AppColors.income,
+                                      color: txColors?.income ?? theme.colorScheme.tertiary,
                                       fontSize: 10,
                                     ),
                                     maxLines: 1,
@@ -212,7 +211,7 @@ class _DayCell extends StatelessWidget {
                                   Text(
                                     expenseStr,
                                     style: theme.textTheme.labelSmall?.copyWith(
-                                      color: AppColors.expense,
+                                      color: txColors?.expense ?? theme.colorScheme.error,
                                       fontSize: 10,
                                     ),
                                     maxLines: 1,

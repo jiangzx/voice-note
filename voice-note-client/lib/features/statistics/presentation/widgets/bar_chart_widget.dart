@@ -21,7 +21,7 @@ class BarChartWidget extends ConsumerWidget {
     final trendAsync = ref.watch(trendDataProvider);
     final periodType = ref.watch(selectedPeriodTypeProvider);
     final series = ref.watch(trendSeriesProvider);
-    final txColors = Theme.of(context).extension<TransactionColors>()!;
+    final txColors = transactionColorsOrFallback(Theme.of(context));
 
     return SizedBox(
       height: _chartHeight,
@@ -76,8 +76,8 @@ class _BarChartContent extends StatelessWidget {
       color: colorScheme.onSurfaceVariant,
       fontWeight: FontWeight.w500,
     );
-    const barZeroColor = Color(0xFFE8EAED);
-    const barValueColor = AppColors.brandPrimary;
+    final barValueColor = colorScheme.primary;
+    final barZeroColor = colorScheme.surfaceContainerHighest;
 
     double maxY;
     List<BarChartGroupData> barGroups;

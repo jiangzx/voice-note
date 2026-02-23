@@ -211,7 +211,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             vertical: AppSpacing.sm,
                           ),
                           child: Material(
-                            color: AppColors.backgroundTertiary,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             borderRadius: AppRadius.smAll,
                             child: InkWell(
                               onTap: () =>
@@ -225,10 +225,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.error_outline,
                                       size: AppIconSize.sm,
-                                      color: AppColors.textSecondary,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                     const SizedBox(width: AppSpacing.sm),
                                     Text(
@@ -237,7 +237,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           .textTheme
                                           .bodySmall
                                           ?.copyWith(
-                                            color: AppColors.textSecondary,
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                                           ),
                                     ),
                                   ],
@@ -406,14 +406,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.backgroundPrimary,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
         boxShadow: AppShadow.card,
       ),
       child: SafeArea(
         child: Row(
           children: [
-            // 左侧：全选复选框
             InkWell(
               onTap: _toggleSelectAll,
               borderRadius: AppRadius.mdAll,
@@ -433,7 +432,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Text(
                       '全选',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: AppColors.textPrimary,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ],
@@ -441,7 +440,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             const Spacer(),
-            // 右侧：操作按钮组
             TextButton(
               onPressed: _exitSelectionMode,
               child: const Text('取消'),
@@ -452,8 +450,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               icon: const Icon(Icons.delete_outline),
               label: const Text('删除'),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.expense,
-                foregroundColor: Colors.white,
+                backgroundColor: theme.colorScheme.error,
+                foregroundColor: theme.colorScheme.onError,
               ),
             ),
           ],

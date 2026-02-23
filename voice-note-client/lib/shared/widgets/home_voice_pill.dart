@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart' as handler;
 
-import '../../app/theme.dart';
 import '../../core/permissions/permission_service.dart';
 import '../../shared/error_copy.dart';
 
@@ -15,29 +14,6 @@ const _kPillMaxWidth = 280.0;
 /// Pill width for a given screen width; used by draggable overlay for clamp.
 double homePillWidthForScreen(double screenWidth) =>
     (screenWidth * 0.72).clamp(200.0, _kPillMaxWidth);
-
-abstract final class _PillSpec {
-  /// White surface so pill stands out from list (backgroundSecondary/tertiary).
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color border = Color(0xFFD1D5DB);
-  static const Color labelPrimary = Color(0xFF1D2129);
-  static const Color iconPrimary = Color(0xFF374151);
-  /// Stronger shadow so pill reads as floating above content.
-  static const List<BoxShadow> shadows = [
-    BoxShadow(
-      color: Color(0x1A000000),
-      offset: Offset(0, 2),
-      blurRadius: 8,
-      spreadRadius: 0,
-    ),
-    BoxShadow(
-      color: Color(0x0D000000),
-      offset: Offset(0, 4),
-      blurRadius: 12,
-      spreadRadius: 0,
-    ),
-  ];
-}
 
 class HomeVoicePill extends StatefulWidget {
   const HomeVoicePill({super.key});
@@ -84,15 +60,16 @@ class _HomeVoicePillState extends State<HomeVoicePill> {
       }
     } else if (mounted) {
       final theme = Theme.of(context);
+      final colorScheme = theme.colorScheme;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             ErrorCopy.recordNoPermission,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.softErrorText,
+              color: colorScheme.onErrorContainer,
             ),
           ),
-          backgroundColor: AppColors.softErrorBackground,
+          backgroundColor: colorScheme.errorContainer,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
         ),
@@ -104,16 +81,30 @@ class _HomeVoicePillState extends State<HomeVoicePill> {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final pillWidth = (width * 0.72).clamp(200.0, _kPillMaxWidth);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return SizedBox(
       width: pillWidth,
       height: _kPillHeight,
       child: Container(
         decoration: BoxDecoration(
-          color: _PillSpec.surface,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(_kPillRadius),
-          border: Border.all(color: _PillSpec.border, width: 1),
-          boxShadow: _PillSpec.shadows,
+          border: Border.all(color: colorScheme.outline, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withValues(alpha: 0.1),
+              offset: const Offset(0, 2),
+              blurRadius: 8,
+              spreadRadius: 0,
+            ),
+            BoxShadow(
+              color: colorScheme.shadow.withValues(alpha: 0.05),
+              offset: const Offset(0, 4),
+              blurRadius: 12,
+              spreadRadius: 0,
+            ),
+          ],
         ),
         child: Material(
           color: Colors.transparent,
@@ -122,9 +113,9 @@ class _HomeVoicePillState extends State<HomeVoicePill> {
               children: [
                 Container(
                   width: 3,
-                  decoration: const BoxDecoration(
-                    color: AppColors.brandPrimary,
-                    borderRadius: BorderRadius.horizontal(
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary,
+                    borderRadius: const BorderRadius.horizontal(
                       left: Radius.circular(_kPillRadius),
                     ),
                   ),
@@ -142,7 +133,7 @@ class _HomeVoicePillState extends State<HomeVoicePill> {
                       Container(
                         width: 1,
                         height: 24,
-                        color: _PillSpec.border,
+                        color: colorScheme.outline,
                       ),
                       Expanded(
                         child: _ActionSegment(
@@ -176,6 +167,7 @@ class _ActionSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -187,14 +179,14 @@ class _ActionSegment extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 20, color: _PillSpec.iconPrimary),
+              Icon(icon, size: 20, color: colorScheme.onSurfaceVariant),
               const SizedBox(width: 6),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: _PillSpec.labelPrimary,
+                  color: colorScheme.onSurface,
                   letterSpacing: 0.2,
                 ),
               ),

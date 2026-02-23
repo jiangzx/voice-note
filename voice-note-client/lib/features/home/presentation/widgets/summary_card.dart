@@ -3,35 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../../app/theme.dart';
 import '../../../budget/presentation/providers/budget_providers.dart';
 
-// Enterprise-style: compact, neutral surface, clear hierarchy, 4px grid.
+const double _kCardRadius = 12;
 
-abstract final class _Spec {
-  static const double cardRadius = 12;
-  static const Color surface = Color(0xFFFAFBFC);
-  static const Color border = Color(0xFFE5E7EB);
-  static const Color title = Color(0xFF6B7280);
-  static const Color eyeDefault = Color(0xFF9CA3AF);
-  static const Color eyeActive = Color(0xFF2563EB);
-  static const Color statsBg = Color(0xFFF3F4F6);
-  static const Color statsText = Color(0xFF374151);
-  static const Color heroAmount = Color(0xFF000000);
-  static const Color labelSecondary = Color(0xFF6B7280);
-  static const Color incomeAmount = Color(0xFFD4A017);
-  static const Color balancePositive = Color(0xFF059669);
-  static const Color balanceNegative = Color(0xFFDC2626);
-  static const Color budgetUnsetBg = Color(0xFFF9FAFB);
-  static const Color budgetUnsetHint = Color(0xFF9CA3AF);
-  static const Color budgetLink = Color(0xFF2563EB);
-  static const Color progressTrack = Color(0xFFE5E7EB);
-  static const Color progressNormal = Color(0xFF2563EB);
-  static const Color progressWarn = Color(0xFFD97706);
-  static const Color progressOver = Color(0xFFDC2626);
-  static const Color shadowColor = Color(0x0D000000);
-}
-
-/// Card: monthly expense hero, income/balance, budget block. All behavior preserved.
+/// Card: monthly expense hero, income/balance, budget block. Uses theme for dark mode.
 class SummaryCard extends ConsumerStatefulWidget {
   const SummaryCard({
     super.key,
@@ -58,6 +35,8 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final budgetAsync = ref.watch(budgetSummaryProvider);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final cardWidth = screenWidth * 0.92;
@@ -74,13 +53,13 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
             bottom: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            color: _Spec.surface,
-            borderRadius: BorderRadius.circular(_Spec.cardRadius),
-            border: Border.all(color: _Spec.border, width: 1),
-            boxShadow: const [
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(_kCardRadius),
+            border: Border.all(color: scheme.outline, width: 1),
+            boxShadow: [
               BoxShadow(
-                color: _Spec.shadowColor,
-                offset: Offset(0, 1),
+                color: scheme.shadow.withValues(alpha: 0.05),
+                offset: const Offset(0, 1),
                 blurRadius: 3,
                 spreadRadius: 0,
               ),
@@ -92,11 +71,11 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildTopRow(context),
+                _buildTopRow(context, scheme),
                 const SizedBox(height: 10),
-                _buildHeroAmount(context),
+                _buildHeroAmount(context, scheme),
                 const SizedBox(height: 14),
-                _buildIncomeBalance(context),
+                _buildIncomeBalance(context, theme, scheme),
                 const SizedBox(height: 12),
                 budgetAsync.when(
                   data: (budget) {
@@ -126,13 +105,13 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
     context.push('/statistics?year=${d.year}&month=${d.month}');
   }
 
-  Widget _buildTopRow(BuildContext context) {
+  Widget _buildTopRow(BuildContext context, ColorScheme scheme) {
     final monthLabelChild = Text(
       '${widget.monthLabel}支出',
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w500,
-        color: _Spec.title,
+        color: scheme.onSurfaceVariant,
         letterSpacing: 0.2,
       ),
     );
@@ -170,7 +149,7 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
                     child: Icon(
                       _amountsVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                       size: 18,
-                      color: _amountsVisible ? _Spec.eyeDefault : _Spec.eyeActive,
+                      color: _amountsVisible ? scheme.onSurfaceVariant : scheme.primary,
                     ),
                   ),
                 ),
@@ -182,24 +161,24 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Material(
-              color: _Spec.statsBg,
+              color: scheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(6),
               child: InkWell(
                 onTap: () => context.push('/statistics'),
                 borderRadius: BorderRadius.circular(6),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.bar_chart_outlined, size: 16, color: _Spec.statsText),
-                      SizedBox(width: 4),
+                      Icon(Icons.bar_chart_outlined, size: 16, color: scheme.onSurfaceVariant),
+                      const SizedBox(width: 4),
                       Text(
                         '统计',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: _Spec.statsText,
+                          color: scheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -213,11 +192,11 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
               child: InkWell(
                 onTap: () => context.push('/settings'),
                 borderRadius: BorderRadius.circular(20),
-                child: const SizedBox(
+                child: SizedBox(
                   width: 36,
                   height: 36,
                   child: Center(
-                    child: Icon(Icons.settings_outlined, size: 20, color: _Spec.statsText),
+                    child: Icon(Icons.settings_outlined, size: 20, color: scheme.onSurfaceVariant),
                   ),
                 ),
               ),
@@ -228,7 +207,7 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
     );
   }
 
-  Widget _buildHeroAmount(BuildContext context) {
+  Widget _buildHeroAmount(BuildContext context, ColorScheme scheme) {
     final expense = widget.totalExpense;
     final str = expense.toStringAsFixed(2);
     final dot = str.indexOf('.');
@@ -236,12 +215,12 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
     final decPart = dot > 0 ? str.substring(dot) : '';
 
     final amountContent = !_amountsVisible
-        ? const Text(
+        ? Text(
             '¥****',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w600,
-              color: _Spec.heroAmount,
+              color: scheme.onSurface,
               height: 1.2,
               letterSpacing: -0.5,
             ),
@@ -252,10 +231,10 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
             children: [
               Text(
                 '¥$intPart',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w600,
-                  color: _Spec.heroAmount,
+                  color: scheme.onSurface,
                   height: 1.2,
                   letterSpacing: -0.5,
                 ),
@@ -263,10 +242,10 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
               if (decPart.isNotEmpty)
                 Text(
                   decPart,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
-                    color: _Spec.heroAmount,
+                    color: scheme.onSurface,
                     height: 1.25,
                   ),
                 ),
@@ -286,7 +265,9 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
     );
   }
 
-  Widget _buildIncomeBalance(BuildContext context) {
+  Widget _buildIncomeBalance(BuildContext context, ThemeData theme, ColorScheme scheme) {
+    final txColors = transactionColorsOrFallback(theme);
+    final balanceColor = _balance >= 0 ? scheme.tertiary : scheme.error;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -295,7 +276,7 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
             label: '收入',
             amount: widget.totalIncome,
             visible: _amountsVisible,
-            color: _Spec.incomeAmount,
+            color: txColors.income,
             showSign: false,
           ),
         ),
@@ -305,7 +286,7 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
             label: '结余',
             amount: _balance,
             visible: _amountsVisible,
-            color: _balance >= 0 ? _Spec.balancePositive : _Spec.balanceNegative,
+            color: balanceColor,
             showSign: true,
           ),
         ),
@@ -331,6 +312,7 @@ class _LabelAmount extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final sign = showSign && amount != 0 ? (amount >= 0 ? '+' : '-') : '';
     final absAmount = amount.abs();
     final display = visible ? '$sign¥${absAmount.toStringAsFixed(2)}' : '¥****';
@@ -341,10 +323,10 @@ class _LabelAmount extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w500,
-            color: _Spec.labelSecondary,
+            color: scheme.onSurfaceVariant,
             letterSpacing: 0.2,
           ),
         ),
@@ -374,14 +356,15 @@ class _BudgetUnsetBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: _Spec.budgetUnsetBg,
-      borderRadius: BorderRadius.circular(_Spec.cardRadius),
+      color: scheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(_kCardRadius),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(_Spec.cardRadius),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        borderRadius: BorderRadius.circular(_kCardRadius),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -390,7 +373,7 @@ class _BudgetUnsetBlock extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: _Spec.labelSecondary,
+                  color: scheme.onSurfaceVariant,
                 ),
               ),
               Row(
@@ -401,20 +384,20 @@ class _BudgetUnsetBlock extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
-                      color: _Spec.budgetUnsetHint,
+                      color: scheme.onSurfaceVariant,
                     ),
                   ),
-                  SizedBox(width: 4),
+                  const SizedBox(width: 4),
                   Text(
                     '设置',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: _Spec.budgetLink,
+                      color: scheme.primary,
                     ),
                   ),
-                  SizedBox(width: 2),
-                  Icon(Icons.arrow_forward_ios, size: 10, color: _Spec.budgetLink),
+                  const SizedBox(width: 2),
+                  Icon(Icons.arrow_forward_ios, size: 10, color: scheme.primary),
                 ],
               ),
             ],
@@ -438,12 +421,13 @@ class _BudgetSetBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final pct = totalBudget > 0 ? (totalSpent / totalBudget).clamp(0.0, 1.0) : 0.0;
     final progressColor = pct >= 1.0
-        ? _Spec.progressOver
+        ? scheme.error
         : pct >= 0.8
-            ? _Spec.progressWarn
-            : _Spec.progressNormal;
+            ? Color.lerp(scheme.primary, scheme.error, 0.5)!
+            : scheme.primary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,17 +439,17 @@ class _BudgetSetBlock extends StatelessWidget {
             Text.rich(
               TextSpan(
                 text: '月预算 ',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: _Spec.labelSecondary,
+                  color: scheme.onSurfaceVariant,
                 ),
                 children: [
                   TextSpan(
                     text: '¥${totalBudget.toStringAsFixed(0)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: _Spec.heroAmount,
+                      color: scheme.onSurface,
                     ),
                   ),
                 ],
@@ -474,17 +458,17 @@ class _BudgetSetBlock extends StatelessWidget {
             Text.rich(
               TextSpan(
                 text: '剩余 ',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: _Spec.labelSecondary,
+                  color: scheme.onSurfaceVariant,
                 ),
                 children: [
                   TextSpan(
                     text: '¥${remaining.toStringAsFixed(0)}',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: remaining >= 0 ? _Spec.balancePositive : _Spec.balanceNegative,
+                      color: remaining >= 0 ? scheme.tertiary : scheme.error,
                     ),
                   ),
                 ],
@@ -498,7 +482,7 @@ class _BudgetSetBlock extends StatelessWidget {
           child: LinearProgressIndicator(
             value: pct.clamp(0.0, 1.0),
             minHeight: 4,
-            backgroundColor: _Spec.progressTrack,
+            backgroundColor: scheme.surfaceContainerHighest,
             valueColor: AlwaysStoppedAnimation<Color>(progressColor),
           ),
         ),

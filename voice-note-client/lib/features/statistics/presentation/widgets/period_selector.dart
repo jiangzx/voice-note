@@ -3,18 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/design_tokens.dart';
-import '../../../../app/theme.dart';
 import '../providers/statistics_providers.dart';
 
 /// 时间范围：周 | 月 | 年 | 自定义；选择后显示 < 2026年2月 > 或自定义区间。
 class PeriodSelector extends ConsumerWidget {
   const PeriodSelector({super.key});
 
-  static const _borderColor = Color(0xFFEBEDF0);
   static const _radius = 8.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final periodType = ref.watch(selectedPeriodTypeProvider);
     final date = ref.watch(selectedDateProvider);
     final custom = ref.watch(customDateRangeProvider);
@@ -24,12 +24,11 @@ class PeriodSelector extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 周 | 月 | 年 | 自定义
         Container(
           decoration: BoxDecoration(
-            color: AppColors.backgroundPrimary,
+            color: scheme.surface,
             borderRadius: BorderRadius.circular(_radius),
-            border: Border.all(color: _borderColor),
+            border: Border.all(color: scheme.outline),
             boxShadow: AppShadow.card,
           ),
           child: Row(
@@ -42,22 +41,18 @@ class PeriodSelector extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 8),
-        // < 2026年 2 月 >
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
-              icon: Icon(
-                Icons.chevron_left_rounded,
-                color: isCustom ? AppColors.textPlaceholder : AppColors.textPrimary,
-              ),
+              icon: Icon(Icons.chevron_left_rounded, color: scheme.onSurfaceVariant),
               onPressed: isCustom ? null : () => _navigatePeriod(ref, -1),
             ),
             GestureDetector(
               onTap: isCustom ? () => _pickCustomRange(context, ref) : null,
               child: Text(
                 label,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.2,
                   fontSize: 14,
@@ -65,10 +60,7 @@ class PeriodSelector extends ConsumerWidget {
               ),
             ),
             IconButton(
-              icon: Icon(
-                Icons.chevron_right_rounded,
-                color: isCustom ? AppColors.textPlaceholder : AppColors.textPrimary,
-              ),
+              icon: Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
               onPressed: isCustom ? null : () => _navigatePeriod(ref, 1),
             ),
           ],
@@ -84,6 +76,8 @@ class PeriodSelector extends ConsumerWidget {
     String label,
     PeriodType selected,
   ) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final isSelected = value == selected;
     final isCustom = value == PeriodType.custom;
     return Expanded(
@@ -102,17 +96,15 @@ class PeriodSelector extends ConsumerWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected
-                ? AppColors.brandPrimary.withValues(alpha: 0.12)
-                : null,
+            color: isSelected ? scheme.primary.withValues(alpha: 0.12) : null,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Center(
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? AppColors.brandPrimary : AppColors.textSecondary,
+                color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
                 fontSize: 13,
               ),
             ),
@@ -152,14 +144,8 @@ class PeriodSelector extends ConsumerWidget {
       lastDate: now,
       initialDateRange: initial,
       builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: AppColors.brandPrimary,
-            ),
-          ),
-          child: child!,
-        );
+        final t = Theme.of(context);
+        return Theme(data: t.copyWith(colorScheme: t.colorScheme), child: child!);
       },
     );
     if (picked != null) {

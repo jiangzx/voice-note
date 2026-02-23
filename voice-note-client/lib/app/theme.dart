@@ -67,6 +67,14 @@ const _darkTransactionColors = TransactionColors(
   transfer: Color(0xFF42A5F5),
 );
 
+/// Returns [TransactionColors] from [theme], or scheme-based fallback when extension is not registered (e.g. tests).
+TransactionColors transactionColorsOrFallback(ThemeData theme) {
+  final ext = theme.extension<TransactionColors>();
+  if (ext != null) return ext;
+  final s = theme.colorScheme;
+  return TransactionColors(income: s.tertiary, expense: s.error, transfer: s.primary);
+}
+
 /// Predefined theme color seeds (for settings picker; app uses fixed light palette).
 abstract final class AppThemeColors {
   static const Color teal = Colors.teal;
@@ -113,8 +121,9 @@ ColorScheme _lightColorScheme() {
     onTertiary: Colors.white,
     error: AppColors.expense,
     onError: Colors.white,
-    errorContainer: AppColors.expense.withValues(alpha: 0.12),
-    onErrorContainer: AppColors.expense,
+    /// Unified soft error hint (ErrorStateWidget / SnackBar / chat bubble); not destructive red.
+    errorContainer: AppColors.softErrorBackground,
+    onErrorContainer: AppColors.softErrorText,
     surface: AppColors.backgroundPrimary,
     onSurface: AppColors.textPrimary,
     surfaceContainerHighest: AppColors.backgroundSecondary,
@@ -322,9 +331,52 @@ ThemeData buildTheme(Color seedColor, Brightness brightness) {
     useMaterial3: true,
     colorScheme: colorScheme,
     brightness: Brightness.dark,
+    scaffoldBackgroundColor: colorScheme.surface,
     textTheme: textTheme,
     primaryTextTheme: textTheme,
+    appBarTheme: AppBarTheme(
+      backgroundColor: colorScheme.surface,
+      foregroundColor: colorScheme.onSurface,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      titleTextStyle: textTheme.titleLarge?.copyWith(
+        color: colorScheme.onSurface,
+        fontWeight: FontWeight.w600,
+      ),
+      iconTheme: IconThemeData(color: colorScheme.onSurface, size: AppIconSize.md),
+    ),
+    cardTheme: CardThemeData(
+      color: colorScheme.surface,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
+      clipBehavior: Clip.antiAlias,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: colorScheme.surface,
+      border: const OutlineInputBorder(borderRadius: AppRadius.inputAll),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: AppRadius.inputAll,
+        borderSide: BorderSide(color: colorScheme.outline),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: AppRadius.inputAll,
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      hintStyle: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
+    ),
     listTileTheme: ListTileThemeData(
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xs,
+      ),
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+      tileColor: Colors.transparent,
       titleTextStyle: textTheme.bodyLarge?.copyWith(
         color: colorScheme.onSurface,
         textBaseline: TextBaseline.alphabetic,
@@ -333,6 +385,69 @@ ThemeData buildTheme(Color seedColor, Brightness brightness) {
         color: colorScheme.onSurfaceVariant,
         textBaseline: TextBaseline.alphabetic,
       ),
+      iconColor: colorScheme.onSurfaceVariant,
+    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: colorScheme.primary,
+      foregroundColor: colorScheme.onPrimary,
+      elevation: 2,
+      focusElevation: 4,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: colorScheme.surface,
+      elevation: 0,
+      height: 56,
+      indicatorColor: colorScheme.primaryContainer,
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return IconThemeData(color: colorScheme.primary, size: 24);
+        }
+        return IconThemeData(color: colorScheme.onSurfaceVariant, size: 24);
+      }),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return textTheme.labelMedium?.copyWith(
+            color: colorScheme.primary,
+            fontSize: 24,
+            fontWeight: FontWeight.w500,
+          );
+        }
+        return textTheme.labelMedium?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+          fontSize: 22,
+          fontWeight: FontWeight.w400,
+        );
+      }),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return colorScheme.primary;
+          return colorScheme.surfaceContainerHighest;
+        }),
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return colorScheme.onPrimary;
+          return colorScheme.onSurface;
+        }),
+        padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        )),
+        shape: const WidgetStatePropertyAll(RoundedRectangleBorder(
+          borderRadius: AppRadius.cardAll,
+        )),
+      ),
+    ),
+    switchTheme: SwitchThemeData(
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return null;
+        return colorScheme.surfaceContainerHighest;
+      }),
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return null;
+        return colorScheme.outline;
+      }),
     ),
     extensions: const <ThemeExtension<dynamic>>[_darkTransactionColors],
   );

@@ -34,7 +34,10 @@ class TransactionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final txColors = theme.extension<TransactionColors>()!;
+    final scheme = theme.colorScheme;
+    final txColors = transactionColorsOrFallback(theme);
+    // Delete button uses semantic error (red in light) so list delete stays red in light theme.
+    final deleteColor = scheme.error;
     final displayName = transaction.description ?? categoryName ?? '未分类';
 
     // 统一为两种颜色：支出/转出用 expense，收入/转入用 income；金额格式 ±¥xx
@@ -45,9 +48,11 @@ class TransactionTile extends StatelessWidget {
       case TransactionType.expense:
         amountColor = txColors.expense;
         amountText = '-¥${transaction.amount.toStringAsFixed(2)}';
+        break;
       case TransactionType.income:
         amountColor = txColors.income;
         amountText = '+¥${transaction.amount.toStringAsFixed(2)}';
+        break;
       case TransactionType.transfer:
         if (transaction.transferDirection == TransferDirection.outbound) {
           amountColor = txColors.expense;
@@ -56,6 +61,7 @@ class TransactionTile extends StatelessWidget {
           amountColor = txColors.income;
           amountText = '+¥${transaction.amount.toStringAsFixed(2)}';
         }
+        break;
     }
 
     final tile = ListTile(
@@ -68,28 +74,28 @@ class TransactionTile extends StatelessWidget {
             )
           : (categoryIcon ??
               CircleAvatar(
-                backgroundColor: AppColors.backgroundTertiary,
+                backgroundColor: scheme.surfaceContainerHighest,
                 radius: AppIconSize.md / 2,
                 child: Icon(
                   transaction.type == TransactionType.transfer
                       ? Icons.swap_horiz
                       : Icons.receipt_long_outlined,
                   size: AppIconSize.sm,
-                  color: AppColors.textSecondary,
+                  color: scheme.onSurfaceVariant,
                 ),
               )),
       title: Text(
         displayName,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyLarge?.copyWith(color: AppColors.textPrimary),
+        style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onSurface),
       ),
       subtitle:
           transaction.type == TransactionType.transfer &&
               transaction.counterparty != null
           ? Text(
               transaction.counterparty!,
-              style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+              style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             )
           : null,
       trailing: Text(
@@ -108,7 +114,7 @@ class TransactionTile extends StatelessWidget {
           : onEdit,
       onLongPress: isSelectionMode ? null : onLongPress,
       tileColor: isSelectionMode && isSelected
-          ? AppColors.brandPrimary.withValues(alpha: 0.12)
+          ? scheme.primary.withValues(alpha: 0.12)
           : null,
     );
 
@@ -130,7 +136,7 @@ class TransactionTile extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: Material(
-                  color: AppColors.expense,
+                  color: deleteColor,
                   shape: const CircleBorder(),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
@@ -138,12 +144,12 @@ class TransactionTile extends StatelessWidget {
                       HapticFeedback.mediumImpact();
                       onDelete();
                     },
-                    child: const SizedBox(
+                    child: SizedBox(
                       width: 48,
                       height: 48,
                       child: Icon(
                         Icons.delete_outline,
-                        color: Colors.white,
+                        color: scheme.onError,
                         size: 24,
                       ),
                     ),

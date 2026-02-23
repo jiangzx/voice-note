@@ -15,7 +15,7 @@ class TrendChartWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final trendAsync = ref.watch(trendDataProvider);
     final periodType = ref.watch(selectedPeriodTypeProvider);
-    final txColors = Theme.of(context).extension<TransactionColors>()!;
+    final txColors = transactionColorsOrFallback(Theme.of(context));
 
     return SizedBox(
       height: 220,

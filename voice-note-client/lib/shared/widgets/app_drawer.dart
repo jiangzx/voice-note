@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/design_tokens.dart';
-import '../../app/theme.dart';
 import '../../shared/error_copy.dart';
 
 /// Reusable app drawer: user block, common actions grid, quick-entry grid, settings/feedback.
@@ -91,15 +90,16 @@ class AppDrawer extends StatelessWidget {
 
   static void _showPlaceholderAndClose(BuildContext context) {
     if (!context.mounted) return;
+    final colorScheme = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           ErrorCopy.notAvailableYet,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.softErrorText,
+            color: colorScheme.onErrorContainer,
           ),
         ),
-        backgroundColor: AppColors.softErrorBackground,
+        backgroundColor: colorScheme.errorContainer,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -138,11 +138,11 @@ class _UserBlock extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: AppColors.backgroundTertiary,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: Icon(
                   Icons.person_outline,
                   size: AppIconSize.md,
-                  color: AppColors.textPlaceholder,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -150,14 +150,14 @@ class _UserBlock extends StatelessWidget {
                 child: Text(
                   '匿名用户',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
                 size: AppIconSize.md,
-                color: AppColors.textPlaceholder,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -177,7 +177,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       title,
       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: AppColors.textPlaceholder,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w600,
           ),
     );
@@ -283,12 +283,16 @@ class _GridTile extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: AppIconSize.md, color: AppColors.textSecondary),
+            Icon(
+              icon,
+              size: AppIconSize.md,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -317,17 +321,21 @@ class _DrawerListTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: ListTile(
-        leading: Icon(icon, size: AppIconSize.md, color: AppColors.textSecondary),
+        leading: Icon(
+          icon,
+          size: AppIconSize.md,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
         title: Text(
           title,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppColors.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
         ),
-        trailing: const Icon(
+        trailing: Icon(
           Icons.chevron_right,
           size: AppIconSize.md,
-          color: AppColors.textPlaceholder,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         onTap: onTap,
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),

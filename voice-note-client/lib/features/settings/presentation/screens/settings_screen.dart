@@ -23,11 +23,9 @@ class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   static const _cardRadius = 12.0;
-  static const _cardBorder = Color(0xFFE5E7EB);
   static const _sectionTitleStyle = TextStyle(
     fontSize: 11,
     fontWeight: FontWeight.w600,
-    color: AppColors.textPlaceholder,
     letterSpacing: 0.5,
   );
 
@@ -36,9 +34,10 @@ class SettingsScreen extends ConsumerWidget {
     final multiAccountAsync = ref.watch(multiAccountEnabledProvider);
     final currentMode = ref.watch(themeModeProvider);
     final currentColor = ref.watch(themeColorProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundSecondary,
+      backgroundColor: colorScheme.surfaceContainerHighest,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
@@ -61,8 +60,8 @@ class SettingsScreen extends ConsumerWidget {
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: AppColors.backgroundPrimary,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
       ),
       body: SwipeBackZone(
         onBack: () {
@@ -76,10 +75,13 @@ class SettingsScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm,
               AppSpacing.lg, AppSpacing.xl),
           children: [
-            const _SectionHeader(title: '外观', style: _sectionTitleStyle),
+            _SectionHeader(
+              title: '外观',
+              style: _sectionTitleStyle.copyWith(color: colorScheme.onSurfaceVariant),
+            ),
           _SettingsCard(
             radius: _cardRadius,
-            borderColor: _cardBorder,
+            borderColor: colorScheme.outline,
             children: [
               _settingsTile(
                 context,
@@ -104,10 +106,13 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          const _SectionHeader(title: '数据管理', style: _sectionTitleStyle),
+          _SectionHeader(
+            title: '数据管理',
+            style: _sectionTitleStyle.copyWith(color: colorScheme.onSurfaceVariant),
+          ),
           _SettingsCard(
             radius: _cardRadius,
-            borderColor: _cardBorder,
+            borderColor: colorScheme.outline,
             children: [
               multiAccountAsync.when(
                 data: (enabled) => _switchTile(
@@ -177,10 +182,13 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          const _SectionHeader(title: '语音输入', style: _sectionTitleStyle),
+          _SectionHeader(
+            title: '语音输入',
+            style: _sectionTitleStyle.copyWith(color: colorScheme.onSurfaceVariant),
+          ),
           _SettingsCard(
             radius: _cardRadius,
-            borderColor: _cardBorder,
+            borderColor: colorScheme.outline,
             children: [
               _settingsTile(
                 context,
@@ -210,10 +218,13 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          const _SectionHeader(title: '偏好设置', style: _sectionTitleStyle),
+          _SectionHeader(
+            title: '偏好设置',
+            style: _sectionTitleStyle.copyWith(color: colorScheme.onSurfaceVariant),
+          ),
           _SettingsCard(
             radius: _cardRadius,
-            borderColor: _cardBorder,
+            borderColor: colorScheme.outline,
             children: [
               _settingsTile(
                 context,
@@ -265,10 +276,13 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          const _SectionHeader(title: '安全设置', style: _sectionTitleStyle),
+          _SectionHeader(
+            title: '安全设置',
+            style: _sectionTitleStyle.copyWith(color: colorScheme.onSurfaceVariant),
+          ),
           _SettingsCard(
             radius: _cardRadius,
-            borderColor: _cardBorder,
+            borderColor: colorScheme.outline,
             child: const _SecuritySettingsSection(compact: true),
           ),
         ],
@@ -292,7 +306,7 @@ class SettingsScreen extends ConsumerWidget {
         vertical: 2,
       ),
       visualDensity: VisualDensity.compact,
-      leading: Icon(icon, size: 20, color: AppColors.textSecondary),
+      leading: Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
       title: Text(
         title,
         style: theme.textTheme.bodyMedium?.copyWith(
@@ -306,7 +320,7 @@ class SettingsScreen extends ConsumerWidget {
               child: Text(
                 subtitle,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textPlaceholder,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontSize: 12,
                 ),
                 maxLines: 1,
@@ -334,7 +348,7 @@ class SettingsScreen extends ConsumerWidget {
         vertical: 2,
       ),
       visualDensity: VisualDensity.compact,
-      secondary: Icon(icon, size: 20, color: AppColors.textSecondary),
+      secondary: Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
       title: Text(
         title,
         style: theme.textTheme.bodyMedium?.copyWith(
@@ -346,7 +360,7 @@ class SettingsScreen extends ConsumerWidget {
           ? Text(
               subtitle,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textPlaceholder,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 12,
               ),
             )
@@ -368,7 +382,7 @@ class SettingsScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.timer_outlined, size: 20, color: AppColors.textSecondary),
+          Icon(Icons.timer_outlined, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(width: AppSpacing.sm),
           Text(
             '自动语音停顿',
@@ -401,7 +415,7 @@ class SettingsScreen extends ConsumerWidget {
               '${ref.watch(voiceSettingsProvider).vadSilenceDurationMs} ms',
               style: theme.textTheme.bodySmall?.copyWith(
                 fontSize: 11,
-                color: AppColors.textPlaceholder,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -547,7 +561,7 @@ class SettingsScreen extends ConsumerWidget {
                     radius: 24,
                     backgroundColor: color,
                     child: isSelected
-                        ? const Icon(Icons.check, color: Colors.white)
+                        ? Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimary)
                         : null,
                   ),
                 );
@@ -732,7 +746,7 @@ class _SecuritySettingsSection extends ConsumerWidget {
           secondary: Icon(
             Icons.gesture_rounded,
             size: compact ? 20 : null,
-            color: compact ? AppColors.textSecondary : null,
+            color: compact ? Theme.of(context).colorScheme.onSurfaceVariant : null,
           ),
           title: Text(
             '手势解锁',
@@ -749,7 +763,7 @@ class _SecuritySettingsSection extends ConsumerWidget {
                 : '设置手势图案，保护账单隐私',
             style: compact
                 ? theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textPlaceholder,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 12,
                   )
                 : null,
@@ -771,7 +785,7 @@ class _SecuritySettingsSection extends ConsumerWidget {
           secondary: Icon(
             Icons.lock_outline_rounded,
             size: compact ? 20 : null,
-            color: compact ? AppColors.textSecondary : null,
+            color: compact ? Theme.of(context).colorScheme.onSurfaceVariant : null,
           ),
           title: Text(
             '密码解锁',
@@ -788,7 +802,7 @@ class _SecuritySettingsSection extends ConsumerWidget {
                 : '设置数字密码，保护账单隐私',
             style: compact
                 ? theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textPlaceholder,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 12,
                   )
                 : null,
@@ -865,7 +879,7 @@ class _TtsSettingsSectionState extends ConsumerState<_TtsSettingsSection> {
           secondary: Icon(
             Icons.volume_up_rounded,
             size: widget.compact ? 20 : null,
-            color: widget.compact ? AppColors.textSecondary : null,
+            color: widget.compact ? Theme.of(context).colorScheme.onSurfaceVariant : null,
           ),
           title: Text(
             '语音播报',
@@ -880,7 +894,7 @@ class _TtsSettingsSectionState extends ConsumerState<_TtsSettingsSection> {
               ? Text(
                   '语音记账时自动播报结果',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textPlaceholder,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 12,
                   ),
                 )
@@ -900,10 +914,10 @@ class _TtsSettingsSectionState extends ConsumerState<_TtsSettingsSection> {
           child: Row(
             children: [
               if (!widget.compact) const SizedBox(width: 24 + AppSpacing.lg),
-              const Icon(
+              Icon(
                 Icons.speed_rounded,
                 size: 20,
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
@@ -936,7 +950,7 @@ class _TtsSettingsSectionState extends ConsumerState<_TtsSettingsSection> {
                   '${_speechRate.toStringAsFixed(1)}x',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: widget.compact ? 11 : null,
-                    color: AppColors.textPlaceholder,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -994,7 +1008,7 @@ class _SettingsCard extends StatelessWidget {
         : Column(mainAxisSize: MainAxisSize.min, children: children ?? []);
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.backgroundPrimary,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: borderColor),
         boxShadow: AppShadow.card,

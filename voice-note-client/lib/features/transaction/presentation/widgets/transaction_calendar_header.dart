@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/design_tokens.dart';
-import '../../../../app/theme.dart';
-
-/// Soft yellow for "回今天" and today cell (per prototype).
-const _kBackToTodayYellow = Color(0xFFE6C229);
 
 /// Month switcher: < 2026年02月 [回今天] > — 回今天 = rounded pill, white on soft yellow.
 class TransactionCalendarHeader extends StatelessWidget {
@@ -35,7 +31,7 @@ class TransactionCalendarHeader extends StatelessWidget {
         children: [
           IconButton(
             icon: const Icon(Icons.chevron_left),
-            style: IconButton.styleFrom(foregroundColor: AppColors.textSecondary),
+            style: IconButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant),
             onPressed: onPrevMonth,
             tooltip: '上一月',
           ),
@@ -45,7 +41,7 @@ class TransactionCalendarHeader extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
             ),
           ),
@@ -53,7 +49,7 @@ class TransactionCalendarHeader extends StatelessWidget {
             label: '回到今天',
             button: true,
             child: Material(
-              color: _kBackToTodayYellow,
+              color: Theme.of(context).colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(20),
               child: InkWell(
                 onTap: onBackToToday,
@@ -66,7 +62,7 @@ class TransactionCalendarHeader extends StatelessWidget {
                   child: Text(
                     '回今天',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
                           fontWeight: FontWeight.w500,
                         ),
                   ),
@@ -76,7 +72,7 @@ class TransactionCalendarHeader extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
-            style: IconButton.styleFrom(foregroundColor: AppColors.textSecondary),
+            style: IconButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant),
             onPressed: onNextMonth,
             tooltip: '下一月',
           ),

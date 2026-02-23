@@ -73,13 +73,13 @@ class _ConfirmationCardState extends State<ConfirmationCard>
 
   Widget _buildCard(BuildContext context) {
     final theme = Theme.of(context);
-    final txColors = theme.extension<TransactionColors>()!;
+    final txColors = transactionColorsOrFallback(theme);
     final result = widget.result;
 
     return Card(
       elevation: 0,
       shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
-      color: AppColors.backgroundSecondary,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
@@ -173,7 +173,9 @@ class _SourceBadge extends StatelessWidget {
     final isLocal = source == ParseSource.local;
     final label = isLocal ? '本地识别' : 'AI 识别';
     final icon = isLocal ? Icons.phone_android_rounded : Icons.auto_awesome_rounded;
-    final color = isLocal ? AppColors.textSecondary : AppColors.income;
+    final scheme = theme.colorScheme;
+    final txColors = theme.extension<TransactionColors>();
+    final color = isLocal ? scheme.onSurfaceVariant : (txColors?.income ?? scheme.tertiary);
 
     final confidenceLabel = confidence >= 0.8
         ? '高'
@@ -277,7 +279,8 @@ class _AmountRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final typeColor = _colorOf(type);
-    final amountColor = isMissing ? AppColors.expense : typeColor;
+    final expense = theme.extension<TransactionColors>()?.expense ?? theme.colorScheme.error;
+    final amountColor = isMissing ? expense : typeColor;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
@@ -370,8 +373,10 @@ class _FieldRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final valueColor = isMissing ? AppColors.expense : AppColors.textPrimary;
-    final labelColor = isMissing ? AppColors.expense : AppColors.textSecondary;
+    final scheme = theme.colorScheme;
+    final expense = theme.extension<TransactionColors>()?.expense ?? scheme.error;
+    final valueColor = isMissing ? expense : scheme.onSurface;
+    final labelColor = isMissing ? expense : scheme.onSurfaceVariant;
 
     return Semantics(
       button: true,
@@ -422,10 +427,10 @@ class _FieldRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 size: AppIconSize.sm,
-                color: AppColors.textPlaceholder,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ],
           ),

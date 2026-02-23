@@ -19,14 +19,17 @@ class CalculateBalanceUseCase {
       switch (t.type) {
         case TransactionType.income:
           balance += t.amount;
+          break;
         case TransactionType.expense:
           balance -= t.amount;
+          break;
         case TransactionType.transfer:
           if (t.transferDirection == TransferDirection.inbound) {
             balance += t.amount;
           } else if (t.transferDirection == TransferDirection.outbound) {
             balance -= t.amount;
           }
+          break;
       }
     }
 

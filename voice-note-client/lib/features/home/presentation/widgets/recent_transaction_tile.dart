@@ -62,7 +62,9 @@ class RecentTransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final txColors = Theme.of(context).extension<TransactionColors>()!;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final txColors = transactionColorsOrFallback(theme);
     final displayName = transaction.description ?? categoryName ?? '未分类';
     final subtitleText = categoryName ??
         (transaction.type == TransactionType.transfer ? '转账' : '未分类');
@@ -73,9 +75,11 @@ class RecentTransactionTile extends StatelessWidget {
       case TransactionType.expense:
         amountColor = txColors.expense;
         amountPrefix = '-';
+        break;
       case TransactionType.income:
         amountColor = txColors.income;
         amountPrefix = '+';
+        break;
       case TransactionType.transfer:
         amountColor = transaction.transferDirection == TransferDirection.outbound
             ? txColors.expense
@@ -83,6 +87,7 @@ class RecentTransactionTile extends StatelessWidget {
         amountPrefix = transaction.transferDirection == TransferDirection.outbound
             ? '-'
             : '+';
+        break;
     }
 
     final timeStr = DateFormat('HH:mm').format(transaction.date);
@@ -236,7 +241,7 @@ class RecentTransactionTile extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: Material(
-                  color: AppColors.expense,
+                  color: scheme.error,
                   shape: const CircleBorder(),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
@@ -244,12 +249,12 @@ class RecentTransactionTile extends StatelessWidget {
                       HapticFeedback.mediumImpact();
                       onDelete?.call();
                     },
-                    child: const SizedBox(
+                    child: SizedBox(
                       width: 48,
                       height: 48,
                       child: Icon(
                         Icons.delete_outline,
-                        color: Colors.white,
+                        color: scheme.onError,
                         size: 24,
                       ),
                     ),

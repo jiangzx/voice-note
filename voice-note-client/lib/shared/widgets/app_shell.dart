@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/design_tokens.dart';
-import '../../app/theme.dart';
 import '../../features/settings/presentation/providers/home_fab_preference_provider.dart';
 import '../../features/transaction/presentation/screens/transaction_form_screen.dart';
 import 'animated_voice_fab.dart';
@@ -317,15 +316,15 @@ class _AppShellState extends ConsumerState<AppShell> {
                   closedShape: const RoundedRectangleBorder(
                     borderRadius: AppRadius.cardAll,
                   ),
-                  closedColor: AppColors.brandPrimary,
+                  closedColor: Theme.of(context).colorScheme.primary,
                   closedBuilder: (context, openContainer) {
-                    return const SizedBox(
+                    return SizedBox(
                       height: 56,
                       width: 56,
                       child: Center(
                         child: Icon(
                           Icons.add,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       ),
                     );

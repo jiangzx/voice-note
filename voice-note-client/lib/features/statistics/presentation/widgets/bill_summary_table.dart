@@ -10,9 +10,6 @@ import '../providers/statistics_providers.dart';
 class BillSummaryTable extends ConsumerWidget {
   const BillSummaryTable({super.key});
 
-  static const _borderColor = Color(0xFFEBEDF0);
-  static const _headerBg = Color(0xFFF7F8FA);
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final breakdownAsync = ref.watch(dailyBreakdownProvider);
@@ -31,22 +28,22 @@ class BillSummaryTable extends ConsumerWidget {
         final totalExpense = filtered.fold<double>(0, (s, r) => s + r.expense);
         final totalIncome = filtered.fold<double>(0, (s, r) => s + r.income);
         final totalBalance = totalIncome - totalExpense;
-        final txColors = Theme.of(context).extension<TransactionColors>()!;
         final theme = Theme.of(context);
+        final scheme = theme.colorScheme;
+        final txColors = transactionColorsOrFallback(theme);
         final divisor = isYear && days > 28 ? (days / 30).clamp(1.0, 12.0) : days.toDouble();
         final avgE = divisor > 0 ? totalExpense / divisor : 0.0;
         final avgI = divisor > 0 ? totalIncome / divisor : 0.0;
         final avgB = divisor > 0 ? (totalIncome - totalExpense) / divisor : 0.0;
-
         return Container(
           decoration: BoxDecoration(
-            color: AppColors.backgroundPrimary,
+            color: scheme.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _borderColor, width: 1),
-            boxShadow: const [
+            border: Border.all(color: scheme.outline, width: 1),
+            boxShadow: [
               BoxShadow(
-                color: Color(0x0D000000),
-                offset: Offset(0, 1),
+                color: scheme.shadow.withValues(alpha: 0.05),
+                offset: const Offset(0, 1),
                 blurRadius: 4,
               ),
             ],
@@ -61,7 +58,7 @@ class BillSummaryTable extends ConsumerWidget {
                   child: Text(
                     '暂无数据',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textPlaceholder,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 )
@@ -76,7 +73,7 @@ class BillSummaryTable extends ConsumerWidget {
                     itemBuilder: (_, i) => _tableRow(context, filtered[i], txColors),
                   ),
                 ),
-              const Divider(height: 1, color: _borderColor),
+              Divider(height: 1, color: Theme.of(context).colorScheme.outline),
               _totalRow(context, '总计', totalExpense, totalIncome, totalBalance, txColors),
               _totalRow(context, avgLabel, avgE, avgI, avgB, txColors),
             ],
@@ -98,11 +95,12 @@ class BillSummaryTable extends ConsumerWidget {
   }
 
   Widget _tableHeader(ThemeData theme) {
+    final scheme = theme.colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: const BoxDecoration(
-        color: _headerBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
       ),
       child: Row(
         children: [
@@ -112,7 +110,7 @@ class BillSummaryTable extends ConsumerWidget {
               '日期',
               style: theme.textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: scheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -121,7 +119,7 @@ class BillSummaryTable extends ConsumerWidget {
               '支出',
               style: theme.textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: scheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.right,
             ),
@@ -131,7 +129,7 @@ class BillSummaryTable extends ConsumerWidget {
               '收入',
               style: theme.textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: scheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.right,
             ),
@@ -141,7 +139,7 @@ class BillSummaryTable extends ConsumerWidget {
               '结余',
               style: theme.textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: scheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.right,
             ),
@@ -168,7 +166,7 @@ class BillSummaryTable extends ConsumerWidget {
               dateStr,
               style: theme.textTheme.bodySmall?.copyWith(
                 fontSize: 12,
-                color: AppColors.textPrimary,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ),
@@ -238,7 +236,7 @@ class BillSummaryTable extends ConsumerWidget {
               label,
               style: theme.textTheme.bodySmall?.copyWith(
                 fontSize: 12,
-                color: AppColors.textPrimary,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ),

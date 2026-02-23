@@ -150,7 +150,7 @@ class _NormalBubble extends StatelessWidget {
                   Text(
                     DateFormat('yyyy-MM-dd HH:mm').format(message.timestamp),
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: AppColors.textPlaceholder,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -229,7 +229,7 @@ class _SystemChip extends StatelessWidget {
               Text(
                 DateFormat('yyyy-MM-dd HH:mm').format(message.timestamp),
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: AppColors.textPlaceholder,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -251,10 +251,10 @@ class _StatusBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final bgColor = isError
-        ? AppColors.softErrorBackground
+        ? theme.colorScheme.errorContainer
         : theme.colorScheme.primaryContainer;
     final fgColor = isError
-        ? AppColors.softErrorText
+        ? theme.colorScheme.onErrorContainer
         : theme.colorScheme.onPrimaryContainer;
     final icon = isError
         ? Icons.info_outline_rounded
@@ -319,7 +319,7 @@ class _StatusBubble extends StatelessWidget {
                   Text(
                     DateFormat('yyyy-MM-dd HH:mm').format(message.timestamp),
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: AppColors.textPlaceholder,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],

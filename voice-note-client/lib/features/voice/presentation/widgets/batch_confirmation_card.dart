@@ -84,7 +84,7 @@ class _BatchConfirmationCardState extends State<BatchConfirmationCard>
     return Card(
       elevation: 0,
       shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
-      color: AppColors.backgroundSecondary,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
@@ -231,7 +231,7 @@ class _BatchItemRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final txColors = theme.extension<TransactionColors>()!;
+    final txColors = transactionColorsOrFallback(theme);
     final result = item.result;
     final status = item.status;
 
@@ -306,11 +306,13 @@ class _BatchItemRow extends StatelessWidget {
           background: _swipeBackground(
             alignment: Alignment.centerLeft,
             color: theme.colorScheme.primaryContainer,
+            iconColor: theme.colorScheme.onPrimaryContainer,
             icon: Icons.check_rounded,
           ),
           secondaryBackground: _swipeBackground(
             alignment: Alignment.centerRight,
             color: theme.colorScheme.errorContainer,
+            iconColor: theme.colorScheme.onErrorContainer,
             icon: Icons.delete_outline_rounded,
           ),
           child: _maybeShimmer(
@@ -400,13 +402,14 @@ class _BatchItemRow extends StatelessWidget {
   Widget _swipeBackground({
     required Alignment alignment,
     required Color color,
+    required Color iconColor,
     required IconData icon,
   }) {
     return Container(
       alignment: alignment,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       decoration: BoxDecoration(color: color, borderRadius: AppRadius.mdAll),
-      child: Icon(icon, color: Colors.white),
+      child: Icon(icon, color: iconColor),
     );
   }
 }

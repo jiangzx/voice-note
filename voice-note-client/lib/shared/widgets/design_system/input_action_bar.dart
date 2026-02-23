@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/design_tokens.dart';
-import '../../../app/theme.dart';
 
 /// Full-width input/action bar: large radius, white background, optional leading/trailing icons, hint.
 /// Per spec: 28-32px radius, light bottom shadow, no border.
@@ -28,9 +27,10 @@ class InputActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.backgroundPrimary,
+      decoration: BoxDecoration(
+        color: scheme.surface,
         borderRadius: AppRadius.inputAll,
         boxShadow: AppShadow.input,
       ),
@@ -42,7 +42,7 @@ class InputActionBar extends StatelessWidget {
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: theme.textTheme.bodyLarge?.copyWith(
-            color: AppColors.textPlaceholder,
+            color: scheme.onSurfaceVariant,
           ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
@@ -55,8 +55,8 @@ class InputActionBar extends StatelessWidget {
               ? Padding(
                   padding: const EdgeInsets.only(left: AppSpacing.sm),
                   child: IconTheme.merge(
-                    data: const IconThemeData(
-                      color: AppColors.textPlaceholder,
+                    data: IconThemeData(
+                      color: scheme.onSurfaceVariant,
                       size: AppIconSize.md,
                     ),
                     child: leading!,
@@ -71,8 +71,8 @@ class InputActionBar extends StatelessWidget {
               ? Padding(
                   padding: const EdgeInsets.only(right: AppSpacing.sm),
                   child: IconTheme.merge(
-                    data: const IconThemeData(
-                      color: AppColors.textPlaceholder,
+                    data: IconThemeData(
+                      color: scheme.onSurfaceVariant,
                       size: AppIconSize.md,
                     ),
                     child: trailing!,

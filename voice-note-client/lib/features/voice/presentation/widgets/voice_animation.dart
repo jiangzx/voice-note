@@ -106,17 +106,19 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
   }
 
   Widget _buildIdle() {
+    final scheme = Theme.of(context).colorScheme;
     return _CircleIcon(
       key: const ValueKey('idle'),
-      color: AppColors.backgroundTertiary,
-      iconColor: AppColors.textSecondary,
+      color: scheme.surfaceContainerHighest,
+      iconColor: scheme.onSurfaceVariant,
       icon: Icons.mic_none_rounded,
       size: widget.size * 0.6,
     );
   }
 
   Widget _buildListening() {
-    final baseColor = AppColors.brandPrimary.withValues(alpha: 0.15);
+    final primary = Theme.of(context).colorScheme.primary;
+    final baseColor = primary.withValues(alpha: 0.15);
     return AnimatedBuilder(
       key: const ValueKey('listening'),
       animation: _pulseController,
@@ -127,7 +129,7 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
           scale: scale,
           child: _CircleIcon(
             color: baseColor,
-            iconColor: AppColors.brandPrimary.withValues(alpha: opacity),
+            iconColor: primary.withValues(alpha: opacity),
             icon: Icons.mic_rounded,
             size: widget.size * 0.6,
           ),
@@ -137,6 +139,7 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
   }
 
   Widget _buildRecognizing() {
+    final primary = Theme.of(context).colorScheme.primary;
     return AnimatedBuilder(
       key: const ValueKey('recognizing'),
       animation: _waveController,
@@ -145,12 +148,12 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
           size: Size(widget.size, widget.size),
           painter: _WaveRingPainter(
             progress: _waveController.value,
-            color: AppColors.brandPrimary,
+            color: primary,
           ),
           child: Center(
             child: _CircleIcon(
-              color: AppColors.brandPrimary.withValues(alpha: 0.2),
-              iconColor: AppColors.brandPrimary,
+              color: primary.withValues(alpha: 0.2),
+              iconColor: primary,
               icon: Icons.mic_rounded,
               size: widget.size * 0.45,
             ),
@@ -161,6 +164,7 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
   }
 
   Widget _buildConfirming() {
+    final primary = Theme.of(context).colorScheme.primary;
     return AnimatedBuilder(
       key: const ValueKey('confirming'),
       animation: _pulseController,
@@ -169,8 +173,8 @@ class _VoiceAnimationWidgetState extends State<VoiceAnimationWidget>
         return Transform.scale(
           scale: scale,
           child: _CircleIcon(
-            color: AppColors.brandPrimary.withValues(alpha: 0.12),
-            iconColor: AppColors.brandPrimary,
+            color: primary.withValues(alpha: 0.12),
+            iconColor: primary,
             icon: Icons.check_rounded,
             size: widget.size * 0.6,
           ),

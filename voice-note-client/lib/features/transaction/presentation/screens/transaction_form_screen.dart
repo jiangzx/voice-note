@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/design_tokens.dart';
-import '../../../../app/theme.dart';
 import '../../../../core/utils/id_generator.dart' as id_gen;
 import '../../../../shared/error_copy.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
@@ -55,7 +54,6 @@ class _FormLayout {
   static const TextStyle sectionTitleStyle = TextStyle(
     fontSize: 11,
     fontWeight: FontWeight.w600,
-    color: AppColors.textPlaceholder,
     letterSpacing: 0.6,
   );
 }
@@ -211,7 +209,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     final showAmountDoneBar = _showNumberPad;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundSecondary,
+      backgroundColor: theme.colorScheme.surfaceContainerHighest,
       appBar: AppBar(
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -451,7 +449,12 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-            child: Text(title, style: _FormLayout.sectionTitleStyle),
+            child: Text(
+              title,
+              style: _FormLayout.sectionTitleStyle.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
           child,
         ],
@@ -778,15 +781,16 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
 
   void _showError(String message) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           message,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: AppColors.softErrorText,
+            color: colorScheme.onErrorContainer,
           ),
         ),
-        backgroundColor: AppColors.softErrorBackground,
+        backgroundColor: colorScheme.errorContainer,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -817,12 +821,12 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       padding: _FormLayout.cardPadding,
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.textSecondary),
+          Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: AppSpacing.sm),
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
+              color: theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
               fontSize: 14,
             ),
@@ -831,10 +835,10 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           rightChild,
           if (showArrow) ...[
             const SizedBox(width: AppSpacing.xs),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
               size: 18,
-              color: AppColors.textPlaceholder,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ],
         ],
@@ -957,9 +961,14 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(left: AppSpacing.xs, bottom: 2),
-          child: Text('备注', style: _FormLayout.sectionTitleStyle),
+        Padding(
+          padding: const EdgeInsets.only(left: AppSpacing.xs, bottom: 2),
+          child: Text(
+            '备注',
+            style: _FormLayout.sectionTitleStyle.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
         ),
         SizedBox(
           height: _FormLayout.remarkHeight,
@@ -993,12 +1002,12 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                       maxLengthEnforcement: MaxLengthEnforcement.enforced,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontSize: 14,
-                        color: AppColors.textPrimary,
+                        color: theme.colorScheme.onSurface,
                       ),
                       decoration: InputDecoration(
                         hintText: '选填',
                         hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textPlaceholder,
+                          color: theme.colorScheme.onSurfaceVariant,
                           fontSize: 14,
                         ),
                         border: InputBorder.none,
@@ -1023,7 +1032,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                       child: Text(
                         '${value.text.length}/30',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textPlaceholder,
+                          color: theme.colorScheme.onSurfaceVariant,
                           fontSize: 11,
                         ),
                       ),
@@ -1072,7 +1081,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: selected != null
                     ? theme.colorScheme.onSurface
-                    : AppColors.textPlaceholder,
+                    : theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
                 fontSize: 14,
               ),
@@ -1128,7 +1137,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: name != null
                     ? theme.colorScheme.onSurface
-                    : AppColors.textPlaceholder,
+                    : theme.colorScheme.onSurfaceVariant,
                 fontWeight: name != null ? FontWeight.w500 : null,
                 fontSize: 14,
               ),

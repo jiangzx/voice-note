@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/design_tokens.dart';
-import '../../../../app/theme.dart';
 import '../providers/security_settings_provider.dart';
 
 const int _passwordLength = 6;
@@ -85,7 +84,7 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
               Text(
                 _message,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: AppColors.textSecondary,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -123,7 +122,7 @@ class _PasswordDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final scheme = Theme.of(context).colorScheme;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -137,11 +136,11 @@ class _PasswordDots extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: AppColors.gestureNodeStroke,
+                color: scheme.outline,
                 width: 1.5,
               ),
               color: i < length
-                  ? theme.colorScheme.primary
+                  ? scheme.primary
                   : Colors.transparent,
             ),
           ),
@@ -215,7 +214,7 @@ class _NumpadButton extends StatelessWidget {
               ? Text(
                   label!,
                   style: theme.textTheme.headlineSmall?.copyWith(
-                    color: AppColors.textPrimary,
+                    color: theme.colorScheme.onSurface,
                   ),
                 )
               : Icon(icon, color: theme.colorScheme.onSurface),

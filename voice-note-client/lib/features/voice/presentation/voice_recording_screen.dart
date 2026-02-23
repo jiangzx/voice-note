@@ -231,12 +231,14 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       voiceSessionProvider.select((s) => s.isRecognizing),
     );
 
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) ref.read(voiceSessionProvider.notifier).endSession();
       },
       child: Scaffold(
-        backgroundColor: AppColors.backgroundPrimary,
+        backgroundColor: colorScheme.surface,
         appBar: AppBar(
           title: const Text(
             'AI 语音记账',
@@ -249,8 +251,8 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           centerTitle: true,
           elevation: 0,
           scrolledUnderElevation: 0,
-          backgroundColor: AppColors.backgroundPrimary,
-          foregroundColor: AppColors.textPrimary,
+          backgroundColor: colorScheme.surface,
+          foregroundColor: colorScheme.onSurface,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
             onPressed: _exitScreen,
@@ -264,13 +266,13 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppColors.brandPrimary.withValues(alpha: 0.1),
+                      color: colorScheme.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.mic_rounded,
                       size: 18,
-                      color: AppColors.brandPrimary,
+                      color: colorScheme.primary,
                     ),
                   ),
                 ),
@@ -350,6 +352,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
 
   Widget _buildOfflineBanner() {
     final theme = Theme.of(context);
+    final expense = theme.extension<TransactionColors>()?.expense ?? theme.colorScheme.error;
     return Semantics(
       liveRegion: true,
       label: '网络已断开，当前为离线模式，仅使用本地识别',
@@ -360,24 +363,20 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           vertical: 6,
         ),
         decoration: BoxDecoration(
-          color: AppColors.expense.withValues(alpha: 0.08),
+          color: expense.withValues(alpha: 0.08),
           border: Border(
-            bottom: BorderSide(color: AppColors.expense.withValues(alpha: 0.2)),
+            bottom: BorderSide(color: expense.withValues(alpha: 0.2)),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              size: 14,
-              color: AppColors.expense,
-            ),
+            Icon(Icons.cloud_off_rounded, size: 14, color: expense),
             const SizedBox(width: AppSpacing.xs),
             Text(
               '离线模式 — 仅本地识别',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: AppColors.expense,
+                color: expense,
                 fontSize: 11,
               ),
             ),
@@ -397,7 +396,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       child: Text(
         text,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: AppColors.brandPrimary,
+          color: Theme.of(context).colorScheme.primary,
           fontStyle: FontStyle.italic,
           fontSize: 14,
         ),
@@ -453,24 +452,25 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
   }
 
   Widget _buildProcessingIndicator() {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 14,
             height: 14,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: AppColors.brandPrimary,
+              color: theme.colorScheme.primary,
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
           Text(
             '正在解析...',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textPlaceholder,
+            style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                   fontSize: 12,
                 ),
           ),
@@ -481,6 +481,8 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
 
   Widget _buildKeyboardInput(VoiceState voiceState, bool isProcessing) {
     final disabled = isProcessing || voiceState == VoiceState.confirming;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -501,8 +503,8 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                   enabled: !disabled,
                   decoration: InputDecoration(
                     hintText: VoiceCopy.modeHintKeyboard,
-                    hintStyle: const TextStyle(
-                      color: AppColors.textPlaceholder,
+                    hintStyle: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
                       fontSize: 14,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
@@ -514,12 +516,12 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      borderSide: BorderSide(color: colorScheme.outline),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
-                      borderSide: const BorderSide(
-                        color: AppColors.brandPrimary,
+                      borderSide: BorderSide(
+                        color: colorScheme.primary,
                         width: 1.5,
                       ),
                     ),
@@ -539,8 +541,8 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                       : () => _onTextSubmit(_textController.text),
                   icon: const Icon(Icons.send_rounded, size: 20),
                   style: IconButton.styleFrom(
-                    backgroundColor: AppColors.brandPrimary,
-                    foregroundColor: Colors.white,
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
                     minimumSize: const Size(44, 44),
                     padding: EdgeInsets.zero,
                   ),
@@ -559,7 +561,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           child: Text(
             VoiceCopy.modeExampleMultiWithLabel,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 11,
             ),
           ),
@@ -597,16 +599,16 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.backgroundSecondary,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   suggestion,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         fontSize: 12,
-                        color: AppColors.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                 ),
               ),
@@ -669,8 +671,8 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                     : VoiceCopy.pushToTalkSlideUpToCancel,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: _pttInCancelZone
-                      ? AppColors.expense
-                      : AppColors.textSecondary,
+                      ? (theme.extension<TransactionColors>()?.expense ?? theme.colorScheme.error)
+                      : theme.colorScheme.onSurfaceVariant,
                   fontSize: 12,
                 ),
               ),
@@ -696,9 +698,9 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           horizontal: AppSpacing.md,
         ),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: theme.colorScheme.outline),
           boxShadow: AppShadow.card,
         ),
         child: content,
@@ -753,11 +755,12 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
   ) {
     final theme = Theme.of(context);
 
+    final colorScheme = theme.colorScheme;
     if (voiceState == VoiceState.idle) {
       return Text(
         VoiceCopy.idleHint,
         style: theme.textTheme.bodySmall?.copyWith(
-          color: AppColors.textPlaceholder,
+          color: colorScheme.onSurfaceVariant,
         ),
         textAlign: TextAlign.center,
       );
@@ -768,7 +771,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
         VoiceCopy.mainListening,
         style: theme.textTheme.titleMedium?.copyWith(
           fontSize: 15,
-          color: AppColors.brandPrimary,
+          color: colorScheme.primary,
           fontWeight: FontWeight.w600,
         ),
         textAlign: TextAlign.center,
@@ -784,7 +787,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       return Text(
         text,
         style: theme.textTheme.bodySmall?.copyWith(
-          color: AppColors.textPlaceholder,
+          color: colorScheme.onSurfaceVariant,
         ),
         textAlign: TextAlign.center,
       );
@@ -799,7 +802,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
               VoiceCopy.modeHintManual,
               VoiceCopy.emptyStateHighlight,
               theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textPlaceholder,
+                color: theme.colorScheme.onSurfaceVariant,
                 fontSize: 12,
               ),
             ),
@@ -807,7 +810,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
             Text(
               VoiceCopy.modeExampleMultiWithLabel,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
+                color: theme.colorScheme.onSurfaceVariant,
                 fontSize: 11,
               ),
               textAlign: TextAlign.center,
@@ -820,7 +823,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           VoiceCopy.mainProcessing,
           style: theme.textTheme.bodyMedium?.copyWith(
             fontSize: 14,
-            color: AppColors.textPrimary,
+            color: theme.colorScheme.onSurface,
           ),
           textAlign: TextAlign.center,
         );
@@ -830,7 +833,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
         VoiceCopy.modeHintAuto,
         style: theme.textTheme.titleMedium?.copyWith(
           fontSize: 15,
-          color: AppColors.brandPrimary,
+          color: theme.colorScheme.primary,
           fontWeight: FontWeight.w600,
         ),
         textAlign: TextAlign.center,
@@ -857,10 +860,10 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           vertical: AppSpacing.xs,
         ),
         decoration: BoxDecoration(
-          color: AppColors.brandPrimary.withValues(alpha: 0.06),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
-            color: AppColors.brandPrimary.withValues(alpha: 0.2),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Row(
@@ -869,7 +872,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
               child: Text(
                 VoiceCopy.autoModeMultiNotSupported,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 12,
                     ),
               ),
@@ -931,6 +934,13 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
   Widget _buildPushToTalkButton(VoiceState voiceState) {
     final isActive = voiceState == VoiceState.recognizing;
     final showCancel = isActive && _pttInCancelZone;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    // Recording state uses semantic error (red in light) so light-theme button stays red when pressed.
+    final recordingColor = colorScheme.error;
+    final primary = colorScheme.primary;
+    final onPrimary = colorScheme.onPrimary;
+    final onError = colorScheme.onError;
 
     return Semantics(
       button: true,
@@ -973,32 +983,20 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
           height: isActive ? 88 : 72,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isActive ? AppColors.expense : AppColors.brandPrimary,
+            color: isActive ? recordingColor : primary,
             boxShadow: [
               BoxShadow(
-                color: (isActive ? AppColors.expense : AppColors.brandPrimary)
-                    .withValues(alpha: 0.25),
+                color: (isActive ? recordingColor : primary).withValues(alpha: 0.25),
                 blurRadius: isActive ? 12 : 8,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
           child: showCancel
-              ? const Icon(
-                  Icons.cancel_outlined,
-                  size: AppIconSize.lg,
-                  color: Colors.white,
-                )
+              ? Icon(Icons.cancel_outlined, size: AppIconSize.lg, color: onError)
               : isActive
-                  ? const SpeakingWaveform(
-                      size: AppIconSize.lg,
-                      color: Colors.white,
-                    )
-                  : const Icon(
-                      Icons.mic_none_rounded,
-                      size: AppIconSize.lg,
-                      color: Colors.white,
-                    ),
+                  ? SpeakingWaveform(size: AppIconSize.lg, color: onError)
+                  : Icon(Icons.mic_none_rounded, size: AppIconSize.lg, color: onPrimary),
         ),
       ),
     );

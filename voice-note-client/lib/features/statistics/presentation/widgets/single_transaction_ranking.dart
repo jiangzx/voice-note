@@ -28,7 +28,7 @@ class _SingleTransactionRankingState
   Widget build(BuildContext context) {
     final listAsync = ref.watch(topTransactionsByAmountProvider);
     final theme = Theme.of(context);
-    final txColors = theme.extension<TransactionColors>()!;
+    final txColors = transactionColorsOrFallback(theme);
 
     return listAsync.when(
       data: (list) {
@@ -38,7 +38,7 @@ class _SingleTransactionRankingState
             child: Text(
               '暂无交易记录',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textPlaceholder,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           );
@@ -80,14 +80,14 @@ class _SingleTransactionRankingState
                       Text(
                         '展开全部',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.brandPrimary,
+                          color: theme.colorScheme.primary,
                         ),
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      const Icon(
+                      Icon(
                         Icons.keyboard_arrow_down,
                         size: 20,
-                        color: AppColors.brandPrimary,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ],
                   ),
@@ -150,7 +150,7 @@ class _RankItem extends StatelessWidget {
               child: Text(
                 '$rank',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.brandPrimary,
+                  color: theme.colorScheme.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -180,7 +180,7 @@ class _RankItem extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textPlaceholder,
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 12,
                       ),
                     ),
