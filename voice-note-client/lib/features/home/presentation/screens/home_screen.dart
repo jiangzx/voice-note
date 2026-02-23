@@ -9,6 +9,7 @@ import '../../../../core/extensions/date_extensions.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
+import '../../../account/presentation/providers/account_providers.dart';
 import '../../../category/presentation/providers/category_providers.dart';
 import '../../../category/domain/entities/category_entity.dart';
 import '../../../transaction/domain/entities/transaction_entity.dart';
@@ -43,6 +44,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _preloadRecordFormProviders();
+    });
+  }
+
+  /// Preload providers used by /record so first tap on "手动添加" doesn't jank.
+  void _preloadRecordFormProviders() {
+    ref.read(defaultAccountProvider.future).ignore();
+    ref.read(accountListProvider.future).ignore();
+    ref.read(multiAccountEnabledProvider.future).ignore();
+    ref.read(visibleCategoriesProvider('expense').future).ignore();
+    ref.read(recentCategoriesProvider.future).ignore();
   }
 
   @override
