@@ -1,4 +1,5 @@
 import 'package:animations/animations.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPage;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -45,8 +46,13 @@ Page<void> _fadeThroughPage(Widget child, GoRouterState state) {
   );
 }
 
-/// SharedAxisY transition page for push routes.
-Page<void> _sharedAxisYPage(Widget child, GoRouterState state) {
+/// Cupertino-style page: enables iOS edge-swipe-back gesture.
+Page<void> _cupertinoPage(Widget child, GoRouterState state) {
+  return CupertinoPage<void>(key: state.pageKey, child: child);
+}
+
+/// No-swipe page: no interactive pop. Use for voice recording and unlock (password/gesture).
+Page<void> _noSwipePage(Widget child, GoRouterState state) {
   return CustomTransitionPage<void>(
     key: state.pageKey,
     child: child,
@@ -126,25 +132,25 @@ final GoRouter appRouter = GoRouter(
               path: 'accounts',
               parentNavigatorKey: _rootNavigatorKey,
               pageBuilder: (context, state) =>
-                  _sharedAxisYPage(const AccountManageScreen(), state),
+                  _cupertinoPage(const AccountManageScreen(), state),
             ),
             GoRoute(
               path: 'categories',
               parentNavigatorKey: _rootNavigatorKey,
               pageBuilder: (context, state) =>
-                  _sharedAxisYPage(const CategoryManageScreen(), state),
+                  _cupertinoPage(const CategoryManageScreen(), state),
             ),
             GoRoute(
               path: 'budget',
               parentNavigatorKey: _rootNavigatorKey,
               pageBuilder: (context, state) =>
-                  _sharedAxisYPage(const BudgetOverviewScreen(), state),
+                  _cupertinoPage(const BudgetOverviewScreen(), state),
               routes: [
                 GoRoute(
                   path: 'edit',
                   parentNavigatorKey: _rootNavigatorKey,
                   pageBuilder: (context, state) =>
-                      _sharedAxisYPage(const BudgetEditScreen(), state),
+                      _cupertinoPage(const BudgetEditScreen(), state),
                 ),
               ],
             ),
@@ -152,20 +158,20 @@ final GoRouter appRouter = GoRouter(
               path: 'gesture-set',
               parentNavigatorKey: _rootNavigatorKey,
               pageBuilder: (context, state) =>
-                  _sharedAxisYPage(const SetGestureScreen(), state),
+                  _cupertinoPage(const SetGestureScreen(), state),
             ),
             GoRoute(
               path: 'password-set',
               parentNavigatorKey: _rootNavigatorKey,
               pageBuilder: (context, state) =>
-                  _sharedAxisYPage(const SetPasswordScreen(), state),
+                  _cupertinoPage(const SetPasswordScreen(), state),
             ),
             GoRoute(
               path: 'verify-disable',
               parentNavigatorKey: _rootNavigatorKey,
               pageBuilder: (context, state) {
                 final target = state.uri.queryParameters['target'];
-                return _sharedAxisYPage(
+                return _noSwipePage(
                   UnlockScreen(
                     redirectUri: '/settings',
                     disableTarget: target,
@@ -182,13 +188,13 @@ final GoRouter appRouter = GoRouter(
       path: '/voice-recording',
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) =>
-          _sharedAxisYPage(const VoiceRecordingScreen(), state),
+          _noSwipePage(const VoiceRecordingScreen(), state),
     ),
     GoRoute(
       path: '/record',
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) =>
-          _sharedAxisYPage(const TransactionFormScreen(), state),
+          _cupertinoPage(const TransactionFormScreen(), state),
     ),
     GoRoute(
       path: '/record/:id',
@@ -196,9 +202,9 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) {
         final id = state.pathParameters['id'];
         if (id == null || id.isEmpty) {
-          return _sharedAxisYPage(const TransactionFormScreen(), state);
+          return _cupertinoPage(const TransactionFormScreen(), state);
         }
-        return _sharedAxisYPage(
+        return _cupertinoPage(
           TransactionFormScreen(transactionId: id),
           state,
         );

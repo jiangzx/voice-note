@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
-import '../../../../core/utils/icon_utils.dart';
 import '../../../../core/utils/id_generator.dart' as id_gen;
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
@@ -280,12 +279,6 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _buildCategoryHeader(
-                        categoryType,
-                        formState,
-                        isRecordDetail: widget.isEditing,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
                       _buildDetailCard(
                         context,
                         formState,
@@ -311,7 +304,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                         const SizedBox(height: AppSpacing.sm),
                         _buildSection(
                           context,
-                          title: isTransfer ? '转账' : '分类',
+                          title: isTransfer ? '转账' : '选择分类',
                           child: isTransfer
                               ? Column(
                                   crossAxisAlignment:
@@ -569,11 +562,13 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
             return _buildSection(
               context,
               title: '账户',
-              child: Theme(
-                data: theme.copyWith(
-                  textTheme: theme.textTheme.copyWith(titleMedium: safeTitleMedium),
-                ),
-                child: DropdownButtonFormField<String>(
+              child: Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: Theme(
+                  data: theme.copyWith(
+                    textTheme: theme.textTheme.copyWith(titleMedium: safeTitleMedium),
+                  ),
+                  child: DropdownButtonFormField<String>(
                   key: ValueKey(value),
                   value: value,
                   decoration: const InputDecoration(
@@ -593,6 +588,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                   onChanged: (id) {
                     ref.read(transactionFormProvider.notifier).setAccountId(id);
                   },
+                ),
                 ),
               ),
             );
@@ -903,6 +899,10 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
             ),
             showArrow: false,
           ),
+          if (isRecordDetail) ...[
+            _dashedDivider(context),
+            _buildCategoryDetailRow(context, formState),
+          ],
           ...multiAccountAsync.when(
             data: (multiEnabled) {
               if (!multiEnabled) return <Widget>[];
@@ -1024,6 +1024,69 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCategoryDetailRow(
+    BuildContext context,
+    TransactionFormState formState,
+  ) {
+    final categoryType = formState.selectedType == TransactionType.income
+        ? 'income'
+        : (formState.selectedType == TransactionType.transfer &&
+                formState.transferDirection == TransferDirection.inbound)
+            ? 'income'
+            : 'expense';
+    final categoriesAsync = ref.watch(visibleCategoriesProvider(categoryType));
+    final theme = Theme.of(context);
+
+    return categoriesAsync.when(
+      data: (categories) {
+        CategoryEntity? selected;
+        if (formState.categoryId != null) {
+          try {
+            selected = categories
+                .firstWhere((c) => c.id == formState.categoryId);
+          } catch (_) {}
+        }
+        return GestureDetector(
+          onTap: () => _showCategoryPicker(context, categoryType, formState),
+          behavior: HitTestBehavior.opaque,
+          child: _buildDetailRow(
+            context,
+            icon: Icons.category_rounded,
+            label: '分类',
+            right: Text(
+              selected?.name ?? '选择分类',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: selected != null
+                    ? theme.colorScheme.onSurface
+                    : AppColors.textPlaceholder,
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => _buildDetailRow(
+        context,
+        icon: Icons.category_rounded,
+        label: '分类',
+        right: const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        showArrow: true,
+      ),
+      error: (_, _) => _buildDetailRow(
+        context,
+        icon: Icons.category_rounded,
+        label: '分类',
+        right: const Text('选择分类'),
+        showArrow: true,
+      ),
     );
   }
 
@@ -1210,91 +1273,6 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildCategoryHeader(
-    String categoryType,
-    TransactionFormState formState, {
-    required bool isRecordDetail,
-  }) {
-    final categoriesAsync = ref.watch(visibleCategoriesProvider(categoryType));
-    final theme = Theme.of(context);
-
-    return categoriesAsync.when(
-      data: (categories) {
-        CategoryEntity? selected;
-        if (formState.categoryId != null) {
-          try {
-            selected = categories.firstWhere(
-              (c) => c.id == formState.categoryId,
-            );
-          } catch (_) {}
-        }
-        return GestureDetector(
-          onTap: isRecordDetail
-              ? () => _showCategoryPicker(context, categoryType, formState)
-              : _hideNumberPad,
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.brandPrimary.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.brandPrimary.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Center(
-                    child: selected != null
-                        ? iconFromString(selected.icon, size: 22)
-                        : const Icon(
-                            Icons.category_rounded,
-                            size: 22,
-                            color: AppColors.textSecondary,
-                          ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  selected?.name ?? '选择分类',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: selected != null
-                        ? AppColors.brandPrimary
-                        : AppColors.textPlaceholder,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  size: 18,
-                  color: AppColors.textPlaceholder,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      ),
-      error: (_, _) => const SizedBox.shrink(),
     );
   }
 }

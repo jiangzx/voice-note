@@ -237,11 +237,14 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
             ),
           ),
           Expanded(
-            child: _buildSelectedDayList(
-              listAsync,
-              categoryNameMap,
-              categoryIconMap,
-              categoryColorMap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: _buildSelectedDayList(
+                listAsync,
+                categoryNameMap,
+                categoryIconMap,
+                categoryColorMap,
+              ),
             ),
           ),
         ],
