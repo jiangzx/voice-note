@@ -1,3 +1,6 @@
+import 'dart:math' show log, pow;
+import 'dart:ui' show FontFeature;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,9 +10,11 @@ import '../../../../app/theme.dart';
 import '../../domain/models/trend_point.dart';
 import '../providers/statistics_providers.dart';
 
-/// Bar chart: 每日趋势，支持 支出|收入|结余 切换。
+/// 每日趋势柱状图，支持 支出|收入|结余。企业级风格：紧凑轴线、等宽数字、柔和网格。
 class BarChartWidget extends ConsumerWidget {
   const BarChartWidget({super.key});
+
+  static const _chartHeight = 184.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,7 +24,7 @@ class BarChartWidget extends ConsumerWidget {
     final txColors = Theme.of(context).extension<TransactionColors>()!;
 
     return SizedBox(
-      height: 200,
+      height: _chartHeight,
       child: trendAsync.when(
         data: (points) => _BarChartContent(
           points: points,
@@ -65,8 +70,13 @@ class _BarChartContent extends StatelessWidget {
       );
     }
 
-    // 零/低值灰色，有值蓝色（参考图）
-    const barZeroColor = Color(0xFFE5E7EB);
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final axisStyle = textTheme.labelSmall?.copyWith(
+      color: colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w500,
+    );
+    const barZeroColor = Color(0xFFE8EAED);
     const barValueColor = AppColors.brandPrimary;
 
     double maxY;
@@ -83,8 +93,8 @@ class _BarChartContent extends StatelessWidget {
               BarChartRodData(
                 toY: v,
                 color: v > 0 ? barValueColor : barZeroColor,
-                width: 8,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+                width: 6,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
               ),
             ],
             showingTooltipIndicators: [],
@@ -103,8 +113,8 @@ class _BarChartContent extends StatelessWidget {
               BarChartRodData(
                 toY: v,
                 color: v > 0 ? barValueColor : barZeroColor,
-                width: 8,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+                width: 6,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
               ),
             ],
             showingTooltipIndicators: [],
@@ -132,8 +142,8 @@ class _BarChartContent extends StatelessWidget {
               BarChartRodData(
                 toY: absBalance,
                 color: color,
-                width: 8,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+                width: 6,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
               ),
             ],
             showingTooltipIndicators: [],
@@ -143,6 +153,9 @@ class _BarChartContent extends StatelessWidget {
     }
     final maxYPadded = maxY * 1.2;
     if (maxYPadded == 0) return const SizedBox();
+
+    // Y 轴刻度间隔：约 4 档、取「好看」步长，避免 300/310 等贴在一起重叠
+    final yInterval = _niceYInterval(maxYPadded);
 
     return BarChart(
       BarChartData(
@@ -158,16 +171,16 @@ class _BarChartContent extends StatelessWidget {
                 if (value.toInt() >= 0 && value.toInt() < points.length) {
                   final label = _formatLabel(points[value.toInt()].date);
                   return Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       label,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: axisStyle,
                     ),
                   );
                 }
                 return const SizedBox();
               },
-              reservedSize: 28,
+              reservedSize: 24,
               interval: points.length > 7 ? (points.length / 7).ceilToDouble() : 1,
             ),
           ),
@@ -175,18 +188,23 @@ class _BarChartContent extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 48,
+              interval: yInterval,
+              maxIncluded: false,
               getTitlesWidget: (value, meta) {
                 final label = value >= 1000
                     ? '${(value / 1000).round()}k'
                     : value.toStringAsFixed(0);
+                final baseStyle = axisStyle ?? textTheme.bodySmall;
                 return SizedBox(
-                  width: 36,
+                  width: 40,
                   child: FittedBox(
                     alignment: Alignment.centerRight,
                     fit: BoxFit.scaleDown,
                     child: Text(
                       label,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: baseStyle?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.clip,
                     ),
@@ -202,7 +220,7 @@ class _BarChartContent extends StatelessWidget {
           show: true,
           drawVerticalLine: false,
           getDrawingHorizontalLine: (value) => FlLine(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+            color: colorScheme.outline.withValues(alpha: 0.12),
             strokeWidth: 1,
           ),
         ),
@@ -222,4 +240,17 @@ class _BarChartContent extends StatelessWidget {
     }
     return dateStr;
   }
+}
+
+/// Y 轴约 4 档刻度的「好看」步长，避免刻度过密重叠。
+double _niceYInterval(double maxY) {
+  if (maxY <= 0) return 1.0;
+  final x = maxY / 4;
+  if (x <= 1) return 1.0;
+  final exp = (log(x) / log(10)).floor();
+  final magnitude = pow(10, exp).toDouble();
+  final norm = x / magnitude;
+  final nice =
+      norm <= 1 ? 1.0 : norm <= 2 ? 2.0 : norm <= 5 ? 5.0 : 10.0;
+  return nice * magnitude;
 }
