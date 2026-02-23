@@ -35,7 +35,10 @@ class CategoryRanking extends ConsumerWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: categories.length,
-          separatorBuilder: (context, index) => const Divider(height: 1),
+          separatorBuilder: (context, index) => const Divider(
+            height: 1,
+            color: Color(0xFFEBEDF0),
+          ),
           itemBuilder: (context, i) => _CategoryRankItem(
             category: categories[i],
             maxAmount: categories
@@ -89,75 +92,111 @@ class _CategoryRankItem extends StatelessWidget {
     final color = _parseColor(category.color, txColors.expense);
     final progress = maxAmount > 0 ? category.totalAmount / maxAmount : 0.0;
     final amountColor = isIncome ? txColors.income : txColors.expense;
+    final percentText = _formatPercent(category.percentage);
 
     return InkWell(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: color.withValues(alpha: 0.2),
-                  child: iconFromString(category.icon, size: AppIconSize.md),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: color.withValues(alpha: 0.2),
+              child: iconFromString(category.icon, size: AppIconSize.sm),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        '${category.categoryName} ${category.percentage.toStringAsFixed(2)}%',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontSize: 14,
+                      Expanded(
+                        child: Text(
+                          category.categoryName,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: AppRadius.smAll,
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 4,
-                          backgroundColor:
-                              theme.colorScheme.surfaceContainerHighest,
-                          valueColor: AlwaysStoppedAnimation<Color>(color),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        percentText,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
-                ),
-                Text(
-                  '¥${category.totalAmount.toStringAsFixed(2)}',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: amountColor,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: AppSpacing.xs),
+                  ClipRRect(
+                    borderRadius: AppRadius.smAll,
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 3,
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  '${category.transactionCount}笔',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            SizedBox(
+              width: 76,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '¥${category.totalAmount.toStringAsFixed(2)}',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: amountColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Icon(
-                  Icons.chevron_right,
-                  size: 20,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ],
+                  Text(
+                    '${category.transactionCount}笔',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// 整数时省略小数，节省横向空间且更整洁。
+  static String _formatPercent(double value) {
+    if (value >= 99.95) return '100%';
+    if (value <= 0.05) return '0%';
+    return '${value.toStringAsFixed(1)}%';
   }
 
   Color _parseColor(String hex, Color fallback) {

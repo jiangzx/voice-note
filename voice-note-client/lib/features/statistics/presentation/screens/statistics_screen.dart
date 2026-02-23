@@ -471,30 +471,35 @@ class _PieChartSection extends ConsumerWidget {
             children: [
               const PieChartWidget(),
               Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        labelText,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textPlaceholder,
-                          fontSize: 11,
+                child: SizedBox(
+                  width: 88,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          labelText,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textPlaceholder,
+                            fontSize: 10,
+                            letterSpacing: 0.2,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '¥${total.toStringAsFixed(2)}',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          fontSize: 15,
+                        const SizedBox(height: 2),
+                        Text(
+                          '¥${total.toStringAsFixed(2)}',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                            letterSpacing: -0.2,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -518,7 +523,7 @@ class _CategoryCompositionSection extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _PieChartSection(),
-        Divider(height: 1, color: Color(0xFFEBEDF0)),
+        Divider(height: 1, indent: 12, endIndent: 12, color: Color(0xFFEBEDF0)),
         CategoryRanking(),
       ],
     );
