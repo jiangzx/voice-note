@@ -18,6 +18,7 @@ import '../../../transaction/presentation/providers/transaction_form_providers.d
 import '../../../transaction/presentation/providers/transaction_query_providers.dart';
 import '../../../transaction/presentation/utils/group_transactions_by_day.dart';
 import '../../../transaction/presentation/widgets/daily_group_header.dart';
+import '../../../../shared/widgets/app_drawer.dart';
 import '../widgets/recent_transaction_tile.dart';
 import '../widgets/summary_card.dart';
 import '../widgets/voice_onboarding_tooltip.dart';
@@ -35,6 +36,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   static const double _loadMoreScrollThreshold = 200;
 
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // Selection mode state
   bool _isSelectionMode = false;
@@ -111,7 +113,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return PopScope(
       canPop: false,
       child: Scaffold(
-        appBar: _isSelectionMode ? _buildSelectionAppBar() : AppBar(title: const Text('快记账')),
+        key: _scaffoldKey,
+        drawer: const AppDrawer(),
+        appBar: _isSelectionMode
+            ? _buildSelectionAppBar()
+            : AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                  tooltip: '菜单',
+                ),
+                title: const Text('快记账'),
+              ),
         floatingActionButton: _isSelectionMode
             ? const FloatingActionButton(
                 onPressed: null,
@@ -120,9 +133,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: SizedBox.shrink(),
               )
             : null,
-        body: Stack(
-          children: [
-            SlidableAutoCloseBehavior(
+        body: _DrawerSwipeZone(
+          onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+          child: Stack(
+            children: [
+              SlidableAutoCloseBehavior(
               child: RefreshIndicator(
                 onRefresh: () =>
                     ref.read(recentTransactionsPagedProvider.notifier).refresh(),
@@ -235,8 +250,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ),
-            const VoiceOnboardingTooltip(),
-          ],
+              const VoiceOnboardingTooltip(),
+            ],
+          ),
         ),
         bottomNavigationBar:
             _isSelectionMode ? _buildSelectionBottomBar(pagedState) : null,
@@ -598,5 +614,63 @@ class _TxTileWithCategory extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+/// Wraps [child] and adds a left-edge zone: swipe right from the edge opens the drawer.
+class _DrawerSwipeZone extends StatelessWidget {
+  const _DrawerSwipeZone({
+    required this.onOpenDrawer,
+    required this.child,
+  });
+
+  final VoidCallback onOpenDrawer;
+  final Widget child;
+
+  static const double _edgeWidth = 24;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        child,
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: _edgeWidth,
+          child: _LeftEdgeDragDetector(onOpenDrawer: onOpenDrawer),
+        ),
+      ],
+    );
+  }
+}
+
+class _LeftEdgeDragDetector extends StatefulWidget {
+  const _LeftEdgeDragDetector({required this.onOpenDrawer});
+
+  final VoidCallback onOpenDrawer;
+
+  @override
+  State<_LeftEdgeDragDetector> createState() => _LeftEdgeDragDetectorState();
+}
+
+class _LeftEdgeDragDetectorState extends State<_LeftEdgeDragDetector> {
+  double _dragDx = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragUpdate: (DragUpdateDetails details) {
+        _dragDx += details.delta.dx;
+        if (_dragDx > 20) {
+          widget.onOpenDrawer();
+          _dragDx = double.negativeInfinity;
+        }
+      },
+      onHorizontalDragEnd: (_) => setState(() => _dragDx = 0),
+      onHorizontalDragCancel: () => setState(() => _dragDx = 0),
+    );
   }
 }

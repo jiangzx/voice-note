@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/design_tokens.dart';
 import '../../../app/theme.dart';
+import '../../../shared/widgets/swipe_back_zone.dart';
 import '../../../core/permissions/permission_service.dart';
 import '../domain/draft_batch.dart';
 import '../domain/parse_result.dart';
@@ -278,9 +279,11 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
               const SizedBox(width: 44),
           ],
         ),
-        body: Stack(
-          children: [
-            SafeArea(
+        body: SwipeBackZone(
+          onBack: _exitScreen,
+          child: Stack(
+            children: [
+              SafeArea(
               child: Column(
                 children: [
                   if (isOffline) _buildOfflineBanner(),
@@ -338,6 +341,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
                   : const SizedBox.shrink(key: ValueKey(false)),
             ),
           ],
+        ),
         ),
         floatingActionButton: null,
       ),

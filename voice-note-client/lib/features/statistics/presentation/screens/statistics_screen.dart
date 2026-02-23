@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
+import '../../../../shared/widgets/swipe_back_zone.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../../account/presentation/providers/account_providers.dart';
 import '../providers/statistics_providers.dart';
@@ -58,13 +59,17 @@ class StatisticsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
       appBar: AppBar(
-        leading: context.canPop()
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.pop(),
-                tooltip: '返回',
-              )
-            : null,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+          tooltip: '返回',
+        ),
         title: const Text(
           '统计',
           style: TextStyle(
@@ -106,9 +111,17 @@ class StatisticsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-        children: [
+      body: SwipeBackZone(
+        onBack: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/home');
+          }
+        },
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          children: [
           const PeriodSelector(),
           const SizedBox(height: 12),
           _sectionTitle('汇总'),
@@ -130,6 +143,7 @@ class StatisticsScreen extends ConsumerWidget {
           _sectionTitle('账单汇总'),
           const BillSummaryTable(),
         ],
+        ),
       ),
     );
   }

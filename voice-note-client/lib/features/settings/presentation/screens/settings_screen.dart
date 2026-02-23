@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/design_tokens.dart';
 import '../../../../app/theme.dart';
+import '../../../../shared/widgets/swipe_back_zone.dart';
 import '../../../../core/di/network_providers.dart';
 import '../../../../core/tts/tts_providers.dart';
 import '../../../export/presentation/widgets/export_options_sheet.dart';
@@ -62,11 +63,19 @@ class SettingsScreen extends ConsumerWidget {
         backgroundColor: AppColors.backgroundPrimary,
         foregroundColor: AppColors.textPrimary,
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm,
-            AppSpacing.lg, AppSpacing.xl),
-        children: [
-          const _SectionHeader(title: '外观', style: _sectionTitleStyle),
+      body: SwipeBackZone(
+        onBack: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/home');
+          }
+        },
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm,
+              AppSpacing.lg, AppSpacing.xl),
+          children: [
+            const _SectionHeader(title: '外观', style: _sectionTitleStyle),
           _SettingsCard(
             radius: _cardRadius,
             borderColor: _cardBorder,
@@ -262,6 +271,7 @@ class SettingsScreen extends ConsumerWidget {
             child: const _SecuritySettingsSection(compact: true),
           ),
         ],
+        ),
       ),
     );
   }

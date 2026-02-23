@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme.dart';
+import '../../../../shared/widgets/swipe_back_zone.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../export/presentation/widgets/export_options_sheet.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
@@ -145,10 +146,18 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     return Scaffold(
       appBar: _isSelectionMode ? _buildSelectionAppBar() : _buildNormalAppBar(_currentMonth),
       floatingActionButton: null,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          calendarGroupsAsync.when(
+      body: SwipeBackZone(
+        onBack: () {
+          if (_canPop) {
+            _onBackFromFiltered();
+          } else {
+            context.go('/home');
+          }
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            calendarGroupsAsync.when(
             data: (groups) => TransactionCalendarGrid(
               monthHeader: TransactionCalendarHeader(
                 currentMonth: _currentMonth,
@@ -248,6 +257,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
             ),
           ),
         ],
+        ),
       ),
       bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar(listAsync) : null,
     );
@@ -303,13 +313,11 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
 
   PreferredSizeWidget _buildNormalAppBar(DateTime currentMonth) {
     return AppBar(
-      leading: _canPop
-          ? IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: _onBackFromFiltered,
-              tooltip: '返回',
-            )
-          : null,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: _canPop ? _onBackFromFiltered : () => context.go('/home'),
+        tooltip: '返回',
+      ),
       title: const Text('全部列表'),
       actions: [
         IconButton(
