@@ -54,7 +54,11 @@ class StatisticsScreen extends ConsumerWidget {
         foregroundColor: AppColors.textPrimary,
         actions: [
           PopupMenuButton<String?>(
-            icon: const Icon(Icons.account_balance_wallet_outlined, size: 22, color: AppColors.textSecondary),
+            icon: const Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 22,
+              color: AppColors.textSecondary,
+            ),
             tooltip: '选择账户',
             onSelected: (id) {
               ref.read(selectedAccountIdProvider.notifier).state = id;
@@ -64,7 +68,9 @@ class StatisticsScreen extends ConsumerWidget {
                 const PopupMenuItem(value: null, child: Text('全部账户')),
                 ...accountsAsync.when(
                   data: (accounts) => accounts
-                      .map((a) => PopupMenuItem(value: a.id, child: Text(a.name)))
+                      .map(
+                        (a) => PopupMenuItem(value: a.id, child: Text(a.name)),
+                      )
                       .toList(),
                   loading: () => [],
                   error: (e, st) => [],
@@ -129,20 +135,20 @@ class StatisticsScreen extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _segmentedChip(
-            ref,
-            label: '支出',
-            value: 'expense',
-            current: series,
-            onTap: () => ref.read(trendSeriesProvider.notifier).state = 'expense',
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _segmentedChip(
-            ref,
-            label: '收入',
-            value: 'income',
-            current: series,
-            onTap: () => ref.read(trendSeriesProvider.notifier).state = 'income',
-          ),
+          ref,
+          label: '支出',
+          value: 'expense',
+          current: series,
+          onTap: () => ref.read(trendSeriesProvider.notifier).state = 'expense',
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        _segmentedChip(
+          ref,
+          label: '收入',
+          value: 'income',
+          current: series,
+          onTap: () => ref.read(trendSeriesProvider.notifier).state = 'income',
+        ),
         const SizedBox(width: AppSpacing.sm),
         _segmentedChip(
           ref,
@@ -156,8 +162,8 @@ class StatisticsScreen extends ConsumerWidget {
   }
 
   Widget _segmentedChip(
-    WidgetRef ref,
-    {required String label,
+    WidgetRef ref, {
+    required String label,
     required String value,
     required String current,
     required VoidCallback onTap,
@@ -168,7 +174,9 @@ class StatisticsScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.brandPrimary : AppColors.backgroundPrimary,
+          color: isSelected
+              ? AppColors.brandPrimary
+              : AppColors.backgroundPrimary,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: isSelected ? AppColors.brandPrimary : _cardBorder,
@@ -193,20 +201,22 @@ class StatisticsScreen extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _segmentedChip(
-            ref,
-            label: '支出',
-            value: 'expense',
-            current: type,
-            onTap: () => ref.read(categorySummaryTypeProvider.notifier).state = 'expense',
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _segmentedChip(
-            ref,
-            label: '收入',
-            value: 'income',
-            current: type,
-            onTap: () => ref.read(categorySummaryTypeProvider.notifier).state = 'income',
-          ),
+          ref,
+          label: '支出',
+          value: 'expense',
+          current: type,
+          onTap: () =>
+              ref.read(categorySummaryTypeProvider.notifier).state = 'expense',
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        _segmentedChip(
+          ref,
+          label: '收入',
+          value: 'income',
+          current: type,
+          onTap: () =>
+              ref.read(categorySummaryTypeProvider.notifier).state = 'income',
+        ),
       ],
     );
   }
@@ -275,8 +285,8 @@ class _TrendDateDetailRow extends ConsumerWidget {
     final label = series == 'expense'
         ? '支出'
         : series == 'income'
-            ? '收入'
-            : '结余';
+        ? '收入'
+        : '结余';
 
     return trendAsync.when(
       data: (points) {
@@ -294,8 +304,7 @@ class _TrendDateDetailRow extends ConsumerWidget {
         final from = date.toIso8601String().split('T').first;
         final to = from;
         return InkWell(
-          onTap: () =>
-              context.go('/transactions?dateFrom=$from&dateTo=$to'),
+          onTap: () => context.go('/transactions?dateFrom=$from&dateTo=$to'),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
@@ -376,7 +385,9 @@ class _SummaryCard extends ConsumerWidget {
               child: _SummaryItem(
                 label: '结余',
                 amount: summary.balance,
-                color: summary.balance >= 0 ? txColors.income : txColors.expense,
+                color: summary.balance >= 0
+                    ? txColors.income
+                    : txColors.expense,
               ),
             ),
           ],
@@ -459,8 +470,7 @@ class _PieChartSection extends ConsumerWidget {
 
     return categoriesAsync.when(
       data: (categories) {
-        final total =
-            categories.fold<double>(0, (s, c) => s + c.totalAmount);
+        final total = categories.fold<double>(0, (s, c) => s + c.totalAmount);
         if (categories.isEmpty || total == 0) {
           return const SizedBox.shrink();
         }
@@ -507,7 +517,10 @@ class _PieChartSection extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+      loading: () => const SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator()),
+      ),
       error: (e, st) => const SizedBox.shrink(),
     );
   }
