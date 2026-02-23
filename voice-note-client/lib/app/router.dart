@@ -72,13 +72,12 @@ final GoRouter appRouter = GoRouter(
             );
             final path = state.matchedLocation;
             final isVerifyDisable = path.startsWith('/settings/verify-disable');
-            final isSetGesture = path == '/settings/gesture-set';
-            final isSetPassword = path == '/settings/password-set';
+            // Require unlock for all routes when lock is on; only verify-disable is exempt
+            // so user can enter credential to disable. gesture-set/password-set must NOT
+            // bypass: otherwise deep-link could overwrite lock without verifying.
             final lockRequired = security.isLockEnabled &&
                 !security.isUnlockedThisSession &&
-                !isVerifyDisable &&
-                !isSetGesture &&
-                !isSetPassword;
+                !isVerifyDisable;
             if (lockRequired) {
               return UnlockScreen(redirectUri: path);
             }
