@@ -192,10 +192,11 @@ class _CategoryRankItem extends StatelessWidget {
     );
   }
 
-  /// 整数时省略小数，节省横向空间且更整洁。
+  /// 大占比显示 100%，零占比显示 0%，极小正占比显示 <0.1% 避免有金额却显示 0% 的误解。
   static String _formatPercent(double value) {
     if (value >= 99.95) return '100%';
-    if (value <= 0.05) return '0%';
+    if (value <= 0) return '0%';
+    if (value < 0.05) return '<0.1%';
     return '${value.toStringAsFixed(1)}%';
   }
 

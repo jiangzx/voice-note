@@ -38,11 +38,14 @@ class SummaryCard extends ConsumerStatefulWidget {
     required this.monthLabel,
     required this.totalIncome,
     required this.totalExpense,
+    this.monthDate,
   });
 
   final String monthLabel;
   final double totalIncome;
   final double totalExpense;
+  /// When set, tapping the expense block navigates to statistics for this month.
+  final DateTime? monthDate;
 
   @override
   ConsumerState<SummaryCard> createState() => _SummaryCardState();
@@ -117,7 +120,22 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
     );
   }
 
+  void _openStatisticsForMonth() {
+    if (widget.monthDate == null) return;
+    final d = widget.monthDate!;
+    context.push('/statistics?year=${d.year}&month=${d.month}');
+  }
+
   Widget _buildTopRow(BuildContext context) {
+    final monthLabelChild = Text(
+      '${widget.monthLabel}支出',
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        color: _Spec.title,
+        letterSpacing: 0.2,
+      ),
+    );
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -125,15 +143,20 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '${widget.monthLabel}支出',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: _Spec.title,
-                letterSpacing: 0.2,
-              ),
-            ),
+            if (widget.monthDate != null)
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openStatisticsForMonth,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: monthLabelChild,
+                  ),
+                ),
+              )
+            else
+              monthLabelChild,
             const SizedBox(width: 4),
             Material(
               color: Colors.transparent,
@@ -212,44 +235,54 @@ class _SummaryCardState extends ConsumerState<SummaryCard> {
     final intPart = dot > 0 ? str.substring(0, dot) : str;
     final decPart = dot > 0 ? str.substring(dot) : '';
 
-    if (!_amountsVisible) {
-      return const Text(
-        '¥****',
-        style: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.w600,
-          color: _Spec.heroAmount,
-          height: 1.2,
-          letterSpacing: -0.5,
-        ),
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Text(
-          '¥$intPart',
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
-            color: _Spec.heroAmount,
-            height: 1.2,
-            letterSpacing: -0.5,
-          ),
-        ),
-        if (decPart.isNotEmpty)
-          Text(
-            decPart,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
+    final amountContent = !_amountsVisible
+        ? const Text(
+            '¥****',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
               color: _Spec.heroAmount,
-              height: 1.25,
+              height: 1.2,
+              letterSpacing: -0.5,
             ),
-          ),
-      ],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '¥$intPart',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
+                  color: _Spec.heroAmount,
+                  height: 1.2,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              if (decPart.isNotEmpty)
+                Text(
+                  decPart,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: _Spec.heroAmount,
+                    height: 1.25,
+                  ),
+                ),
+            ],
+          );
+    if (widget.monthDate == null) return amountContent;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _openStatisticsForMonth,
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: amountContent,
+        ),
+      ),
     );
   }
 

@@ -32,6 +32,25 @@ class StatisticsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final uri = GoRouterState.of(context).uri;
+    final yearStr = uri.queryParameters['year'];
+    final monthStr = uri.queryParameters['month'];
+    if (yearStr != null && monthStr != null) {
+      final year = int.tryParse(yearStr);
+      final month = int.tryParse(monthStr);
+      if (year != null &&
+          month != null &&
+          month >= 1 &&
+          month <= 12) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) return;
+          ref.read(selectedDateProvider.notifier).state = DateTime(year, month);
+          ref.read(selectedPeriodTypeProvider.notifier).state = PeriodType.month;
+          // Do not call context.go() here: it would replace the stack and remove the back button.
+        });
+      }
+    }
+
     final theme = Theme.of(context);
     final txColors = theme.extension<TransactionColors>()!;
     final accountsAsync = ref.watch(accountListProvider);
@@ -536,7 +555,9 @@ class _CategoryCompositionSection extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _PieChartSection(),
+        SizedBox(height: 12),
         Divider(height: 1, indent: 12, endIndent: 12, color: Color(0xFFEBEDF0)),
+        SizedBox(height: 12),
         CategoryRanking(),
       ],
     );

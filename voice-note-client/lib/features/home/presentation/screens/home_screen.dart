@@ -122,6 +122,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           monthLabel: '${monthRange.from.month}月',
                           totalIncome: summary.totalIncome,
                           totalExpense: summary.totalExpense,
+                          monthDate: monthRange.from,
                         ),
                         loading: () => ShimmerPlaceholder.card(height: 100),
                         error: (e, st) => ErrorStateWidget(
@@ -270,6 +271,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       date: group.date,
                       dailyIncome: group.dailyIncome,
                       dailyExpense: group.dailyExpense,
+                      showReceiptIcon: true,
                     );
                   }
                   if (!isLastGroup && local == 1 + 2 * n - 1) {

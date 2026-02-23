@@ -25,11 +25,14 @@ class DailyGroupHeader extends StatelessWidget {
     required this.date,
     required this.dailyIncome,
     required this.dailyExpense,
+    this.showReceiptIcon = false,
   });
 
   final DateTime date;
   final double dailyIncome;
   final double dailyExpense;
+  /// When true, shows receipt icon on the right (e.g. home recent list only).
+  final bool showReceiptIcon;
 
   String _label(DateTime today) {
     if (date.isSameDay(today)) return '今天';
@@ -43,7 +46,11 @@ class DailyGroupHeader extends StatelessWidget {
   }
 
   String _formatMoney(double v) {
-    return NumberFormat.currency(locale: 'zh_CN', symbol: '¥', decimalDigits: 2).format(v);
+    return NumberFormat.currency(
+      locale: 'zh_CN',
+      symbol: '¥',
+      decimalDigits: 2,
+    ).format(v);
   }
 
   void _onTap(BuildContext context) {
@@ -111,8 +118,10 @@ class DailyGroupHeader extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                _DailyReceiptDecoration(),
+                if (showReceiptIcon) ...[
+                  const SizedBox(width: 12),
+                  const _DailyReceiptDecoration(),
+                ],
               ],
             ),
           ),
@@ -122,8 +131,10 @@ class DailyGroupHeader extends StatelessWidget {
   }
 }
 
-/// Right decoration: subtle chip with receipt icon (enterprise-style).
+/// Right decoration: subtle chip with receipt icon (home list only).
 class _DailyReceiptDecoration extends StatelessWidget {
+  const _DailyReceiptDecoration();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -133,7 +144,11 @@ class _DailyReceiptDecoration extends StatelessWidget {
         color: _kReceiptBg,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Icon(Icons.receipt_long_outlined, size: 18, color: _kReceiptFg),
+      child: const Icon(
+        Icons.receipt_long_outlined,
+        size: 18,
+        color: _kReceiptFg,
+      ),
     );
   }
 }
