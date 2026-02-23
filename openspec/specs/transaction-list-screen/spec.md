@@ -139,12 +139,14 @@
 - **THEN** 滚动帧率 SHALL 保持流畅（无明显掉帧）
 
 ### Requirement: 明细页导出按钮
-交易明细页 AppBar SHALL 包含导出按钮（图标）。点击后 SHALL 以当前页面的筛选条件（日期范围、分类等）为默认值展示导出选项 Sheet。
+交易明细页 AppBar SHALL 包含导出按钮（图标）。点击后 SHALL 展示导出选项 Sheet。
 
-#### Scenario: 导出当前筛选结果
-- **WHEN** 用户在明细页筛选了"2026-02"的支出记录并点击导出按钮
-- **THEN** 系统 SHALL 展示导出选项 Sheet，时间范围默认为 2026-02-01 至 2026-02-28，类型默认为"支出"
+> **实际行为**：当前实现以当前日历月作为导出 Sheet 的默认时间范围（initialDateFrom/initialDateTo），类型默认为未设置（initialType: null），用户可在 Sheet 内选择。
+
+#### Scenario: 从明细页打开导出
+- **WHEN** 用户在明细页点击导出按钮
+- **THEN** 系统 SHALL 展示导出选项 Sheet，时间范围默认为当前日历月起止日期
 
 #### Scenario: 无筛选时导出
-- **WHEN** 用户在明细页未设置任何筛选直接点击导出按钮
-- **THEN** 系统 SHALL 展示导出选项 Sheet，筛选条件为空（导出全部）
+- **WHEN** 用户在导出 Sheet 中不设置时间或类型即开始导出
+- **THEN** 系统 SHALL 导出全部数据（由 ExportConfig 未设 dateFrom/dateTo/type 时的语义决定）

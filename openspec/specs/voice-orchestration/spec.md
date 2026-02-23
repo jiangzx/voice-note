@@ -5,7 +5,7 @@
 ## Requirements
 
 ### Requirement: 语音管线编排
-系统 SHALL 提供 VoiceOrchestrator 组件，统一编排 AudioCapture → VAD → ASR → NLP 的完整语音管线。编排器 SHALL 通过 VoiceOrchestratorDelegate 接口与 UI 层解耦。编排器 SHALL 管理五态状态机（IDLE → LISTENING → RECOGNIZING → CONFIRMING → ENDED）的流转。
+系统 SHALL 提供 VoiceOrchestrator 组件，统一编排 AudioCapture → VAD → ASR → NLP 的完整语音管线。编排器 SHALL 通过 VoiceOrchestratorDelegate 接口与 UI 层解耦。编排器 SHALL 管理四态状态机（IDLE、LISTENING、RECOGNIZING、CONFIRMING）的流转；退出或超时后状态设为 IDLE，无单独 ENDED 态。
 
 #### Scenario: 自动模式完整流程
 - **WHEN** 编排器以自动模式启动监听
@@ -148,28 +148,19 @@ CONFIRMING 状态下收到用户语音输入时，编排器 SHALL 按以下混�
 - **WHEN** ASR WebSocket 断连但当前状态为 IDLE 或 LISTENING
 - **THEN** 编排器 SHALL NOT 尝试重连
 
-### Requirement: 会话结束态与一键重启
+### Requirement: 会话结束与退出行为
 
-系统 SHALL 在语音会话结束后进入 `ended` 状态。`ended` 状态下，系统 SHALL 释放所有音频资源（麦克风、VAD、ASR WebSocket），但 SHALL 保留会话消息记录和 session summary。系统 SHALL 在 `ended` 状态下提供重启入口，用户操作后 SHALL 启动全新会话。
+编排器在收到退出指令或超时后 SHALL 将状态设为 IDLE 并释放所有音频资源。会话消息与 session summary 在退出前 SHALL 通过 Delegate 展示并可选 TTS 播报。
 
-#### Scenario: 用户主动退出后显示重启入口
-- **WHEN** 用户在会话中说 "没有了" / "退出" / "结束" 等退出指令
-- **THEN** 系统 SHALL 播报 session summary TTS、设置状态为 `ended`、显示重启入口
-- **THEN** 系统 SHALL NOT 自动导航离开语音页面
+> **实际行为**：当前实现中，用户主动退出时调用 `endSession()` 并由 UI 层 pop 离开语音页；超时退出时（自动模式）先展示系统消息「长时间无操作，已自动退出」，约 1.5s 后自动导航至首页（`context.go('/home')`）。无「ended 态」下驻留页面的重启入口；SessionEndedCard 组件存在但未在语音页使用。
 
-#### Scenario: 超时退出后显示重启入口
+#### Scenario: 用户主动退出
+- **WHEN** 用户在会话中说「没有了」/「退出」/「结束」等退出指令
+- **THEN** 编排器 SHALL 调用 onExitSession，播报 session summary（若 TTS 启用）、设置状态为 idle、释放资源；UI 层 SHALL 根据实现决定是否 pop 离开
+
+#### Scenario: 超时退出
 - **WHEN** 语音会话因 3 分钟无操作超时
-- **THEN** 系统 SHALL 显示超时提示、设置状态为 `ended`、显示重启入口
-- **THEN** 系统 SHALL NOT 自动导航离开语音页面
-
-#### Scenario: 用户点击重启按钮
-- **WHEN** 用户在 `ended` 状态下点击重启按钮
-- **THEN** 系统 SHALL 清空历史消息、创建新的 orchestrator、开始监听
-- **THEN** 状态 SHALL 从 `ended` 变为 `listening`
-
-#### Scenario: 用户通过系统返回手势离开
-- **WHEN** 用户在 `ended` 状态下按返回按钮或执行返回手势
-- **THEN** 系统 SHALL 导航离开语音页面
+- **THEN** 编排器 SHALL 调用 onSessionTimeout，展示超时提示、播报 session summary、设置状态为 idle；当前实现（自动模式）在展示消息后自动导航至首页
 
 ### Requirement: 编排器退出会话行为
 

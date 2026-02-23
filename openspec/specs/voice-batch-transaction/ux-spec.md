@@ -1,5 +1,17 @@
 # BatchConfirmationCard UX Spec
 
+## 实际行为与差异说明（以当前实现为准）
+
+- **卡片容器**：背景为 `AppColors.backgroundSecondary`，圆角为 `AppRadius.cardAll`（20px）。列表区域 4+ 笔时最大高度为 240dp（非屏幕 60%）。
+- **Header**：仅展示「X 笔待确认」；全部处理完后仍为该格式，无「✓ 已完成」徽标。
+- **Summary bar**：展示「待确认合计」与待确认金额合计，无「共N笔 · 支出¥X · 收入¥Y」分项。
+- **Action bar**：始终为「取消」+「全部确认」；全部逐条处理完后按钮禁用，无单独「完成」按钮。
+- **行内交互**：未实现「点击整行展开单笔详情」与「点击类型 Chip 切换类型」；仅支持滑动确认/取消。
+- **滑动方向**：左滑取消（露出 errorContainer + 删除图标）、右滑确认（露出 primaryContainer + ✓），与下文章节一致。
+- **无障碍**：行语义、liveRegion 已实现；小屏/大屏/横屏响应式与卡片内错误条以当前实现为准，部分未完全按本文实现。
+
+---
+
 ## Design Principles
 
 1. **单笔零退化**: `batch.size == 1` 时展示现有 `ConfirmationCard`，用户体验完全不变
@@ -26,7 +38,7 @@
 │ │ 4  🟢收入  ¥90.00   工资   工资        │ │
 │ └──────────────────────────────────────────┘ │
 ├──────────────────────────────────────────────┤
-│ 共4笔 · 支出¥120 · 收入¥120                  │  ← Summary bar
+│ 待确认合计                          ¥XXX     │  ← Summary bar（当前实现）
 ├──────────────────────────────────────────────┤
 │  [ 取消 ]          [ ✓ 全部确认 ]         │  ← Action bar
 └──────────────────────────────────────────────┘
@@ -34,17 +46,16 @@
 
 ## Card Container
 
-- **背景**: `theme.colorScheme.surfaceContainerLow`
-- **圆角**: `AppRadius.xlAll` (16px)
+- **背景**: `AppColors.backgroundSecondary`（当前实现）
+- **圆角**: `AppRadius.cardAll` (20px)
 - **内边距**: `AppSpacing.lg` (16px)
-- **最大高度**: 屏幕高度 60%（超出时内部列表可滚动）
+- **列表最大高度**: 4+ 笔时为 240dp，内部可滚动（当前实现；非屏幕 60%）
 - **入场动画**: slide-up 40px + fade-in，`AppDuration.normal` (300ms)，`Curves.easeOutCubic`
 
 ## Header
 
-- **Confidence**: 取 batch 中所有笔的最低 confidence（保守展示）
-- **Pending count badge**: 实时更新，颜色 `primaryContainer`
-- 当所有笔已处理（confirmed/cancelled），badge 变为 `✓ 已完成`
+- **来源**: 含 LLM 解析时展示「AI 识别」，否则「本地识别」
+- **Pending count badge**: 实时展示待确认笔数「X 笔待确认」，颜色 `primaryContainer`；全部处理完后仍为该格式（当前实现无「✓ 已完成」）
 
 ## Item Row
 
@@ -80,25 +91,24 @@
 
 ### 点击交互
 
-- **点击整行**: 展开为单笔详情视图（复用现有 ConfirmationCard 字段行布局），可编辑各字段
-- **点击类型 Chip**: 直接切换 EXPENSE → INCOME → TRANSFER
-- **触控反馈**: `HapticFeedback.selectionClick()` on tap
+- **滑动**: 左滑取消、右滑确认（见下节）；当前实现未提供「点击整行展开详情」与「点击类型 Chip 切换类型」
+- **触控反馈**: 滑动触发 `HapticFeedback.selectionClick()`；按钮点击使用 selectionClick / lightImpact
 
 ## Swipe Gestures
 
 ### 左滑取消（单笔）
 
-- **触发阈值**: 水平滑动 > 行宽 25%
-- **背景**: `theme.colorScheme.errorContainer`，显示「取消」文字 + 垃圾桶图标
-- **动画**: 松手后行内容弹回 + 状态变为 cancelled（250ms, `Curves.fastOutSlowIn`）
-- **反馈**: `HapticFeedback.mediumImpact()` 达到阈值时
+- **方向**: 左滑（endToStart）露出右侧 `secondaryBackground`
+- **背景**: `theme.colorScheme.errorContainer`，显示删除图标（当前实现无「取消」文字）
+- **行为**: 松手后调用 `onCancelItem`，行状态变为 cancelled；`confirmDismiss` 返回 false 故行不滑出
+- **反馈**: `HapticFeedback.selectionClick()`（当前实现）
 
 ### 右滑确认（单笔）
 
-- **触发阈值**: 水平滑动 > 行宽 25%
-- **背景**: `theme.colorScheme.primaryContainer`，显示「确认」文字 + ✓ 图标
-- **动画**: 同上
-- **反馈**: `HapticFeedback.lightImpact()` 达到阈值时
+- **方向**: 右滑（startToEnd）露出左侧 `background`
+- **背景**: `theme.colorScheme.primaryContainer`，显示 ✓ 图标
+- **行为**: 松手后调用 `onConfirmItem`，行状态变为 confirmed
+- **反馈**: 同上
 
 ### Swipe 约束
 
@@ -108,17 +118,16 @@
 
 ## Summary Bar
 
-- 仅在 `batch.size > 1` 时显示
-- 金额实时反映纠正后的值
-- 已取消的笔不计入合计
+- 与列表、Action bar 一同展示（当前实现始终显示）
+- 展示「待确认合计」与待确认项的金额合计（已取消/已确认不计入）
+- 金额随纠正与逐条确认实时更新
 
 ## Action Bar
 
 ### 多笔模式 (size > 1)
 
-- **「全部确认」按钮**: 始终显示 pending count
-- **「取消」按钮**: 无 pending items 时 disabled
-- 当 `pendingCount == 0`（所有 item 已逐条处理），action bar 变为「完成」单按钮
+- **「取消」与「全部确认」按钮**: 始终展示；无 pending 或 isLoading 时 disabled
+- 当前实现无「完成」单按钮：全部逐条处理完后仍为两按钮禁用态
 
 ### 单笔模式 (size == 1)
 
@@ -126,11 +135,9 @@
 
 ## Scrolling Behavior
 
-- **≤ 3 笔**: 列表不可滚动，卡片高度自适应
-- **4+ 笔**: 列表区域固定高度（3.5 行高度 = 196dp），可纵向滚动
-- 滚动时 header 和 action bar 固定不动
-- 列表使用 `ClipRRect` 裁剪圆角
-- 滚动指示器：Material 3 scroll indicator（边缘 fade）
+- **≤ 3 笔**: Column 布局，无列表滚动
+- **4+ 笔**: 列表区域固定最大高度 240dp（当前实现），可纵向滚动；header 与 action bar 固定
+- 列表项圆角 `AppRadius.mdAll`
 
 ## Transitions & Animations
 
@@ -139,22 +146,17 @@
 - 同时 summary bar 数字 AnimatedSwitcher 更新
 
 ### 2. 笔取消（cancelItem）
-- 行高从 56dp 收缩至 40dp (250ms, fastOutSlowIn)
-- 文字加 `TextDecoration.lineThrough`，opacity 1→0.5
-- 背景色渐变至 errorContainer @ 0.15
+- 行背景渐变至 errorContainer @ 0.3，文字删除线 + opacity 0.5，AnimatedContainer 250ms
+- 状态图标切换为 cancelled 图标（250ms scale transition）
 
 ### 3. 纠正更新（updateItem）
-- 变化字段文字：背景 highlight 闪烁 (yellow @ 0.3, 200ms ease-in) → 数值 AnimatedSwitcher (150ms) → highlight 消退 (300ms ease-out)
-- Haptic: selectionClick
+- 当前实现：通过 `onDraftBatchUpdated` 刷新整卡；pending 行在 LLM 请求期间显示 shimmer，无字段级高亮闪烁
 
 ### 4. 全部确认（confirmAll）
-- 所有 pending 行依次 stagger 50ms：背景色渐变至 primaryContainer，✓ 图标 scale-in
-- 整体卡片 delay 300ms 后 slide-down 40px + fade-out (300ms) → 触发保存
+- 由上层保存后关闭确认卡片；卡片内无 stagger 或 slide-down 动画（当前实现）
 
 ### 5. 展开详情（点击行）
-- 行 expand 至完整卡片视图 (350ms, easeInOutCubic)
-- 其他行 opacity 1→0，当前行字段逐个 fade-in (stagger 50ms)
-- 顶部出现 ← 返回列表按钮
+- 当前未实现：无点击行展开单笔详情的交互
 
 ## Voice + Touch Hybrid
 
@@ -163,9 +165,7 @@
 - LLM 返回后：shimmer 停止，字段更新动画触发
 
 ### 混合操作冲突处理
-- 用户正在滑动某行时，语音纠正到达 → 延迟应用纠正直到滑动完成
-- 用户正在编辑字段弹窗时，语音纠正到达 → 忽略该纠正，TTS 提示「正在编辑中，请编辑完成后再说」
-- 用户点击展开某行详情时，语音 confirmAll 到达 → 先关闭详情 → 执行 confirmAll
+- 当前实现：滑动、纠正由编排器与状态驱动；无行内编辑弹窗与展开详情，故无上述冲突分支实现
 
 ## Accessibility
 
@@ -176,11 +176,8 @@
 
 ## Responsive Sizing
 
-- **小屏 (<360dp width)**: 分类和描述折叠为一行，金额文字缩小至 `bodyLarge`
-- **大屏 (>600dp width)**: 卡片最大宽度 480dp 居中，列表行间增加 horizontal padding
-- **横屏**: 卡片使用屏幕宽度 50%，居中显示
+- 当前实现未对卡片做 360dp/600dp 或横屏的专门布局；以实际 UI 为准
 
 ## Error States
 
-- **保存失败**: 卡片底部出现红色错误条「保存失败：{原因}」，action bar 变为「重试保存」
-- **网络错误**: 纠正请求失败时，对应行恢复 shimmer 前状态，TTS 提示重试
+- 保存失败与网络错误由上层（语音页/编排器）处理并 TTS 提示；卡片内无独立错误条或「重试保存」按钮（当前实现）
