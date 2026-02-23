@@ -71,8 +71,16 @@
 - **THEN** 系统 SHALL 自动启动 ASR 识别
 
 #### Scenario: 按住说话模式工作
-- **WHEN** 输入模式为"按住说话"且用户按下录音按钮
-- **THEN** 系统 SHALL 在按住期间录音并发送到 ASR；松开时结束本次输入
+- **WHEN** 输入模式为"按住说话"且用户按下录音按钮并保持超过约定延迟（建议约 200ms）
+- **THEN** 系统 SHALL 开始录音并发送到 ASR；松开时结束本次输入
+
+#### Scenario: 点击即松无感
+- **WHEN** 用户在按住说话模式下按下后于约定延迟（如 200ms）内即松开
+- **THEN** 系统 SHALL NOT 启动录音，SHALL NOT 显示任何提示或触发识别，视为误触无感处理
+
+#### Scenario: 说话时间太短
+- **WHEN** 用户已启动录音但按住时长不足约定阈值（建议约 600ms）即松开且未处于取消区
+- **THEN** 系统 SHALL 取消本次录音（pushCancel），SHALL 以 SnackBar 提示「说话时间太短」，状态 SHALL 回到 LISTENING
 
 #### Scenario: 松开发送
 - **WHEN** 用户按住说话后未上滑至取消区即松开

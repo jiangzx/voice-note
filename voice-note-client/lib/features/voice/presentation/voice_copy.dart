@@ -24,6 +24,8 @@ abstract final class VoiceCopy {
   static const String pushToTalkReleaseToCancel = '松开 取消';
   /// Hint above button: slide up to cancel (WeChat-style).
   static const String pushToTalkSlideUpToCancel = '上滑取消';
+  /// Shown when user releases after very short hold (WeChat-style).
+  static const String pushToTalkTooShort = '说话时间太短';
 
   // --- Mode-specific hints (manual / keyboard / auto) ---
   static const String modeHintManual = '按住说话，一次记多笔更省心';

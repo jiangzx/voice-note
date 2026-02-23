@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
@@ -47,6 +48,13 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
   Offset? _pttPointerDownLocal;
   bool _pttInCancelZone = false;
   static const double _kCancelZoneThreshold = 56;
+
+  /// WeChat-style: start recording only after this hold, so tap is no-op.
+  static const Duration _kPushStartDelay = Duration(milliseconds: 200);
+  /// Hold shorter than this after recording started → show "说话时间太短".
+  static const Duration _kShortHoldThreshold = Duration(milliseconds: 600);
+  DateTime? _pttRecordingStartedAt;
+  Timer? _pttPushStartTimer;
 
   @override
   void initState() {
@@ -175,6 +183,7 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
 
   @override
   void dispose() {
+    _pttPushStartTimer?.cancel();
     _sessionSubscription?.close();
     _textController.dispose();
     super.dispose();
@@ -927,9 +936,15 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
       child: Listener(
         onPointerDown: (PointerDownEvent event) {
           _pttPointerDownLocal = event.localPosition;
+          _pttRecordingStartedAt = null;
           _pttInCancelZone = false;
-          HapticFeedback.mediumImpact();
-          ref.read(voiceSessionProvider.notifier).pushStart();
+          _pttPushStartTimer?.cancel();
+          _pttPushStartTimer = Timer(_kPushStartDelay, () {
+            if (_pttPointerDownLocal == null) return;
+            _pttRecordingStartedAt = DateTime.now();
+            HapticFeedback.mediumImpact();
+            ref.read(voiceSessionProvider.notifier).pushStart();
+          });
         },
         onPointerMove: (PointerMoveEvent event) {
           if (_pttPointerDownLocal == null) return;
@@ -986,12 +1001,31 @@ class _VoiceRecordingScreenState extends ConsumerState<VoiceRecordingScreen> {
   void _handlePttRelease() {
     final wasCancelZone = _pttInCancelZone;
     final hadPttDown = _pttPointerDownLocal != null;
+    final startedAt = _pttRecordingStartedAt;
+    _pttPushStartTimer?.cancel();
+    _pttPushStartTimer = null;
     _pttPointerDownLocal = null;
+    _pttRecordingStartedAt = null;
     setState(() => _pttInCancelZone = false);
     if (!hadPttDown) return;
+    // Tap (released before delay): no feedback, no recognition.
+    if (startedAt == null) return;
     HapticFeedback.lightImpact();
     if (wasCancelZone) {
       ref.read(voiceSessionProvider.notifier).pushCancel();
+      return;
+    }
+    final holdDuration = DateTime.now().difference(startedAt);
+    if (holdDuration < _kShortHoldThreshold) {
+      ref.read(voiceSessionProvider.notifier).pushCancel();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(VoiceCopy.pushToTalkTooShort),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } else {
       ref.read(voiceSessionProvider.notifier).pushEnd();
     }
