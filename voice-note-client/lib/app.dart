@@ -7,6 +7,7 @@ import 'app/theme.dart';
 import 'core/di/network_providers.dart';
 import 'features/settings/presentation/providers/security_settings_provider.dart';
 import 'features/settings/presentation/providers/theme_providers.dart';
+import 'shared/widgets/splash_overlay.dart';
 
 class SuikoujiApp extends ConsumerStatefulWidget {
   const SuikoujiApp({super.key});
@@ -56,6 +57,7 @@ class _SuikoujiAppState extends ConsumerState<SuikoujiApp>
       darkTheme: buildTheme(seedColor, Brightness.dark),
       themeMode: themeMode,
       routerConfig: appRouter,
+      builder: (context, child) => SplashOverlay(child: child ?? const SizedBox.shrink()),
       locale: const Locale('zh', 'CN'),
       supportedLocales: const [
         Locale('zh', 'CN'),

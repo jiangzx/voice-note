@@ -47,6 +47,7 @@ dev_dependencies:
   riverpod_generator: ^4.0.3
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.3.10
+  image: ^4.1.7
 
   fake_async: any
 flutter:
@@ -62,11 +63,11 @@ flutter_launcher_icons:
   remove_alpha_ios: true
 
 flutter_native_splash:
-  color: "#009688"
+  color: "#FFFFFF"
   image: assets/splash/logo.png
   android: true
   ios: true
   android_12:
     image: assets/splash/logo.png
-    color: "#009688"
+    color: "#FFFFFF"
   fullscreen: true

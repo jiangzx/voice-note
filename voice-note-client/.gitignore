@@ -1,3 +1,6 @@
+# Tool venv (splash generation)
+tool/.venv/
+
 # Miscellaneous
 *.class
 *.log
